@@ -1,0 +1,183 @@
+workflows:
+  android-release:
+    name: Android Release
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      flutter: 3.29.3
+      java: 17
+      groups:
+        - google_play_credentials
+        - android_keystore
+      vars:
+        PACKAGE_NAME: "com.inventario.app"
+    triggering:
+      events:
+        - tag
+      tag_patterns:
+        - pattern: 'v*-android'
+          include: true
+        - pattern: 'v*'
+          include: true
+    scripts:
+      - name: Set up keystore
+        script: |
+          echo $CM_KEYSTORE | base64 --decode > $CM_BUILD_DIR/keystore.jks
+          cat > $CM_BUILD_DIR/mobile/android/key.properties <<EOF
+          storePassword=$CM_KEYSTORE_PASSWORD
+          keyPassword=$CM_KEY_PASSWORD
+          keyAlias=$CM_KEY_ALIAS
+          storeFile=$CM_BUILD_DIR/keystore.jks
+          EOF
+
+      - name: Install dependencies
+        script: |
+          cd mobile
+          flutter pub get
+
+      - name: Run tests
+        script: |
+          cd mobile
+          flutter test
+
+      - name: Build AAB
+        script: |
+          cd mobile
+          flutter build appbundle --release \
+            --build-number=$PROJECT_BUILD_NUMBER \
+            --build-name=1.0.$PROJECT_BUILD_NUMBER
+
+    artifacts:
+      - mobile/build/**/outputs/**/*.aab
+      - mobile/build/**/outputs/**/mapping.txt
+
+    publishing:
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal
+        submit_as_draft: true
+
+      email:
+        recipients:
+          - team@inventario.app
+        notify:
+          success: true
+          failure: true
+
+      slack:
+        channel: '#releases'
+        notify_on_build_start: false
+        notify:
+          success: true
+          failure: true
+
+  ios-release:
+    name: iOS Release
+    max_build_duration: 90
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: Inventario ASC
+    environment:
+      flutter: 3.29.3
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.inventario.app
+      vars:
+        BUNDLE_ID: "com.inventario.app"
+        APP_STORE_APP_ID: "REPLACE_WITH_APP_ID"
+    triggering:
+      events:
+        - tag
+      tag_patterns:
+        - pattern: 'v*-ios'
+          include: true
+        - pattern: 'v*'
+          include: true
+    scripts:
+      - name: Install dependencies
+        script: |
+          cd mobile
+          flutter pub get
+
+      - name: Install CocoaPods
+        script: |
+          cd mobile/ios
+          pod install
+
+      - name: Run tests
+        script: |
+          cd mobile
+          flutter test
+
+      - name: Build IPA
+        script: |
+          cd mobile
+          flutter build ipa --release \
+            --build-number=$PROJECT_BUILD_NUMBER \
+            --build-name=1.0.$PROJECT_BUILD_NUMBER \
+            --export-options-plist=/Users/builder/export_options.plist
+
+    artifacts:
+      - mobile/build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        beta_groups:
+          - Internal Testers
+
+      email:
+        recipients:
+          - team@inventario.app
+        notify:
+          success: true
+          failure: true
+
+  android-debug:
+    name: Android Debug (PR)
+    max_build_duration: 30
+    instance_type: mac_mini_m2
+    environment:
+      flutter: 3.29.3
+      java: 17
+    triggering:
+      events:
+        - pull_request
+      branch_patterns:
+        - pattern: 'develop'
+          include: true
+          source: true
+    scripts:
+      - name: Install dependencies
+        script: |
+          cd mobile
+          flutter pub get
+
+      - name: Analyze
+        script: |
+          cd mobile
+          flutter analyze --fatal-infos
+
+      - name: Run tests
+        script: |
+          cd mobile
+          flutter test
+
+      - name: Build debug APK
+        script: |
+          cd mobile
+          flutter build apk --debug
+
+    artifacts:
+      - mobile/build/**/outputs/**/*.apk
+      - mobile/coverage/
+
+    publishing:
+      firebase:
+        firebase_service_account: $FIREBASE_SERVICE_ACCOUNT
+        android:
+          app_id: $FIREBASE_ANDROID_APP_ID
+          groups:
+            - qa-team
