@@ -63,6 +63,39 @@ jobs:
       - name: Run tests with coverage
         run: flutter test --coverage
 
+      - name: Enforce 100% coverage
+        run: |
+          if [ -f coverage/lcov.info ]; then
+            TOTAL_LINES=$(grep -c "^DA:" coverage/lcov.info || echo "0")
+            COVERED_LINES=$(grep "^DA:" coverage/lcov.info | grep -cv ",0$" || echo "0")
+            if [ "$TOTAL_LINES" -gt 0 ]; then
+              COVERAGE=$(awk "BEGIN {printf \"%.2f\", ($COVERED_LINES/$TOTAL_LINES)*100}")
+              echo "Line coverage: ${COVERAGE}%"
+              if [ "$(echo "$COVERAGE < 100" | bc -l)" -eq 1 ]; then
+                echo "FAIL: Line coverage is ${COVERAGE}%, required 100%"
+                exit 1
+              fi
+              echo "All coverage metrics at 100%"
+            fi
+          fi
+
+      - name: Enforce 100% coverage (branch level)
+        run: |
+          if [ -f coverage/lcov.info ]; then
+            TOTAL_BRANCHES=$(grep -c "^BRDA:" coverage/lcov.info || echo "0")
+            if [ "$TOTAL_BRANCHES" -gt 0 ]; then
+              MISSED_BRANCHES=$(grep "^BRDA:" coverage/lcov.info | grep -c ",-$\|,0$" || echo "0")
+              COVERED_BRANCHES=$((TOTAL_BRANCHES - MISSED_BRANCHES))
+              COVERAGE=$(awk "BEGIN {printf \"%.2f\", ($COVERED_BRANCHES/$TOTAL_BRANCHES)*100}")
+              echo "Branch coverage: ${COVERAGE}%"
+              if [ "$(echo "$COVERAGE < 100" | bc -l)" -eq 1 ]; then
+                echo "FAIL: Branch coverage is ${COVERAGE}%, required 100%"
+                exit 1
+              fi
+              echo "Branch coverage at 100%"
+            fi
+          fi
+
       - name: Upload coverage
         if: always()
         uses: actions/upload-artifact@v4

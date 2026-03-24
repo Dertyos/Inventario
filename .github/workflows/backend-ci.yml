@@ -90,11 +90,28 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run unit tests
-        run: npm run test -- --coverage
+      - name: Run unit tests with 100% coverage enforcement
+        run: npm run test -- --coverage --coverageThreshold='{"global":{"branches":100,"functions":100,"lines":100,"statements":100}}'
 
       - name: Run e2e tests
         run: npm run test:e2e
+
+      - name: Verify coverage is 100%
+        run: |
+          if [ -f coverage/coverage-summary.json ]; then
+            node -e "
+              const c = require('./coverage/coverage-summary.json').total;
+              const metrics = ['lines','statements','branches','functions'];
+              let failed = false;
+              metrics.forEach(m => {
+                const pct = c[m].pct;
+                console.log(m + ': ' + pct + '%');
+                if (pct < 100) { console.error('FAIL: ' + m + ' coverage is ' + pct + '%, required 100%'); failed = true; }
+              });
+              if (failed) process.exit(1);
+              console.log('All coverage metrics at 100%');
+            "
+          fi
 
       - name: Upload coverage
         if: always()

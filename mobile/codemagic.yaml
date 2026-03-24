@@ -35,10 +35,20 @@ workflows:
           cd mobile
           flutter pub get
 
-      - name: Run tests
+      - name: Run tests with 100% coverage enforcement
         script: |
           cd mobile
-          flutter test
+          flutter test --coverage
+          TOTAL_LINES=$(grep -c "^DA:" coverage/lcov.info || echo "0")
+          COVERED_LINES=$(grep "^DA:" coverage/lcov.info | grep -cv ",0$" || echo "0")
+          if [ "$TOTAL_LINES" -gt 0 ]; then
+            COVERAGE=$(awk "BEGIN {printf \"%.2f\", ($COVERED_LINES/$TOTAL_LINES)*100}")
+            echo "Line coverage: ${COVERAGE}%"
+            if [ "$(echo "$COVERAGE < 100" | bc -l)" -eq 1 ]; then
+              echo "FAIL: coverage is ${COVERAGE}%, required 100%"
+              exit 1
+            fi
+          fi
 
       - name: Build AAB
         script: |
@@ -104,10 +114,20 @@ workflows:
           cd mobile/ios
           pod install
 
-      - name: Run tests
+      - name: Run tests with 100% coverage enforcement
         script: |
           cd mobile
-          flutter test
+          flutter test --coverage
+          TOTAL_LINES=$(grep -c "^DA:" coverage/lcov.info || echo "0")
+          COVERED_LINES=$(grep "^DA:" coverage/lcov.info | grep -cv ",0$" || echo "0")
+          if [ "$TOTAL_LINES" -gt 0 ]; then
+            COVERAGE=$(awk "BEGIN {printf \"%.2f\", ($COVERED_LINES/$TOTAL_LINES)*100}")
+            echo "Line coverage: ${COVERAGE}%"
+            if [ "$(echo "$COVERAGE < 100" | bc -l)" -eq 1 ]; then
+              echo "FAIL: coverage is ${COVERAGE}%, required 100%"
+              exit 1
+            fi
+          fi
 
       - name: Build IPA
         script: |
@@ -160,10 +180,20 @@ workflows:
           cd mobile
           flutter analyze --fatal-infos
 
-      - name: Run tests
+      - name: Run tests with 100% coverage enforcement
         script: |
           cd mobile
           flutter test --coverage
+          TOTAL_LINES=$(grep -c "^DA:" coverage/lcov.info || echo "0")
+          COVERED_LINES=$(grep "^DA:" coverage/lcov.info | grep -cv ",0$" || echo "0")
+          if [ "$TOTAL_LINES" -gt 0 ]; then
+            COVERAGE=$(awk "BEGIN {printf \"%.2f\", ($COVERED_LINES/$TOTAL_LINES)*100}")
+            echo "Line coverage: ${COVERAGE}%"
+            if [ "$(echo "$COVERAGE < 100" | bc -l)" -eq 1 ]; then
+              echo "FAIL: coverage is ${COVERAGE}%, required 100%"
+              exit 1
+            fi
+          fi
 
       - name: Build debug APK
         script: |
