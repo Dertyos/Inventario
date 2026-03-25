@@ -292,29 +292,42 @@ Distribuidora farmacéutica (plan pro):
 
 ---
 
-### Fase 2 — Clientes y Ventas
+### Fase 2 — Clientes y Ventas ✅
 > El core comercial. Registrar quién compra qué.
 
 **Tablas nuevas:**
-- `customers` — datos del cliente
-- `sales` — encabezado de venta
-- `sale_items` — líneas de la venta
-- `payments` — pagos recibidos
+- `customers` — datos del cliente con tipo de documento (CC, NIT, CE, PASSPORT)
+- `sales` — encabezado de venta con consecutivo auto-generado (V-0001)
+- `sale_items` — líneas de la venta con precio unitario y subtotal
+- `payments` — pagos recibidos (cash, card, transfer)
 
 **Endpoints:**
-- `POST /teams/:teamId/customers` — crear cliente
-- `POST /teams/:teamId/sales` — registrar venta (descuenta stock automáticamente)
+- `POST/GET/PATCH/DELETE /teams/:teamId/customers` — CRUD clientes
+- `POST /teams/:teamId/sales` — registrar venta (descuenta stock transaccionalmente)
 - `GET /teams/:teamId/sales` — historial con filtros (fecha, cliente, estado)
-- `POST /teams/:teamId/payments` — registrar pago
+- `PATCH /teams/:teamId/sales/:id/cancel` — cancelar venta (restaura stock)
+- `POST/GET /teams/:teamId/payments` — registrar y consultar pagos
+
+**Flujo de venta:**
+1. Se valida stock de cada producto (con pessimistic locking)
+2. Se descuenta stock y se crean movimientos tipo `SALE`
+3. Se genera consecutivo auto-incremental (V-0001, V-0002...)
+4. Al cancelar, se restaura stock con movimientos tipo `RETURN`
 
 ---
 
-### Fase 3 — Créditos y Cuotas (requiere `enableCredit`)
+### Fase 3 — Créditos y Cuotas ✅ (requiere `enableCredit`)
 > Para negocios que "fían" o venden a plazos.
 
 **Tablas nuevas:**
-- `credit_accounts` — la cuenta de crédito
-- `credit_installments` — cada cuota generada
+- `credit_accounts` — la cuenta de crédito con tipo de interés
+- `credit_installments` — cada cuota con fecha de vencimiento y tracking de pago
+
+**Endpoints:**
+- `POST /teams/:teamId/credits` — crear cuenta de crédito con cuotas
+- `GET /teams/:teamId/credits` — listar créditos (filtro por cliente, estado)
+- `GET /teams/:teamId/credits/overdue` — cuotas vencidas pendientes
+- `POST /teams/:teamId/credits/:id/installments/:installmentId/pay` — pagar cuota
 
 **Lógica:**
 1. Al crear venta con `paymentMethod: 'credit'`, se genera `credit_account`
