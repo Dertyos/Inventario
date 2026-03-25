@@ -25,34 +25,45 @@ class StatCard extends StatelessWidget {
     final cardColor = color ?? colorScheme.primary;
 
     return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: cardColor.withValues(alpha: 0.15),
+          width: 1,
+        ),
+      ),
+      color: cardColor.withValues(alpha: 0.04),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
+          padding: const EdgeInsets.all(AppSpacing.md + 4),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                padding: const EdgeInsets.all(AppSpacing.sm),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: cardColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
+                  color: cardColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: cardColor, size: 20),
+                child: Icon(icon, color: cardColor, size: 22),
               ),
-              const SizedBox(height: AppSpacing.sm),
+              const Spacer(),
               Text(
                 value,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w700,
+                      letterSpacing: -0.5,
                     ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 4),
               Text(
                 title,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),
               ),
@@ -62,6 +73,7 @@ class StatCard extends StatelessWidget {
                   subtitle!,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: cardColor,
+                        fontWeight: FontWeight.w600,
                       ),
                 ),
               ],

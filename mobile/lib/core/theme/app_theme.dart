@@ -4,11 +4,11 @@ import 'package:google_fonts/google_fonts.dart';
 class AppTheme {
   AppTheme._();
 
-  // Brand colors
-  static const _primarySeed = Color(0xFF1A73E8);
-  static const _secondarySeed = Color(0xFF34A853);
-  static const _tertiarySeed = Color(0xFFFBAC44);
-  static const _errorSeed = Color(0xFFEA4335);
+  // Brand colors — refined palette
+  static const _primarySeed = Color(0xFF4F6BF6);
+  static const _secondarySeed = Color(0xFF2ECC71);
+  static const _tertiarySeed = Color(0xFFFF9F43);
+  static const _errorSeed = Color(0xFFEB4D4B);
 
   static final light = ThemeData(
     useMaterial3: true,
@@ -19,7 +19,7 @@ class AppTheme {
       tertiary: _tertiarySeed,
       error: _errorSeed,
       brightness: Brightness.light,
-      surface: const Color(0xFFF8FAFB),
+      surface: const Color(0xFFFAFAFC),
     ),
     textTheme: _textTheme,
     appBarTheme: const AppBarTheme(
@@ -30,9 +30,10 @@ class AppTheme {
     cardTheme: CardThemeData(
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.shade200),
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: Colors.grey.shade200.withValues(alpha: 0.7)),
       ),
+      color: Colors.white,
       clipBehavior: Clip.antiAlias,
     ),
     inputDecorationTheme: InputDecorationTheme(
@@ -213,10 +214,10 @@ class AppSpacing {
 class AppColors {
   AppColors._();
   // Status
-  static const success = Color(0xFF34A853);
-  static const warning = Color(0xFFFBAC44);
-  static const danger = Color(0xFFEA4335);
-  static const info = Color(0xFF1A73E8);
+  static const success = Color(0xFF2ECC71);
+  static const warning = Color(0xFFFF9F43);
+  static const danger = Color(0xFFEB4D4B);
+  static const info = Color(0xFF4F6BF6);
 
   // Status with opacity for backgrounds
   static Color successBg(BuildContext context) =>
