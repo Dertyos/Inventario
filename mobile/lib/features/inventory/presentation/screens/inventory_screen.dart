@@ -62,28 +62,34 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
         controller: _tabController,
         children: [
           _MovementsTab(teamId: teamId),
-          _LowStockTab(teamId: teamId),
+          _LowStockTab(
+            teamId: teamId,
+            onAddStock: (product) => _showAddMovementDialog(
+              context, ref, teamId,
+              preselectedProduct: product,
+            ),
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddMovementDialog(context, ref, teamId),
-        child: const Icon(Icons.swap_vert),
+        child: const Icon(Icons.add),
       ),
     );
   }
 
   void _showAddMovementDialog(
-      BuildContext context, WidgetRef ref, String teamId) {
-    final products = ref.read(productsProvider(teamId)).value ?? [];
-    if (products.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No hay productos disponibles')),
-      );
-      return;
-    }
+    BuildContext context,
+    WidgetRef ref,
+    String teamId, {
+    ProductModel? preselectedProduct,
+  }) {
+    // Ensure products are loaded
+    final productsAsync = ref.read(productsProvider(teamId));
+    final products = productsAsync.value ?? [];
 
-    String? selectedProductId;
-    String type = 'in';
+    String? selectedProductId = preselectedProduct?.id;
+    String type = preselectedProduct != null ? 'in' : 'in';
     final quantityController = TextEditingController();
     final reasonController = TextEditingController();
 
@@ -103,21 +109,102 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'Nuevo movimiento',
+                preselectedProduct != null
+                    ? 'Agregar stock: ${preselectedProduct.name}'
+                    : 'Nuevo movimiento',
                 style: Theme.of(ctx).textTheme.titleLarge,
               ),
               const SizedBox(height: AppSpacing.md),
-              DropdownButtonFormField<String>(
-                decoration: const InputDecoration(labelText: 'Producto'),
-                items: products
-                    .map((p) => DropdownMenuItem(
-                          value: p.id,
-                          child: Text(p.name, overflow: TextOverflow.ellipsis),
-                        ))
-                    .toList(),
-                onChanged: (v) => setSheetState(() => selectedProductId = v),
-              ),
-              const SizedBox(height: AppSpacing.sm),
+              if (preselectedProduct != null)
+                Card(
+                  child: ListTile(
+                    leading: Icon(
+                      Icons.inventory_2_rounded,
+                      color: Theme.of(ctx).colorScheme.primary,
+                    ),
+                    title: Text(preselectedProduct.name),
+                    subtitle: Text(
+                      'Stock actual: ${preselectedProduct.stock} / Mín: ${preselectedProduct.minStock}',
+                    ),
+                  ),
+                )
+              else if (products.isEmpty)
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: Text(
+                      'Primero crea productos en la pestaña Productos',
+                      style: TextStyle(
+                        color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                GestureDetector(
+                  onTap: () {
+                    showModalBottomSheet(
+                      context: ctx,
+                      builder: (innerCtx) => SafeArea(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(AppSpacing.md),
+                              child: Text(
+                                'Selecciona un producto',
+                                style: Theme.of(innerCtx).textTheme.titleMedium,
+                              ),
+                            ),
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(maxHeight: 300),
+                              child: ListView.builder(
+                                shrinkWrap: true,
+                                itemCount: products.length,
+                                itemBuilder: (_, i) {
+                                  final p = products[i];
+                                  return ListTile(
+                                    leading: Icon(
+                                      p.id == selectedProductId
+                                          ? Icons.radio_button_checked
+                                          : Icons.radio_button_unchecked,
+                                      color: p.id == selectedProductId
+                                          ? Theme.of(innerCtx).colorScheme.primary
+                                          : null,
+                                    ),
+                                    title: Text(p.name),
+                                    subtitle: Text('Stock: ${p.stock}'),
+                                    onTap: () {
+                                      setSheetState(() => selectedProductId = p.id);
+                                      Navigator.pop(innerCtx);
+                                    },
+                                  );
+                                },
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: 'Producto',
+                      prefixIcon: Icon(Icons.inventory_2_outlined),
+                      suffixIcon: Icon(Icons.arrow_drop_down),
+                    ),
+                    child: Text(
+                      selectedProductId != null
+                          ? products.firstWhere((p) => p.id == selectedProductId, orElse: () => products.first).name
+                          : 'Seleccionar producto',
+                      style: selectedProductId == null
+                          ? TextStyle(color: Theme.of(ctx).hintColor)
+                          : null,
+                    ),
+                  ),
+                ),
+              const SizedBox(height: AppSpacing.md),
               SegmentedButton<String>(
                 segments: const [
                   ButtonSegment(value: 'in', label: Text('Entrada')),
@@ -128,22 +215,32 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                 onSelectionChanged: (v) =>
                     setSheetState(() => type = v.first),
               ),
-              const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: AppSpacing.md),
               TextFormField(
                 controller: quantityController,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Cantidad'),
+                autofocus: preselectedProduct != null,
+                decoration: const InputDecoration(
+                  labelText: 'Cantidad',
+                  prefixIcon: Icon(Icons.numbers),
+                ),
               ),
               const SizedBox(height: AppSpacing.sm),
               TextFormField(
                 controller: reasonController,
-                decoration: const InputDecoration(labelText: 'Razón (opcional)'),
+                decoration: const InputDecoration(
+                  labelText: 'Razón (opcional)',
+                  prefixIcon: Icon(Icons.note_outlined),
+                ),
               ),
               const SizedBox(height: AppSpacing.md),
               ElevatedButton(
                 onPressed: () async {
                   if (selectedProductId == null ||
                       quantityController.text.isEmpty) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      const SnackBar(content: Text('Selecciona un producto y cantidad')),
+                    );
                     return;
                   }
                   try {
@@ -158,7 +255,13 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                     });
                     ref.invalidate(movementsProvider(teamId));
                     ref.invalidate(productsProvider(teamId));
-                    if (ctx.mounted) Navigator.pop(ctx);
+                    ref.invalidate(lowStockProvider(teamId));
+                    if (ctx.mounted) {
+                      Navigator.pop(ctx);
+                      ScaffoldMessenger.of(ctx).showSnackBar(
+                        const SnackBar(content: Text('Movimiento registrado')),
+                      );
+                    }
                   } catch (e) {
                     if (ctx.mounted) {
                       ScaffoldMessenger.of(ctx).showSnackBar(
@@ -169,6 +272,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                 },
                 child: const Text('Registrar'),
               ),
+              const SizedBox(height: AppSpacing.sm),
             ],
           ),
         ),
@@ -196,7 +300,7 @@ class _MovementsTab extends ConsumerWidget {
           return const EmptyState(
             icon: Icons.swap_vert_outlined,
             title: 'Sin movimientos',
-            subtitle: 'Los movimientos de inventario aparecerán aquí',
+            subtitle: 'Toca + para agregar entrada o salida de productos',
           );
         }
 
@@ -262,8 +366,9 @@ class _MovementsTab extends ConsumerWidget {
 
 class _LowStockTab extends ConsumerWidget {
   final String teamId;
+  final void Function(ProductModel product) onAddStock;
 
-  const _LowStockTab({required this.teamId});
+  const _LowStockTab({required this.teamId, required this.onAddStock});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -292,42 +397,53 @@ class _LowStockTab extends ConsumerWidget {
 
               return Card(
                 margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              p.name,
-                              style: Theme.of(context).textTheme.titleSmall,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(18),
+                  onTap: () => onAddStock(p),
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                p.name,
+                                style: Theme.of(context).textTheme.titleSmall,
+                              ),
                             ),
-                          ),
-                          Text(
-                            '${p.stock}/${p.minStock}',
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelLarge
-                                ?.copyWith(
-                                  color: Colors.orange,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: pct.clamp(0.0, 1.0),
-                          backgroundColor: Colors.orange.withValues(alpha: 0.1),
-                          color: Colors.orange,
-                          minHeight: 6,
+                            Text(
+                              '${p.stock}/${p.minStock}',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelLarge
+                                  ?.copyWith(
+                                    color: Colors.orange,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: AppSpacing.sm),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: pct.clamp(0.0, 1.0),
+                            backgroundColor: Colors.orange.withValues(alpha: 0.1),
+                            color: Colors.orange,
+                            minHeight: 6,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          'Toca para agregar stock',
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );

@@ -128,6 +128,43 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
               error: (e, _) => Center(child: Text('Error: $e')),
               data: (items) {
                 final available = items.where((p) => p.stock > 0).toList();
+                if (available.isEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.xl),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.inventory_2_outlined,
+                            size: 64,
+                            color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          Text(
+                            items.isEmpty
+                                ? 'No hay productos registrados'
+                                : 'Todos los productos tienen stock en 0',
+                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          Text(
+                            items.isEmpty
+                                ? 'Crea productos en la pestaña Productos'
+                                : 'Agrega stock desde la pestaña Inventario',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
                 return ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                   itemCount: available.length,
@@ -201,12 +238,26 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
                 ),
                 if (_cart.isEmpty)
                   Padding(
-                    padding: const EdgeInsets.all(AppSpacing.lg),
-                    child: Text(
-                      'Selecciona productos de la lista',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.lg,
+                      vertical: AppSpacing.md,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.touch_app_outlined,
+                          size: 18,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Text(
+                          'Toca un producto de arriba para agregarlo',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ],
                     ),
                   )
                 else ...[

@@ -150,8 +150,15 @@ class DashboardScreen extends ConsumerWidget {
                           ),
                           title: Text(p.name),
                           subtitle: Text('Stock: ${p.stock} / Mín: ${p.minStock}'),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: () => context.go('/products/${p.id}/edit'),
+                          trailing: FilledButton.tonal(
+                            onPressed: () => context.go('/inventory'),
+                            style: FilledButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                            ),
+                            child: const Text('+ Stock'),
+                          ),
+                          onTap: () => context.go('/inventory'),
                         ),
                       ),
                     ),
