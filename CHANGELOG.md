@@ -4,6 +4,27 @@ Todos los cambios notables del proyecto se documentan aquí.
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 Versionado según [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.2.0] - 2026-03-25
+
+### Corregido
+- **Detección de productos en inventario**: El diálogo de nuevo movimiento no detectaba productos existentes (usaba `ref.read` en vez de `await ref.read(.future)` para un provider `autoDispose`)
+- **Ventas mostrando $0**: El modelo Flutter leía `json['totalAmount']` pero el backend envía el campo como `total`
+
+### Agregado
+- **Selección de cliente en ventas**: Selector opcional de cliente al crear una venta (el backend ya lo soportaba, faltaba el UI)
+- **Proveedor en movimientos de inventario**: Selector de proveedor para entradas de stock con opción de crear uno nuevo inline (nombre + teléfono)
+  - Nuevo campo `supplierId` en entidad `InventoryMovement`
+  - `SupplierModel` y `SuppliersRepository` en Flutter
+  - UI estilo selector de categorías con botón "Nuevo proveedor"
+- **Ventas a crédito**: Reemplazado método de pago "Tarjeta" por "Crédito" con soporte completo:
+  - Número de cuotas
+  - Porcentaje de interés (opcional, vacío = sin interés)
+  - Frecuencia de pago: mensual, semanal o diaria
+  - Fecha de próxima cuota con date picker (default según frecuencia)
+  - Abono inicial (opcional)
+  - Nuevos campos en entidad `Sale`: `creditInstallments`, `creditPaidAmount`, `creditInterestRate`, `creditFrequency`, `creditNextPayment`
+  - Historial muestra badge de saldo pendiente, frecuencia y fecha próxima cuota
+
 ## [1.1.0] - 2026-03-25
 
 ### Agregado

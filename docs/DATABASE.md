@@ -86,10 +86,11 @@ Sistema multi-tenant donde cada **equipo (team)** es un negocio independiente co
    │ teamId    FK     │    │ productId      FK            │
    │ lotNumber VARCHAR│    │ lotId          FK? (nullable)│
    │ expiresAt DATE   │    │ userId         FK            │
-   │ quantity  INT    │    │ type           ENUM          │
-   │ receivedAt DATE  │    │   in|out|adjustment|sale|    │
-   │ createdAt        │    │   purchase|return            │
-   └──────────────────┘    │ quantity       INT           │
+   │ quantity  INT    │    │ supplierId     FK? (nullable)│
+   │ receivedAt DATE  │    │ type           ENUM          │
+   │ createdAt        │    │   in|out|adjustment|sale|    │
+   └──────────────────┘    │   purchase|return            │
+                           │ quantity       INT           │
                            │ reason         VARCHAR       │
   Solo si team.enableLots  │ referenceType  VARCHAR?      │
   AND product.trackLots    │ referenceId    UUID?         │
@@ -135,6 +136,11 @@ Sistema multi-tenant donde cada **equipo (team)** es un negocio independiente co
 │ status       ENUM     │      │ createdAt                │
 │  completed|cancelled| │      │ updatedAt                │
 │  refunded             │      └──────────────────────────┘
+│ creditInstallments INT│
+│ creditPaidAmount  DEC │       Solo si team.enableSuppliers
+│ creditInterestRate DEC│
+│ creditFrequency   VARCHAR│   monthly|weekly|daily
+│ creditNextPayment DATE│
 │ notes                 │
 │ createdAt             │       Solo si team.enableSuppliers
 │ updatedAt             │
