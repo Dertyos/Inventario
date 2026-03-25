@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/models/product_model.dart';
+import '../../../../shared/models/supplier_model.dart';
 import '../../../../shared/providers/auth_provider.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../products/data/products_repository.dart';
 import '../../../products/presentation/screens/products_screen.dart';
+import '../../../suppliers/data/suppliers_repository.dart';
 import '../../../../shared/models/inventory_movement_model.dart';
 import '../../data/inventory_repository.dart';
 
@@ -91,6 +93,13 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
     String type = preselectedProduct != null ? 'in' : 'in';
     final quantityController = TextEditingController();
     final reasonController = TextEditingController();
+    SupplierModel? selectedSupplier;
+    List<SupplierModel> suppliers = [];
+
+    // Load suppliers
+    ref.read(suppliersProvider(teamId).future).then((value) {
+      suppliers = value;
+    });
 
     showModalBottomSheet(
       context: context,
@@ -214,6 +223,85 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                 onSelectionChanged: (v) =>
                     setSheetState(() => type = v.first),
               ),
+              if (type == 'in') ...[
+                const SizedBox(height: AppSpacing.md),
+                GestureDetector(
+                  onTap: () {
+                    showModalBottomSheet(
+                      context: ctx,
+                      builder: (innerCtx) => SafeArea(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(AppSpacing.md),
+                              child: Text(
+                                'Selecciona un proveedor',
+                                style: Theme.of(innerCtx).textTheme.titleMedium,
+                              ),
+                            ),
+                            ListTile(
+                              leading: const Icon(Icons.close),
+                              title: const Text('Sin proveedor'),
+                              onTap: () {
+                                setSheetState(() => selectedSupplier = null);
+                                Navigator.pop(innerCtx);
+                              },
+                            ),
+                            const Divider(),
+                            if (suppliers.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.all(AppSpacing.lg),
+                                child: Text('No hay proveedores registrados.'),
+                              )
+                            else
+                              ConstrainedBox(
+                                constraints: const BoxConstraints(maxHeight: 300),
+                                child: ListView.builder(
+                                  shrinkWrap: true,
+                                  itemCount: suppliers.length,
+                                  itemBuilder: (_, i) {
+                                    final s = suppliers[i];
+                                    return ListTile(
+                                      leading: Icon(
+                                        s.id == selectedSupplier?.id
+                                            ? Icons.radio_button_checked
+                                            : Icons.radio_button_unchecked,
+                                        color: s.id == selectedSupplier?.id
+                                            ? Theme.of(innerCtx).colorScheme.primary
+                                            : null,
+                                      ),
+                                      title: Text(s.name),
+                                      subtitle: s.phone != null ? Text(s.phone!) : null,
+                                      onTap: () {
+                                        setSheetState(() => selectedSupplier = s);
+                                        Navigator.pop(innerCtx);
+                                      },
+                                    );
+                                  },
+                                ),
+                              ),
+                            const SizedBox(height: AppSpacing.md),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: 'Proveedor (opcional)',
+                      prefixIcon: Icon(Icons.local_shipping_outlined),
+                      suffixIcon: Icon(Icons.arrow_drop_down),
+                    ),
+                    child: Text(
+                      selectedSupplier?.name ?? 'Sin proveedor',
+                      style: selectedSupplier == null
+                          ? TextStyle(color: Theme.of(ctx).hintColor)
+                          : null,
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: AppSpacing.md),
               TextFormField(
                 controller: quantityController,
@@ -251,6 +339,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                       'quantity': int.parse(quantityController.text),
                       if (reasonController.text.isNotEmpty)
                         'reason': reasonController.text,
+                      if (selectedSupplier != null)
+                        'supplierId': selectedSupplier!.id,
                     });
                     ref.invalidate(movementsProvider(teamId));
                     ref.invalidate(productsProvider(teamId));
@@ -330,7 +420,11 @@ class _MovementsTab extends ConsumerWidget {
                   ),
                   title: Text(m.productName ?? 'Producto'),
                   subtitle: Text(
-                    '${m.typeLabel} · ${m.reason ?? ''}',
+                    [
+                      m.typeLabel,
+                      if (m.supplierName != null) m.supplierName!,
+                      if (m.reason != null && m.reason!.isNotEmpty) m.reason!,
+                    ].join(' · '),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),

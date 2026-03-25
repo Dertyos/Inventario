@@ -3,8 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/models/customer_model.dart';
 import '../../../../shared/models/product_model.dart';
 import '../../../../shared/providers/auth_provider.dart';
+import '../../../customers/data/customers_repository.dart';
+import '../../../customers/presentation/screens/customers_screen.dart';
 import '../../../products/presentation/screens/products_screen.dart';
 import '../../data/sales_repository.dart';
 import 'sales_screen.dart';
@@ -20,6 +23,7 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
   final List<_CartItem> _cart = [];
   String _paymentMethod = 'cash';
   bool _isSaving = false;
+  CustomerModel? _selectedCustomer;
 
   double get _total =>
       _cart.fold(0, (sum, item) => sum + (item.product.price * item.quantity));
@@ -42,6 +46,99 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
       _cart[index].quantity += delta;
       if (_cart[index].quantity <= 0) _cart.removeAt(index);
     });
+  }
+
+  void _showCustomerPicker(
+      BuildContext context, WidgetRef ref, String teamId) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.5,
+          minChildSize: 0.3,
+          maxChildSize: 0.8,
+          expand: false,
+          builder: (ctx, scrollController) {
+            return Consumer(
+              builder: (ctx, ref, _) {
+                final customersAsync =
+                    ref.watch(customersProvider(teamId));
+                return Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      child: Text(
+                        'Selecciona un cliente',
+                        style: Theme.of(ctx).textTheme.titleMedium,
+                      ),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.storefront_outlined),
+                      title: const Text('Venta directa (sin cliente)'),
+                      onTap: () {
+                        setState(() => _selectedCustomer = null);
+                        Navigator.pop(ctx);
+                      },
+                    ),
+                    const Divider(),
+                    Expanded(
+                      child: customersAsync.when(
+                        loading: () => const Center(
+                            child: CircularProgressIndicator()),
+                        error: (e, _) =>
+                            Center(child: Text('Error: $e')),
+                        data: (customers) {
+                          if (customers.isEmpty) {
+                            return const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(AppSpacing.lg),
+                                child: Text(
+                                    'No hay clientes. Crea uno en la pestaña Más > Clientes.'),
+                              ),
+                            );
+                          }
+                          return ListView.builder(
+                            controller: scrollController,
+                            itemCount: customers.length,
+                            itemBuilder: (_, i) {
+                              final c = customers[i];
+                              final selected =
+                                  _selectedCustomer?.id == c.id;
+                              return ListTile(
+                                leading: Icon(
+                                  selected
+                                      ? Icons.radio_button_checked
+                                      : Icons.radio_button_unchecked,
+                                  color: selected
+                                      ? Theme.of(ctx)
+                                          .colorScheme
+                                          .primary
+                                      : null,
+                                ),
+                                title: Text(c.name),
+                                subtitle: c.phone != null
+                                    ? Text(c.phone!)
+                                    : null,
+                                onTap: () {
+                                  setState(
+                                      () => _selectedCustomer = c);
+                                  Navigator.pop(ctx);
+                                },
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _submit() async {
@@ -88,6 +185,7 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
                 })
             .toList(),
         'paymentMethod': _paymentMethod,
+        if (_selectedCustomer != null) 'customerId': _selectedCustomer!.id,
       });
       ref.invalidate(salesProvider(teamId));
       ref.invalidate(productsProvider(teamId));
@@ -120,6 +218,36 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
       ),
       body: Column(
         children: [
+          // Customer selector
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
+            ),
+            child: GestureDetector(
+              onTap: () => _showCustomerPicker(context, ref, teamId),
+              child: InputDecorator(
+                decoration: InputDecoration(
+                  labelText: 'Cliente (opcional)',
+                  prefixIcon: const Icon(Icons.person_outline),
+                  suffixIcon: _selectedCustomer != null
+                      ? IconButton(
+                          icon: const Icon(Icons.close, size: 18),
+                          onPressed: () =>
+                              setState(() => _selectedCustomer = null),
+                        )
+                      : const Icon(Icons.arrow_drop_down),
+                  isDense: true,
+                ),
+                child: Text(
+                  _selectedCustomer?.name ?? 'Venta directa',
+                  style: _selectedCustomer == null
+                      ? TextStyle(color: Theme.of(context).hintColor)
+                      : null,
+                ),
+              ),
+            ),
+          ),
           // Product picker
           Expanded(
             flex: 1,

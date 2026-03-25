@@ -30,7 +30,7 @@ class SaleModel {
   factory SaleModel.fromJson(Map<String, dynamic> json) => SaleModel(
         id: json['id'] as String,
         saleNumber: json['saleNumber'] as String? ?? '',
-        totalAmount: JsonParse.toDouble(json['totalAmount']) ?? 0,
+        totalAmount: JsonParse.toDouble(json['total']) ?? 0,
         status: json['status'] as String? ?? 'completed',
         paymentMethod: json['paymentMethod'] as String?,
         notes: json['notes'] as String?,
