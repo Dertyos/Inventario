@@ -165,11 +165,7 @@ class _CreditCard extends ConsumerWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
         onTap: () async {
-          await Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => CreditDetailScreen(creditId: credit.id),
-            ),
-          );
+          await context.push('/credits/${credit.id}');
           final teamId = ref.read(authProvider).teamId;
           ref.invalidate(creditsProvider(teamId));
         },
