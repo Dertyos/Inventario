@@ -14,7 +14,10 @@ import { CreateMovementDto } from './dto/create-movement.dto';
 import { MovementType } from './entities/inventory-movement.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TeamRolesGuard } from '../teams/guards/team-roles.guard';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiTags('inventory')
+@ApiBearerAuth()
 @Controller('teams/:teamId/inventory')
 @UseGuards(JwtAuthGuard, TeamRolesGuard)
 export class InventoryController {

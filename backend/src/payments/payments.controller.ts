@@ -13,7 +13,10 @@ import { PaymentsService } from './payments.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TeamRolesGuard } from '../teams/guards/team-roles.guard';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiTags('payments')
+@ApiBearerAuth()
 @Controller('teams/:teamId/payments')
 @UseGuards(JwtAuthGuard, TeamRolesGuard)
 export class PaymentsController {

@@ -30,6 +30,7 @@ import { RemindersModule } from './reminders/reminders.module';
         autoLoadEntities: true,
         synchronize: config.get('NODE_ENV') !== 'production',
         logging: config.get('NODE_ENV') === 'development',
+        ssl: config.get('NODE_ENV') === 'production' ? { rejectUnauthorized: false } : false,
       }),
     }),
     UsersModule,
