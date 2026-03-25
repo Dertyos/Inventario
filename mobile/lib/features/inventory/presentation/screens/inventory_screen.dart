@@ -94,12 +94,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
     final quantityController = TextEditingController();
     final reasonController = TextEditingController();
     SupplierModel? selectedSupplier;
-    List<SupplierModel> suppliers = [];
-
-    // Load suppliers
-    ref.read(suppliersProvider(teamId).future).then((value) {
-      suppliers = value;
-    });
+    final suppliers = await ref.read(suppliersProvider(teamId).future);
 
     showModalBottomSheet(
       context: context,
@@ -227,6 +222,13 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                 const SizedBox(height: AppSpacing.md),
                 GestureDetector(
                   onTap: () {
+                    if (suppliers.isEmpty) {
+                      _showCreateSupplierDialog(ctx, ref, teamId, setSheetState, (s) {
+                        selectedSupplier = s;
+                        suppliers.add(s);
+                      });
+                      return;
+                    }
                     showModalBottomSheet(
                       context: ctx,
                       builder: (innerCtx) => SafeArea(
@@ -240,47 +242,31 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                                 style: Theme.of(innerCtx).textTheme.titleMedium,
                               ),
                             ),
-                            ListTile(
-                              leading: const Icon(Icons.close),
-                              title: const Text('Sin proveedor'),
-                              onTap: () {
-                                setSheetState(() => selectedSupplier = null);
-                                Navigator.pop(innerCtx);
-                              },
-                            ),
-                            const Divider(),
-                            if (suppliers.isEmpty)
-                              const Padding(
-                                padding: EdgeInsets.all(AppSpacing.lg),
-                                child: Text('No hay proveedores registrados.'),
-                              )
-                            else
-                              ConstrainedBox(
-                                constraints: const BoxConstraints(maxHeight: 300),
-                                child: ListView.builder(
-                                  shrinkWrap: true,
-                                  itemCount: suppliers.length,
-                                  itemBuilder: (_, i) {
-                                    final s = suppliers[i];
-                                    return ListTile(
-                                      leading: Icon(
-                                        s.id == selectedSupplier?.id
-                                            ? Icons.radio_button_checked
-                                            : Icons.radio_button_unchecked,
-                                        color: s.id == selectedSupplier?.id
-                                            ? Theme.of(innerCtx).colorScheme.primary
-                                            : null,
-                                      ),
-                                      title: Text(s.name),
-                                      subtitle: s.phone != null ? Text(s.phone!) : null,
-                                      onTap: () {
-                                        setSheetState(() => selectedSupplier = s);
-                                        Navigator.pop(innerCtx);
-                                      },
-                                    );
-                                  },
-                                ),
+                            if (selectedSupplier != null)
+                              ListTile(
+                                leading: const Icon(Icons.close),
+                                title: const Text('Sin proveedor'),
+                                onTap: () {
+                                  setSheetState(() => selectedSupplier = null);
+                                  Navigator.pop(innerCtx);
+                                },
                               ),
+                            ...suppliers.map((s) => ListTile(
+                                  leading: Icon(
+                                    s.id == selectedSupplier?.id
+                                        ? Icons.radio_button_checked
+                                        : Icons.radio_button_unchecked,
+                                    color: s.id == selectedSupplier?.id
+                                        ? Theme.of(innerCtx).colorScheme.primary
+                                        : null,
+                                  ),
+                                  title: Text(s.name),
+                                  subtitle: s.phone != null ? Text(s.phone!) : null,
+                                  onTap: () {
+                                    setSheetState(() => selectedSupplier = s);
+                                    Navigator.pop(innerCtx);
+                                  },
+                                )),
                             const SizedBox(height: AppSpacing.md),
                           ],
                         ),
@@ -289,7 +275,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                   },
                   child: InputDecorator(
                     decoration: const InputDecoration(
-                      labelText: 'Proveedor (opcional)',
+                      labelText: 'Proveedor',
                       prefixIcon: Icon(Icons.local_shipping_outlined),
                       suffixIcon: Icon(Icons.arrow_drop_down),
                     ),
@@ -298,6 +284,24 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                       style: selectedSupplier == null
                           ? TextStyle(color: Theme.of(ctx).hintColor)
                           : null,
+                    ),
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: () => _showCreateSupplierDialog(
+                      ctx, ref, teamId, setSheetState, (s) {
+                        selectedSupplier = s;
+                        suppliers.add(s);
+                      },
+                    ),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: Text(suppliers.isEmpty
+                        ? 'Crear proveedor'
+                        : 'Nuevo proveedor'),
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
                     ),
                   ),
                 ),
@@ -367,6 +371,87 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
         ),
       ),
     );
+  }
+
+  Future<void> _showCreateSupplierDialog(
+    BuildContext ctx,
+    WidgetRef ref,
+    String teamId,
+    StateSetter setSheetState,
+    void Function(SupplierModel supplier) onCreated,
+  ) async {
+    final nameController = TextEditingController();
+    final phoneController = TextEditingController();
+    final result = await showDialog<Map<String, String>>(
+      context: ctx,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('Nuevo proveedor'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              autofocus: true,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(
+                labelText: 'Nombre del proveedor',
+                hintText: 'Ej: Distribuidora El Éxito',
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            TextField(
+              controller: phoneController,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(
+                labelText: 'Teléfono (opcional)',
+                hintText: 'Ej: 3115551234',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final name = nameController.text.trim();
+              if (name.isEmpty) return;
+              Navigator.pop(dialogCtx, {
+                'name': name,
+                if (phoneController.text.trim().isNotEmpty)
+                  'phone': phoneController.text.trim(),
+              });
+            },
+            child: const Text('Crear'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && ctx.mounted) {
+      try {
+        final supplier = await ref
+            .read(suppliersRepositoryProvider)
+            .createSupplier(teamId, result);
+        ref.invalidate(suppliersProvider(teamId));
+        setSheetState(() => onCreated(supplier));
+        if (ctx.mounted) {
+          ScaffoldMessenger.of(ctx).showSnackBar(
+            SnackBar(content: Text('Proveedor "${result['name']}" creado')),
+          );
+        }
+      } catch (e) {
+        if (ctx.mounted) {
+          ScaffoldMessenger.of(ctx).showSnackBar(
+            SnackBar(content: Text('Error: $e')),
+          );
+        }
+      }
+    }
+    nameController.dispose();
+    phoneController.dispose();
   }
 }
 

@@ -37,4 +37,16 @@ class SuppliersRepository {
       throw ApiException.fromDioError(e);
     }
   }
+
+  Future<SupplierModel> createSupplier(
+    String teamId,
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      final response = await _dio.post('/teams/$teamId/suppliers', data: data);
+      return SupplierModel.fromJson(response.data);
+    } on DioException catch (e) {
+      throw ApiException.fromDioError(e);
+    }
+  }
 }
