@@ -12,6 +12,8 @@ class SaleModel {
   final int? creditInstallments;
   final double? creditPaidAmount;
   final double? creditInterestRate;
+  final String? creditFrequency;
+  final DateTime? creditNextPayment;
   final List<SaleItemModel> items;
   final DateTime createdAt;
 
@@ -27,6 +29,8 @@ class SaleModel {
     this.creditInstallments,
     this.creditPaidAmount,
     this.creditInterestRate,
+    this.creditFrequency,
+    this.creditNextPayment,
     this.items = const [],
     required this.createdAt,
   });
@@ -43,6 +47,17 @@ class SaleModel {
   double get creditBalance =>
       isCredit ? creditTotalWithInterest - (creditPaidAmount ?? 0) : 0;
 
+  String get creditFrequencyLabel {
+    switch (creditFrequency) {
+      case 'weekly':
+        return 'Semanal';
+      case 'daily':
+        return 'Diaria';
+      default:
+        return 'Mensual';
+    }
+  }
+
   factory SaleModel.fromJson(Map<String, dynamic> json) => SaleModel(
         id: json['id'] as String,
         saleNumber: json['saleNumber'] as String? ?? '',
@@ -55,6 +70,10 @@ class SaleModel {
         creditInstallments: JsonParse.toInt(json['creditInstallments']),
         creditPaidAmount: JsonParse.toDouble(json['creditPaidAmount']),
         creditInterestRate: JsonParse.toDouble(json['creditInterestRate']),
+        creditFrequency: json['creditFrequency'] as String?,
+        creditNextPayment: json['creditNextPayment'] != null
+            ? DateTime.tryParse(json['creditNextPayment'] as String)
+            : null,
         items: (json['items'] as List<dynamic>?)
                 ?.map((e) => SaleItemModel.fromJson(e as Map<String, dynamic>))
                 .toList() ??

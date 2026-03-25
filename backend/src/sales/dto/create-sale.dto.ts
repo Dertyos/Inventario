@@ -91,6 +91,22 @@ export class CreateSaleDto {
   creditInterestRate?: number;
 
   @ApiPropertyOptional({
+    example: 'monthly',
+    description: 'Frecuencia de cuotas: monthly, weekly, daily',
+  })
+  @IsString()
+  @IsOptional()
+  creditFrequency?: string;
+
+  @ApiPropertyOptional({
+    example: '2026-04-25',
+    description: 'Fecha de la próxima cuota (ISO date)',
+  })
+  @IsString()
+  @IsOptional()
+  creditNextPayment?: string;
+
+  @ApiPropertyOptional({
     example: 'Venta de mostrador',
     description: 'Notas de la venta',
   })

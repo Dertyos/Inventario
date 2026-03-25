@@ -27,9 +27,23 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
   final _installmentsController = TextEditingController(text: '1');
   final _paidAmountController = TextEditingController();
   final _interestController = TextEditingController();
+  String _creditFrequency = 'monthly';
+  late DateTime _creditNextPayment = DateTime.now().add(const Duration(days: 30));
 
   double get _total =>
       _cart.fold(0, (sum, item) => sum + (item.product.price * item.quantity));
+
+  DateTime _nextPaymentFor(String frequency) {
+    final now = DateTime.now();
+    switch (frequency) {
+      case 'weekly':
+        return now.add(const Duration(days: 7));
+      case 'daily':
+        return now.add(const Duration(days: 1));
+      default:
+        return DateTime(now.year, now.month + 1, now.day);
+    }
+  }
 
   void _addToCart(ProductModel product) {
     final existing = _cart.indexWhere((c) => c.product.id == product.id);
@@ -192,11 +206,15 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
         if (_paymentMethod == 'credit') ...{
           'creditInstallments':
               int.tryParse(_installmentsController.text) ?? 1,
-          'creditPaidAmount':
-              double.tryParse(_paidAmountController.text) ?? 0,
+          if (_paidAmountController.text.isNotEmpty)
+            'creditPaidAmount':
+                double.tryParse(_paidAmountController.text) ?? 0,
           if (_interestController.text.isNotEmpty)
             'creditInterestRate':
                 double.tryParse(_interestController.text) ?? 0,
+          'creditFrequency': _creditFrequency,
+          'creditNextPayment':
+              _creditNextPayment.toIso8601String().split('T').first,
         },
       });
       ref.invalidate(salesProvider(teamId));
@@ -522,15 +540,81 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
                       padding: const EdgeInsets.fromLTRB(
                         AppSpacing.md, AppSpacing.sm, AppSpacing.md, 0,
                       ),
-                      child: TextFormField(
-                        controller: _paidAmountController,
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          labelText: 'Abono inicial',
-                          hintText: cop.format(0),
-                          prefixIcon: const Icon(Icons.payments_outlined),
-                          isDense: true,
-                        ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: SegmentedButton<String>(
+                              segments: const [
+                                ButtonSegment(value: 'monthly', label: Text('Mensual')),
+                                ButtonSegment(value: 'weekly', label: Text('Semanal')),
+                                ButtonSegment(value: 'daily', label: Text('Diaria')),
+                              ],
+                              selected: {_creditFrequency},
+                              onSelectionChanged: (v) {
+                                final freq = v.first;
+                                setState(() {
+                                  _creditFrequency = freq;
+                                  _creditNextPayment = _nextPaymentFor(freq);
+                                });
+                              },
+                              style: ButtonStyle(
+                                visualDensity: VisualDensity.compact,
+                                textStyle: WidgetStatePropertyAll(
+                                  Theme.of(context).textTheme.labelSmall,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.md, AppSpacing.sm, AppSpacing.md, 0,
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () async {
+                                final picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: _creditNextPayment,
+                                  firstDate: DateTime.now(),
+                                  lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+                                  locale: const Locale('es'),
+                                );
+                                if (picked != null) {
+                                  setState(() => _creditNextPayment = picked);
+                                }
+                              },
+                              child: InputDecorator(
+                                decoration: const InputDecoration(
+                                  labelText: 'Próxima cuota',
+                                  prefixIcon: Icon(Icons.event_outlined),
+                                  suffixIcon: Icon(Icons.edit_calendar),
+                                  isDense: true,
+                                ),
+                                child: Text(
+                                  DateFormat('dd MMM yyyy', 'es').format(_creditNextPayment),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _paidAmountController,
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                labelText: 'Abono inicial',
+                                hintText: 'Sin abono',
+                                prefixIcon: const Icon(Icons.payments_outlined),
+                                isDense: true,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],

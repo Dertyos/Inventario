@@ -175,19 +175,34 @@ class SalesScreen extends ConsumerWidget {
                               ],
                             ],
                           ),
-                          subtitle: Text(
-                            [
-                              sale.saleNumber,
-                              sale.customerName ?? 'Venta directa',
-                              if (sale.isCredit) ...[
-                                if (sale.creditInstallments != null)
-                                  '${sale.creditInstallments} cuotas',
-                                if (sale.creditInterestRate != null &&
-                                    sale.creditInterestRate! > 0)
-                                  '${sale.creditInterestRate}%',
-                              ],
-                              '${sale.items.length} items',
-                            ].join(' · '),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                [
+                                  sale.saleNumber,
+                                  sale.customerName ?? 'Venta directa',
+                                  if (sale.isCredit) ...[
+                                    if (sale.creditInstallments != null)
+                                      '${sale.creditInstallments} cuotas',
+                                    sale.creditFrequencyLabel,
+                                    if (sale.creditInterestRate != null &&
+                                        sale.creditInterestRate! > 0)
+                                      '${sale.creditInterestRate}%',
+                                  ],
+                                ].join(' · '),
+                              ),
+                              if (sale.isCredit &&
+                                  sale.creditNextPayment != null &&
+                                  sale.creditBalance > 0)
+                                Text(
+                                  'Próx. cuota: ${DateFormat('dd MMM yyyy', 'es').format(sale.creditNextPayment!)}',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .labelSmall
+                                      ?.copyWith(color: Colors.orange),
+                                ),
+                            ],
                           ),
                           trailing: Text(
                             DateFormat('HH:mm').format(sale.createdAt),

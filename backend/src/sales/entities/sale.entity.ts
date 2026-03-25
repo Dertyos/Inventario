@@ -95,6 +95,12 @@ export class Sale {
   creditInterestRate: number;
 
   @Column({ nullable: true })
+  creditFrequency: string;
+
+  @Column({ type: 'date', nullable: true })
+  creditNextPayment: Date;
+
+  @Column({ nullable: true })
   notes: string;
 
   @CreateDateColumn()
