@@ -25,13 +25,12 @@ class TeamRepository {
     }
   }
 
-  Future<TeamMemberModel> inviteMember(String teamId, String email) async {
+  Future<void> inviteMember(String teamId, String email) async {
     try {
-      final response = await _dio.post(
-        '/teams/$teamId/members',
+      await _dio.post(
+        '/teams/$teamId/invitations',
         data: {'email': email},
       );
-      return TeamMemberModel.fromJson(response.data);
     } on DioException catch (e) {
       throw ApiException.fromDioError(e);
     }
@@ -68,6 +67,65 @@ class TeamRepository {
     try {
       final response = await _dio.patch('/teams/$teamId', data: data);
       return TeamModel.fromJson(response.data);
+    } on DioException catch (e) {
+      throw ApiException.fromDioError(e);
+    }
+  }
+
+  // ── Invitation management ─────────────────────
+
+  Future<List<Map<String, dynamic>>> getInvitations(String teamId) async {
+    try {
+      final response = await _dio.get('/teams/$teamId/invitations');
+      return (response.data as List)
+          .map((e) => e as Map<String, dynamic>)
+          .toList();
+    } on DioException catch (e) {
+      throw ApiException.fromDioError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> createInvitation(
+    String teamId,
+    String email,
+  ) async {
+    try {
+      final response = await _dio.post(
+        '/teams/$teamId/invitations',
+        data: {'email': email},
+      );
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw ApiException.fromDioError(e);
+    }
+  }
+
+  Future<void> revokeInvitation(
+    String teamId,
+    String invitationId,
+  ) async {
+    try {
+      await _dio.delete('/teams/$teamId/invitations/$invitationId');
+    } on DioException catch (e) {
+      throw ApiException.fromDioError(e);
+    }
+  }
+
+  // ── Public invitation endpoints ───────────────
+
+  Future<Map<String, dynamic>> getInvitationByToken(String token) async {
+    try {
+      final response = await _dio.get('/invitations/$token');
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw ApiException.fromDioError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> acceptInvitation(String token) async {
+    try {
+      final response = await _dio.post('/invitations/$token/accept');
+      return response.data as Map<String, dynamic>;
     } on DioException catch (e) {
       throw ApiException.fromDioError(e);
     }

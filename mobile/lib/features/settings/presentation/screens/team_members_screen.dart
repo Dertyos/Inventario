@@ -62,7 +62,13 @@ class _TeamMembersScreenState extends ConsumerState<TeamMembersScreen> {
                 ref.invalidate(teamMembersProvider(teamId));
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Miembro "$email" agregado')),
+                    SnackBar(
+                      content: Text(
+                        'Invitación enviada a "$email". '
+                        'Recibirá un correo con el enlace para unirse.',
+                      ),
+                      duration: const Duration(seconds: 4),
+                    ),
                   );
                 }
               } catch (e) {

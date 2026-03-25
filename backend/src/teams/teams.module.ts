@@ -3,16 +3,27 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Team } from './entities/team.entity';
 import { TeamMember } from './entities/team-member.entity';
 import { TeamSettings } from './entities/team-settings.entity';
+import { TeamInvite } from './entities/team-invite.entity';
 import { TeamsService } from './teams.service';
 import { TeamsController } from './teams.controller';
+import { InvitationsController } from './invitations.controller';
+import { InviteLandingController } from './invite-landing.controller';
+import { WellKnownController } from './well-known.controller';
 import { UsersModule } from '../users/users.module';
+import { EmailModule } from '../email/email.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Team, TeamMember, TeamSettings]),
+    TypeOrmModule.forFeature([Team, TeamMember, TeamSettings, TeamInvite]),
     UsersModule,
+    EmailModule,
   ],
-  controllers: [TeamsController],
+  controllers: [
+    TeamsController,
+    InvitationsController,
+    InviteLandingController,
+    WellKnownController,
+  ],
   providers: [TeamsService],
   exports: [TeamsService],
 })

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/auth/presentation/screens/create_team_screen.dart';
+import '../../features/auth/presentation/screens/invitation_screen.dart';
 import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
 import '../../features/products/presentation/screens/products_screen.dart';
 import '../../features/products/presentation/screens/product_form_screen.dart';
@@ -34,8 +35,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isAuthRoute = state.matchedLocation == '/login' ||
           state.matchedLocation == '/register';
       final isCreateTeam = state.matchedLocation == '/create-team';
+      final isInvite = state.matchedLocation.startsWith('/invite/');
 
       if (authState.status == AuthStatus.initial) return null;
+
+      // Allow invite route for both authenticated and unauthenticated users
+      if (isInvite) return null;
 
       if (!isAuth && !isAuthRoute) return '/login';
       if (isAuth && isAuthRoute) return '/dashboard';
@@ -56,6 +61,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/create-team',
         builder: (context, state) => const CreateTeamScreen(),
+      ),
+      GoRoute(
+        path: '/invite/:token',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => InvitationScreen(
+          token: state.pathParameters['token']!,
+        ),
       ),
       ShellRoute(
         navigatorKey: _shellNavigatorKey,

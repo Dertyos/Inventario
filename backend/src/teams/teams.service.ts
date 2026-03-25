@@ -3,13 +3,17 @@ import {
   NotFoundException,
   ConflictException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, MoreThan } from 'typeorm';
+import { v4 as uuidv4 } from 'uuid';
 import { Team } from './entities/team.entity';
 import { TeamMember, TeamRole } from './entities/team-member.entity';
 import { TeamSettings } from './entities/team-settings.entity';
+import { TeamInvite, InviteStatus } from './entities/team-invite.entity';
 import { UsersService } from '../users/users.service';
+import { EmailService } from '../email/email.service';
 import { CreateTeamDto } from './dto/create-team.dto';
 import { UpdateTeamDto } from './dto/update-team.dto';
 import { AddMemberDto } from './dto/add-member.dto';
@@ -24,7 +28,10 @@ export class TeamsService {
     private readonly membersRepository: Repository<TeamMember>,
     @InjectRepository(TeamSettings)
     private readonly settingsRepository: Repository<TeamSettings>,
+    @InjectRepository(TeamInvite)
+    private readonly invitesRepository: Repository<TeamInvite>,
     private readonly usersService: UsersService,
+    private readonly emailService: EmailService,
   ) {}
 
   async create(createTeamDto: CreateTeamDto, ownerId: string): Promise<Team> {
@@ -193,6 +200,154 @@ export class TeamsService {
     return this.membersRepository.findOne({
       where: { userId, teamId, isActive: true },
     });
+  }
+
+  // ── Invitations ─────────────────────────────────
+
+  async createInvitation(
+    teamId: string,
+    email: string,
+    invitedById: string,
+  ): Promise<TeamInvite> {
+    const team = await this.findOne(teamId);
+
+    // Check if user is already a member
+    const existingUser = await this.usersService.findByEmail(email);
+    if (existingUser) {
+      const existingMember = await this.membersRepository.findOne({
+        where: { userId: existingUser.id, teamId, isActive: true },
+      });
+      if (existingMember) {
+        throw new ConflictException('User is already a member of this team');
+      }
+    }
+
+    // Check if there's already a pending invitation for this email
+    const existingInvite = await this.invitesRepository.findOne({
+      where: {
+        teamId,
+        email,
+        status: InviteStatus.PENDING,
+        expiresAt: MoreThan(new Date()),
+      },
+    });
+    if (existingInvite) {
+      throw new ConflictException(
+        'There is already a pending invitation for this email',
+      );
+    }
+
+    const inviter = await this.usersService.findOne(invitedById);
+
+    const invite = this.invitesRepository.create({
+      teamId,
+      email,
+      token: uuidv4(),
+      invitedBy: invitedById,
+      status: InviteStatus.PENDING,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+    });
+    const savedInvite = await this.invitesRepository.save(invite);
+
+    // Send invitation email
+    const inviteLink = `https://inventario.dertyos.com/invite/${savedInvite.token}`;
+    const inviterName = `${inviter.firstName} ${inviter.lastName}`.trim();
+    await this.emailService.sendTeamInvitation(
+      email,
+      team.name,
+      inviterName,
+      inviteLink,
+    );
+
+    return savedInvite;
+  }
+
+  async getInvitations(teamId: string): Promise<TeamInvite[]> {
+    return this.invitesRepository.find({
+      where: { teamId },
+      relations: ['inviter'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async revokeInvitation(
+    teamId: string,
+    invitationId: string,
+  ): Promise<void> {
+    const invite = await this.invitesRepository.findOne({
+      where: { id: invitationId, teamId },
+    });
+    if (!invite) {
+      throw new NotFoundException('Invitation not found');
+    }
+    if (invite.status !== InviteStatus.PENDING) {
+      throw new BadRequestException('Only pending invitations can be revoked');
+    }
+    invite.status = InviteStatus.REVOKED;
+    await this.invitesRepository.save(invite);
+  }
+
+  async getInvitationByToken(token: string): Promise<TeamInvite> {
+    const invite = await this.invitesRepository.findOne({
+      where: { token },
+      relations: ['team', 'inviter'],
+    });
+    if (!invite) {
+      throw new NotFoundException('Invitation not found');
+    }
+    return invite;
+  }
+
+  async acceptInvitation(token: string, userId: string): Promise<TeamMember> {
+    const invite = await this.invitesRepository.findOne({
+      where: { token },
+      relations: ['team'],
+    });
+    if (!invite) {
+      throw new NotFoundException('Invitation not found');
+    }
+    if (invite.status !== InviteStatus.PENDING) {
+      throw new BadRequestException('This invitation is no longer valid');
+    }
+    if (new Date() > invite.expiresAt) {
+      throw new BadRequestException('This invitation has expired');
+    }
+
+    // Check if user is already a member
+    const existingMember = await this.membersRepository.findOne({
+      where: { userId, teamId: invite.teamId },
+    });
+
+    if (existingMember) {
+      if (existingMember.isActive) {
+        // Already a member, just mark invite as accepted
+        invite.status = InviteStatus.ACCEPTED;
+        await this.invitesRepository.save(invite);
+        throw new ConflictException('You are already a member of this team');
+      }
+      // Re-activate
+      existingMember.isActive = true;
+      existingMember.role = TeamRole.STAFF;
+      existingMember.joinedAt = new Date();
+      invite.status = InviteStatus.ACCEPTED;
+      await this.invitesRepository.save(invite);
+      return this.membersRepository.save(existingMember);
+    }
+
+    // Add user as team member
+    const member = this.membersRepository.create({
+      userId,
+      teamId: invite.teamId,
+      role: TeamRole.STAFF,
+      joinedAt: new Date(),
+    });
+    const savedMember = await this.membersRepository.save(member);
+
+    // Mark invitation as accepted
+    invite.status = InviteStatus.ACCEPTED;
+    await this.invitesRepository.save(invite);
+
+    return savedMember;
   }
 
   private generateSlug(name: string): string {
