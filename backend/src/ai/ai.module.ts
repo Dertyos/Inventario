@@ -5,9 +5,10 @@ import { AiService } from './ai.service';
 import { AiController } from './ai.controller';
 import { ANTHROPIC_CLIENT } from './claude.provider';
 import { ProductsModule } from '../products/products.module';
+import { TeamsModule } from '../teams/teams.module';
 
 @Module({
-  imports: [ConfigModule, ProductsModule],
+  imports: [ConfigModule, ProductsModule, TeamsModule],
   controllers: [AiController],
   providers: [
     {
@@ -15,9 +16,7 @@ import { ProductsModule } from '../products/products.module';
       useFactory: (config: ConfigService) => {
         const apiKey = config.get<string>('ANTHROPIC_API_KEY');
         if (!apiKey) {
-          throw new Error(
-            'ANTHROPIC_API_KEY environment variable is not configured',
-          );
+          return null;
         }
         return new Anthropic({
           apiKey,

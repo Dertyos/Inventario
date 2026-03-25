@@ -110,7 +110,7 @@ export class AiService {
   private readonly logger = new Logger(AiService.name);
 
   constructor(
-    @Inject(ANTHROPIC_CLIENT) private readonly claude: Anthropic,
+    @Inject(ANTHROPIC_CLIENT) private readonly claude: Anthropic | null,
     private readonly productsService: ProductsService,
   ) {}
 
@@ -120,6 +120,12 @@ export class AiService {
   ): Promise<ParsedTransactionResult> {
     // --- Layer 1: Input sanitization ---
     const sanitized = this.sanitizeInput(text);
+
+    if (!this.claude) {
+      throw new ServiceUnavailableException(
+        'Servicio de IA no configurado (falta ANTHROPIC_API_KEY)',
+      );
+    }
 
     // --- Layer 2: Build prompt with product catalog ---
     const products = await this.productsService.findAll(teamId, {
