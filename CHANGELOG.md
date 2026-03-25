@@ -24,6 +24,14 @@ Versionado según [Semantic Versioning](https://semver.org/lang/es/).
   - Abono inicial (opcional)
   - Nuevos campos en entidad `Sale`: `creditInstallments`, `creditPaidAmount`, `creditInterestRate`, `creditFrequency`, `creditNextPayment`
   - Historial muestra badge de saldo pendiente, frecuencia y fecha próxima cuota
+  - Al crear venta a crédito con cliente, se crea automáticamente `credit_account` con cuotas pre-generadas
+- **Pantalla de Créditos**: Lista de cuentas de crédito con filtros (activos/pagados/vencidos), detalle con cuotas individuales, pago de cuotas con monto y método
+- **Pantalla de Compras**: Lista de órdenes de compra, creación con selección de proveedor y productos, recibir/cancelar órdenes
+- **Pantalla de Notificaciones**: Centro de notificaciones con iconos por tipo, agrupación por fecha, marcar como leído
+- **Pantalla de Recordatorios de Pago**: Lista de recordatorios, generación automática, estados (pendiente/enviado/fallido)
+- **Pantalla de Lotes de Productos**: Lista de lotes con estado (activo/por vencer/expirado/agotado), creación con fecha de vencimiento
+- **Pantalla de Proveedores**: CRUD completo con búsqueda (nombre, NIT, teléfono)
+- **Navegación**: Todos los nuevos módulos accesibles desde la pestaña "Más"
 
 ## [1.1.0] - 2026-03-25
 
