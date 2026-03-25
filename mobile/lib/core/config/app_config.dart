@@ -2,6 +2,7 @@ class AppConfig {
   AppConfig._();
 
   static const String appName = 'Inventario';
+  static const String appVersion = '1.1.0';
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
     defaultValue: 'https://inventario-hxzw.onrender.com',
