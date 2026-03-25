@@ -784,9 +784,7 @@ describe('Inventario Integration (e2e)', () => {
         .set('Authorization', `Bearer ${accessToken}`)
         .send({
           customerId: customerId,
-          items: [
-            { productId: productId, quantity: 3, unitPrice: 3000 },
-          ],
+          items: [{ productId: productId, quantity: 3, unitPrice: 3000 }],
           paymentMethod: 'cash',
         })
         .expect(201);
@@ -866,9 +864,7 @@ describe('Inventario Integration (e2e)', () => {
         .set('Authorization', `Bearer ${accessToken}`)
         .send({
           customerId: customerId,
-          items: [
-            { productId: productId, quantity: 10, unitPrice: 3000 },
-          ],
+          items: [{ productId: productId, quantity: 10, unitPrice: 3000 }],
           paymentMethod: 'credit',
         })
         .expect(201);

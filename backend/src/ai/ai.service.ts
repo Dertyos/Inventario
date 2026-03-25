@@ -38,8 +38,7 @@ const TRANSACTION_TOOL: Anthropic.Tool = {
             },
             unit_price: {
               type: 'number',
-              description:
-                'Price per unit in COP. null if not mentioned.',
+              description: 'Price per unit in COP. null if not mentioned.',
             },
           },
           required: ['product_name', 'quantity'],
@@ -162,9 +161,7 @@ export class AiService {
 
       if (!toolBlock) {
         this.logger.error('Claude did not return tool_use block', { text });
-        throw new BadRequestException(
-          'No se pudo interpretar la transacción',
-        );
+        throw new BadRequestException('No se pudo interpretar la transacción');
       }
 
       const parsed = toolBlock.input as {
@@ -181,10 +178,7 @@ export class AiService {
       };
 
       // --- Layer 4: Validate and match products ---
-      const validatedItems = this.matchAndValidateItems(
-        parsed.items,
-        products,
-      );
+      const validatedItems = this.matchAndValidateItems(parsed.items, products);
 
       // Calculate total if possible
       const totalAmount = validatedItems.reduce((sum, item) => {

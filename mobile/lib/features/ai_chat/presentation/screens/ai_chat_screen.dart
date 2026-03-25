@@ -95,7 +95,9 @@ class _VoiceTransactionScreenState
       localeId: _localeId,
       listenFor: const Duration(seconds: 30),
       pauseFor: const Duration(seconds: 5),
-      listenMode: stt.ListenMode.dictation,
+      listenOptions: stt.SpeechListenOptions(
+        listenMode: stt.ListenMode.dictation,
+      ),
     );
   }
 

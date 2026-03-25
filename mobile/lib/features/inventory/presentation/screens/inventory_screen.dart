@@ -7,6 +7,7 @@ import '../../../../shared/providers/auth_provider.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../products/data/products_repository.dart';
 import '../../../products/presentation/screens/products_screen.dart';
+import '../../../../shared/models/inventory_movement_model.dart';
 import '../../data/inventory_repository.dart';
 
 final movementsProvider = FutureProvider.autoDispose
@@ -73,7 +74,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
 
   void _showAddMovementDialog(
       BuildContext context, WidgetRef ref, String teamId) {
-    final products = ref.read(productsProvider(teamId)).valueOrNull ?? [];
+    final products = ref.read(productsProvider(teamId)).value ?? [];
     if (products.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No hay productos disponibles')),

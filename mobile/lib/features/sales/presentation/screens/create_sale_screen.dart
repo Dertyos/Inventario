@@ -4,9 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/models/product_model.dart';
-import '../../../../shared/models/sale_model.dart';
 import '../../../../shared/providers/auth_provider.dart';
-import '../../../products/data/products_repository.dart';
 import '../../../products/presentation/screens/products_screen.dart';
 import '../../data/sales_repository.dart';
 import 'sales_screen.dart';
@@ -351,5 +349,5 @@ class _CartItem {
   final ProductModel product;
   int quantity;
 
-  _CartItem({required this.product, this.quantity = 1});
+  _CartItem({required this.product, int quantity = 1}) : quantity = quantity;
 }

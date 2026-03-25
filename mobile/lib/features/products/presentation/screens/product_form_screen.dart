@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../shared/models/product_model.dart';
 import '../../../../shared/providers/auth_provider.dart';
 import '../../data/products_repository.dart';
 import 'products_screen.dart';
@@ -170,7 +168,6 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     final teamId = ref.watch(authProvider).teamId;
     final categories = ref.watch(categoriesProvider(teamId));
     final colorScheme = Theme.of(context).colorScheme;
-    final cop = NumberFormat.currency(locale: 'es_CO', symbol: '\$', decimalDigits: 0);
 
     if (_isLoading) {
       return Scaffold(
