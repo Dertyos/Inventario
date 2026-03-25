@@ -6,12 +6,18 @@ export class CreateCategoryDto {
   @IsString()
   name: string;
 
-  @ApiPropertyOptional({ example: 'Gaseosas, jugos y agua', description: 'Descripción de la categoría' })
+  @ApiPropertyOptional({
+    example: 'Gaseosas, jugos y agua',
+    description: 'Descripción de la categoría',
+  })
   @IsString()
   @IsOptional()
   description?: string;
 
-  @ApiPropertyOptional({ example: '#FF5733', description: 'Color para identificar la categoría' })
+  @ApiPropertyOptional({
+    example: '#FF5733',
+    description: 'Color para identificar la categoría',
+  })
   @IsString()
   @IsOptional()
   color?: string;

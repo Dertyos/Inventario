@@ -14,7 +14,10 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { PaymentMethod } from '../entities/sale.entity';
 
 export class CreateSaleItemDto {
-  @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000', description: 'UUID del producto' })
+  @ApiProperty({
+    example: '550e8400-e29b-41d4-a716-446655440000',
+    description: 'UUID del producto',
+  })
   @IsUUID()
   productId: string;
 
@@ -23,30 +26,47 @@ export class CreateSaleItemDto {
   @Min(1)
   quantity: number;
 
-  @ApiProperty({ example: 2500, description: 'Precio unitario de venta', minimum: 0 })
+  @ApiProperty({
+    example: 2500,
+    description: 'Precio unitario de venta',
+    minimum: 0,
+  })
   @IsNumber()
   @Min(0)
   unitPrice: number;
 }
 
 export class CreateSaleDto {
-  @ApiPropertyOptional({ example: '550e8400-e29b-41d4-a716-446655440000', description: 'UUID del cliente (opcional para ventas sin cliente)' })
+  @ApiPropertyOptional({
+    example: '550e8400-e29b-41d4-a716-446655440000',
+    description: 'UUID del cliente (opcional para ventas sin cliente)',
+  })
   @IsUUID()
   @IsOptional()
   customerId?: string;
 
-  @ApiProperty({ type: [CreateSaleItemDto], description: 'Artículos de la venta' })
+  @ApiProperty({
+    type: [CreateSaleItemDto],
+    description: 'Artículos de la venta',
+  })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreateSaleItemDto)
   items: CreateSaleItemDto[];
 
-  @ApiPropertyOptional({ enum: PaymentMethod, example: 'cash', description: 'Método de pago' })
+  @ApiPropertyOptional({
+    enum: PaymentMethod,
+    example: 'cash',
+    description: 'Método de pago',
+  })
   @IsEnum(PaymentMethod)
   @IsOptional()
   paymentMethod?: PaymentMethod;
 
-  @ApiPropertyOptional({ example: 'Venta de mostrador', description: 'Notas de la venta' })
+  @ApiPropertyOptional({
+    example: 'Venta de mostrador',
+    description: 'Notas de la venta',
+  })
   @IsString()
   @IsOptional()
   notes?: string;

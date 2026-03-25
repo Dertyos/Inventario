@@ -3,11 +3,18 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { TeamRole } from '../entities/team-member.entity';
 
 export class AddMemberDto {
-  @ApiProperty({ example: 'maria@mitienda.co', description: 'Correo del miembro a agregar' })
+  @ApiProperty({
+    example: 'maria@mitienda.co',
+    description: 'Correo del miembro a agregar',
+  })
   @IsEmail()
   email: string;
 
-  @ApiPropertyOptional({ enum: TeamRole, example: 'staff', description: 'Rol del miembro en el equipo' })
+  @ApiPropertyOptional({
+    enum: TeamRole,
+    example: 'staff',
+    description: 'Rol del miembro en el equipo',
+  })
   @IsEnum(TeamRole)
   @IsOptional()
   role?: TeamRole;

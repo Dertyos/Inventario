@@ -12,7 +12,10 @@ import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreatePurchaseItemDto {
-  @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000', description: 'UUID del producto' })
+  @ApiProperty({
+    example: '550e8400-e29b-41d4-a716-446655440000',
+    description: 'UUID del producto',
+  })
   @IsUUID()
   productId: string;
 
@@ -28,17 +31,26 @@ export class CreatePurchaseItemDto {
 }
 
 export class CreatePurchaseDto {
-  @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000', description: 'UUID del proveedor' })
+  @ApiProperty({
+    example: '550e8400-e29b-41d4-a716-446655440000',
+    description: 'UUID del proveedor',
+  })
   @IsUUID()
   supplierId: string;
 
-  @ApiProperty({ type: [CreatePurchaseItemDto], description: 'Artículos de la compra' })
+  @ApiProperty({
+    type: [CreatePurchaseItemDto],
+    description: 'Artículos de la compra',
+  })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreatePurchaseItemDto)
   items: CreatePurchaseItemDto[];
 
-  @ApiPropertyOptional({ example: 'Pedido semanal de gaseosas', description: 'Notas de la compra' })
+  @ApiPropertyOptional({
+    example: 'Pedido semanal de gaseosas',
+    description: 'Notas de la compra',
+  })
   @IsString()
   @IsOptional()
   notes?: string;

@@ -27,7 +27,11 @@ export class TeamAuditInterceptor implements NestInterceptor {
     }
 
     // Block any attempt to override teamId via request body
-    if (request.body && typeof request.body === 'object' && 'teamId' in request.body) {
+    if (
+      request.body &&
+      typeof request.body === 'object' &&
+      'teamId' in request.body
+    ) {
       this.logger.warn(
         `Blocked teamId override attempt | user=${request.user?.id} | url=${request.url} | bodyTeamId=${request.body.teamId}`,
       );

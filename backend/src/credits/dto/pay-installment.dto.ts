@@ -7,12 +7,18 @@ export class PayInstallmentDto {
   @Min(0.01)
   amount: number;
 
-  @ApiPropertyOptional({ example: 'NEQUI-20260325', description: 'Referencia de la transacción' })
+  @ApiPropertyOptional({
+    example: 'NEQUI-20260325',
+    description: 'Referencia de la transacción',
+  })
   @IsString()
   @IsOptional()
   reference?: string;
 
-  @ApiPropertyOptional({ example: 'Cuota pagada por Nequi', description: 'Notas del pago' })
+  @ApiPropertyOptional({
+    example: 'Cuota pagada por Nequi',
+    description: 'Notas del pago',
+  })
   @IsString()
   @IsOptional()
   notes?: string;
