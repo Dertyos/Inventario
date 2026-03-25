@@ -337,45 +337,68 @@ Distribuidora farmacéutica (plan pro):
 
 ---
 
-### Fase 4 — Lotes y Vencimientos (requiere `enableLots`)
+### Fase 4 — Lotes y Vencimientos ✅ (requiere `enableLots`)
 > Trazabilidad para productos perecederos o regulados.
 
 **Tablas nuevas:**
-- `product_lots` — lote con número, fecha de vencimiento, cantidad
+- `product_lots` — lote con número, fecha de vencimiento, cantidad, estado (active/expired/depleted)
+
+**Endpoints:**
+- `POST /teams/:teamId/lots` — crear lote
+- `GET /teams/:teamId/lots` — listar lotes (filtro por producto, estado)
+- `GET /teams/:teamId/lots/expiring?days=30` — lotes próximos a vencer
+- `POST /teams/:teamId/lots/mark-expired` — marcar lotes expirados
 
 **Lógica:**
 - Solo aplica si `product.trackLots = true` Y `team_settings.enableLots = true`
-- Al hacer entrada de inventario, se asocia al lote
 - Al vender, se descuenta del lote más antiguo primero (FEFO: First Expired, First Out)
-- Alerta cuando un lote está próximo a vencer
+- Alerta cuando un lote está próximo a vencer (configurable por días)
+- Los lotes se marcan automáticamente como `depleted` al agotarse o `expired` al vencer
 
 ---
 
-### Fase 5 — Proveedores y Compras (requiere `enableSuppliers`)
+### Fase 5 — Proveedores y Compras ✅ (requiere `enableSuppliers`)
 > Trackear de dónde viene la mercancía.
 
 **Tablas nuevas:**
-- `suppliers` — datos del proveedor
-- `purchases` — orden de compra
+- `suppliers` — datos del proveedor con NIT único por equipo
+- `purchases` — orden de compra con consecutivo auto-generado (C-0001)
 - `purchase_items` — líneas de la compra
 
+**Endpoints:**
+- `POST/GET/PATCH /teams/:teamId/suppliers` — CRUD proveedores
+- `POST /teams/:teamId/purchases` — crear orden de compra
+- `GET /teams/:teamId/purchases` — listar (filtro por proveedor, estado)
+- `PATCH /teams/:teamId/purchases/:id/receive` — recibir compra (suma stock transaccionalmente)
+- `PATCH /teams/:teamId/purchases/:id/cancel` — cancelar compra pendiente
+
 **Lógica:**
-- Al registrar compra, se genera movimiento de inventario tipo `purchase`
-- Se actualiza el `cost` del producto automáticamente (último costo o promedio)
+- Al recibir compra: se suma stock con pessimistic locking y se crean movimientos tipo `PURCHASE`
+- Se actualiza el `cost` del producto automáticamente al último costo de compra
+- Solo compras en estado `pending` pueden ser recibidas o canceladas
 
 ---
 
-### Fase 6 — Recordatorios y Notificaciones (requiere `enableReminders`)
+### Fase 6 — Recordatorios y Notificaciones ✅ (requiere `enableReminders`)
 > Cobro automático de cuotas.
 
 **Tablas nuevas:**
-- `payment_reminders` — recordatorio programado
-- `notifications` — notificaciones internas del sistema
+- `payment_reminders` — recordatorio programado con canal y estado
+- `notifications` — notificaciones internas del sistema con metadata JSON
+
+**Endpoints:**
+- `POST /teams/:teamId/reminders/generate` — generar recordatorios para cuotas próximas
+- `GET /teams/:teamId/reminders` — listar recordatorios (filtro por cliente, estado)
+- `GET /teams/:teamId/notifications` — listar notificaciones (filtro unread)
+- `PATCH /teams/:teamId/notifications/:id/read` — marcar como leída
+- `POST /teams/:teamId/notifications/read-all` — marcar todas como leídas
 
 **Lógica:**
-- Job periódico revisa cuotas próximas a vencer
-- Genera recordatorios 3 días antes, el día, y 1 día después
-- Canales: SMS, WhatsApp (API), email, push notification (app Flutter)
+- Genera recordatorios automáticos: 3 días antes, el día, y 1 día después del vencimiento
+- Tipos: `before_due`, `on_due`, `after_due`
+- Canales preparados: SMS, WhatsApp, email, push, internal
+- Cada recordatorio genera también una notificación interna
+- Mensajes en español con formato de moneda COP
 
 ---
 

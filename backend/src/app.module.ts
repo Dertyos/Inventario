@@ -13,6 +13,10 @@ import { CustomersModule } from './customers/customers.module';
 import { SalesModule } from './sales/sales.module';
 import { PaymentsModule } from './payments/payments.module';
 import { CreditsModule } from './credits/credits.module';
+import { LotsModule } from './lots/lots.module';
+import { SuppliersModule } from './suppliers/suppliers.module';
+import { PurchasesModule } from './purchases/purchases.module';
+import { RemindersModule } from './reminders/reminders.module';
 
 @Module({
   imports: [
@@ -38,6 +42,10 @@ import { CreditsModule } from './credits/credits.module';
     SalesModule,
     PaymentsModule,
     CreditsModule,
+    LotsModule,
+    SuppliersModule,
+    PurchasesModule,
+    RemindersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
