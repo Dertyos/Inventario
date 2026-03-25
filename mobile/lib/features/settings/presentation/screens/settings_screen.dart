@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/config/app_config.dart';
+import '../../../../core/network/api_client.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/providers/auth_provider.dart';
 
@@ -11,9 +13,10 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authProvider);
     final colorScheme = Theme.of(context).colorScheme;
+    final serverUrl = ref.watch(serverUrlProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Más')),
+      appBar: AppBar(title: const Text('Mas')),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.md),
         children: [
@@ -129,19 +132,12 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => context.push('/voice-transaction'),
           ),
           _SettingsTile(
-            icon: Icons.notifications_outlined,
-            title: 'Notificaciones',
-            onTap: () {},
-          ),
-          _SettingsTile(
-            icon: Icons.group_outlined,
-            title: 'Equipo y miembros',
-            onTap: () {},
-          ),
-          _SettingsTile(
-            icon: Icons.tune_rounded,
-            title: 'Configuración del equipo',
-            onTap: () {},
+            icon: Icons.dns_outlined,
+            title: 'Servidor',
+            subtitle: serverUrl == AppConfig.defaultBaseUrl
+                ? 'Sin configurar'
+                : serverUrl,
+            onTap: () => _showServerDialog(context, ref),
           ),
           const SizedBox(height: AppSpacing.lg),
 
@@ -151,7 +147,7 @@ class SettingsScreen extends ConsumerWidget {
               final confirmed = await showDialog<bool>(
                 context: context,
                 builder: (ctx) => AlertDialog(
-                  title: const Text('¿Cerrar sesión?'),
+                  title: const Text('Cerrar sesion?'),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(ctx, false),
@@ -159,7 +155,7 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                     FilledButton(
                       onPressed: () => Navigator.pop(ctx, true),
-                      child: const Text('Cerrar sesión'),
+                      child: const Text('Cerrar sesion'),
                     ),
                   ],
                 ),
@@ -169,11 +165,101 @@ class SettingsScreen extends ConsumerWidget {
               }
             },
             icon: const Icon(Icons.logout),
-            label: const Text('Cerrar sesión'),
+            label: const Text('Cerrar sesion'),
             style: OutlinedButton.styleFrom(
               foregroundColor: colorScheme.error,
               side: BorderSide(color: colorScheme.error.withValues(alpha: 0.5)),
             ),
+          ),
+
+          const SizedBox(height: AppSpacing.lg),
+
+          // App info
+          Center(
+            child: Text(
+              'Inventario v${AppConfig.appVersion}',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showServerDialog(BuildContext context, WidgetRef ref) {
+    final controller = TextEditingController(
+      text: ref.read(serverUrlProvider),
+    );
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('URL del servidor'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Ingresa la URL de tu backend (Render, Railway, etc.)',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.url,
+              decoration: const InputDecoration(
+                hintText: 'https://mi-api.onrender.com',
+                prefixIcon: Icon(Icons.link),
+              ),
+              autofocus: true,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Ejemplo: https://inventario-api.onrender.com',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontStyle: FontStyle.italic,
+                  ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              var url = controller.text.trim();
+              if (url.isEmpty) return;
+              // Remove trailing slash
+              if (url.endsWith('/')) url = url.substring(0, url.length - 1);
+
+              // Save and update
+              await ref.read(secureStorageProvider).saveServerUrl(url);
+              ref.read(serverUrlProvider.notifier).state = url;
+
+              if (ctx.mounted) Navigator.pop(ctx);
+
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Servidor actualizado: $url'),
+                    action: SnackBarAction(
+                      label: 'Reconectar',
+                      onPressed: () {
+                        ref.read(authProvider.notifier).logout();
+                      },
+                    ),
+                  ),
+                );
+              }
+            },
+            child: const Text('Guardar'),
           ),
         ],
       ),

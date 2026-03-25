@@ -4,7 +4,7 @@ import '../network/api_client.dart';
 import '../network/api_exception.dart';
 
 /// Servicio de IA para procesar transacciones por voz/texto en lenguaje natural.
-/// El backend usa Claude API para parsear el texto a una transacción estructurada.
+/// El backend usa Claude API para parsear el texto a una transaccion estructurada.
 final aiServiceProvider = Provider<AiService>((ref) {
   return AiService(ref.read(dioProvider));
 });
@@ -14,13 +14,19 @@ class AiService {
 
   AiService(this._dio);
 
-  /// Envía texto en lenguaje natural y recibe una transacción parseada.
+  /// Envia texto en lenguaje natural y recibe una transaccion parseada.
   /// Ejemplo: "Venta de 5 tornillos a Pedro por 25mil"
   /// Retorna los datos estructurados para que el usuario confirme.
   Future<ParsedTransaction> parseTransaction(
     String teamId,
     String naturalText,
   ) async {
+    if (teamId.isEmpty) {
+      throw ApiException('No hay equipo activo. Crea uno primero.');
+    }
+    if (naturalText.trim().length < 3) {
+      throw ApiException('El texto es muy corto. Describe la transaccion.');
+    }
     try {
       final response = await _dio.post(
         '/teams/$teamId/ai/parse-transaction',
@@ -28,12 +34,23 @@ class AiService {
       );
       return ParsedTransaction.fromJson(response.data);
     } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionError ||
+          e.type == DioExceptionType.connectionTimeout) {
+        throw ApiException(
+          'No se pudo conectar al servidor. Verifica la URL en Configuracion > Servidor.',
+        );
+      }
+      if (e.response?.statusCode == 503) {
+        throw ApiException(
+          'IA no disponible. Verifica que ANTHROPIC_API_KEY este configurada en el backend.',
+        );
+      }
       throw ApiException.fromDioError(e);
     }
   }
 }
 
-/// Transacción parseada desde lenguaje natural.
+/// Transaccion parseada desde lenguaje natural.
 class ParsedTransaction {
   final TransactionType type;
   final List<ParsedItem> items;

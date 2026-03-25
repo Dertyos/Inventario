@@ -110,6 +110,13 @@ class _VoiceTransactionScreenState
     });
 
     final teamId = ref.read(authProvider).teamId;
+    if (teamId.isEmpty) {
+      setState(() {
+        _error = 'No hay equipo activo. Crea uno en Configuracion.';
+        _isProcessing = false;
+      });
+      return;
+    }
 
     try {
       final result =
@@ -119,8 +126,24 @@ class _VoiceTransactionScreenState
         _isProcessing = false;
       });
     } catch (e) {
+      final msg = e.toString();
+      String errorMsg;
+      if (msg.contains('conexion') ||
+          msg.contains('internet') ||
+          msg.contains('timeout') ||
+          msg.contains('Connection')) {
+        errorMsg =
+            'No se pudo conectar al servidor. Verifica la URL en Configuracion > Servidor.';
+      } else if (msg.contains('503') || msg.contains('unavailable')) {
+        errorMsg =
+            'El servicio de IA no esta disponible. Verifica que ANTHROPIC_API_KEY este configurada en el backend.';
+      } else if (msg.contains('403') || msg.contains('permisos')) {
+        errorMsg = 'No tienes permisos para usar esta funcion.';
+      } else {
+        errorMsg = 'No pude procesar: $msg';
+      }
       setState(() {
-        _error = 'No pude entender. Intenta de nuevo.';
+        _error = errorMsg;
         _isProcessing = false;
       });
     }

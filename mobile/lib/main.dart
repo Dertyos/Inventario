@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'core/config/app_config.dart';
 import 'core/router/app_router.dart';
+import 'core/storage/secure_storage.dart';
 import 'core/theme/app_theme.dart';
 
 void main() async {
@@ -25,7 +27,18 @@ void main() async {
   // Initialize Spanish locale for date formatting
   await initializeDateFormatting('es');
 
-  runApp(const ProviderScope(child: InventarioApp()));
+  // Load saved server URL
+  final storage = SecureStorage();
+  final savedUrl = await loadServerUrl(storage);
+
+  runApp(
+    ProviderScope(
+      overrides: [
+        serverUrlProvider.overrideWith((ref) => savedUrl),
+      ],
+      child: const InventarioApp(),
+    ),
+  );
 }
 
 class InventarioApp extends ConsumerWidget {
