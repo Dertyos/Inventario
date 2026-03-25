@@ -217,7 +217,7 @@ export class SalesService {
       // Restore stock for each item
       for (const item of sale.items) {
         const product = await queryRunner.manager.findOne(Product, {
-          where: { id: item.productId },
+          where: { id: item.productId, teamId },
           lock: { mode: 'pessimistic_write' },
         });
 

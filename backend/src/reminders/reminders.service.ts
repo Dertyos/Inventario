@@ -75,6 +75,7 @@ export class RemindersService {
       // Check if reminder already exists
       const existing = await this.remindersRepository.findOne({
         where: {
+          teamId,
           installmentId: installment.id,
           type: reminderType,
           scheduledDate: todayStr,

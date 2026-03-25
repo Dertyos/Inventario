@@ -130,7 +130,7 @@ export class PurchasesService {
 
       for (const item of purchase.items) {
         const product = await queryRunner.manager.findOne(Product, {
-          where: { id: item.productId },
+          where: { id: item.productId, teamId },
           lock: { mode: 'pessimistic_write' },
         });
 

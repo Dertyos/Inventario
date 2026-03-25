@@ -19,7 +19,10 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TeamRolesGuard } from './guards/team-roles.guard';
 import { TeamRoles } from './decorators/team-roles.decorator';
 import { TeamRole } from './entities/team-member.entity';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiTags('teams')
+@ApiBearerAuth()
 @Controller('teams')
 @UseGuards(JwtAuthGuard)
 export class TeamsController {

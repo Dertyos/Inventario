@@ -13,7 +13,11 @@
     "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
     "test": "jest",
     "test:cov": "jest --coverage",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json --runInBand",
+    "test:e2e:ci": "jest --config ./test/jest-e2e.json --runInBand --forceExit --detectOpenHandles",
+    "test:e2e:setup": "bash ./test/setup-test-db.sh",
+    "migration:generate": "typeorm migration:generate -d dist/data-source.js",
+    "migration:run": "typeorm migration:run -d dist/data-source.js"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",
@@ -22,10 +26,13 @@
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^10.0.0",
+    "@nestjs/swagger": "^11.2.6",
+    "@nestjs/throttler": "^6.5.0",
     "@nestjs/typeorm": "^11.0.0",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
+    "helmet": "^8.1.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "pg": "^8.20.0",

@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  postgres-test:
+    image: postgres:16-alpine
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: inventario_test
+      POSTGRES_PASSWORD: inventario_test
+      POSTGRES_DB: inventario_test
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U inventario_test"]
+      interval: 5s
+      timeout: 3s
+      retries: 5

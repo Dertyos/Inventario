@@ -1,40 +1,37 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
-import { AppController } from '../src/app.controller';
-import { AppService } from '../src/app.service';
+import { createTestApp, cleanDatabase } from './test-utils';
 
 describe('App (e2e)', () => {
   let app: INestApplication;
 
-  beforeEach(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      controllers: [AppController],
-      providers: [AppService],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, transform: true }),
-    );
-    await app.init();
+  beforeAll(async () => {
+    app = await createTestApp();
   });
 
-  afterEach(async () => {
+  afterAll(async () => {
     await app.close();
   });
 
-  it('/ (GET)', () => {
+  it('GET / - should return hello message', () => {
     return request(app.getHttpServer())
       .get('/')
       .expect(200)
       .expect('Hello World!');
   });
 
-  it('/health (GET)', () => {
+  it('GET /health - should return ok status', () => {
     return request(app.getHttpServer())
       .get('/health')
       .expect(200)
       .expect({ status: 'ok' });
+  });
+
+  it('GET /auth/profile - should reject unauthenticated request', () => {
+    return request(app.getHttpServer()).get('/auth/profile').expect(401);
+  });
+
+  it('GET /nonexistent - should return 404', () => {
+    return request(app.getHttpServer()).get('/nonexistent').expect(404);
   });
 });
