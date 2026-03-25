@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: inventario-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    region: oregon
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "10000"
+      - key: DATABASE_URL
+        sync: false  # Set manually from Neon.tech
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRATION
+        value: "3600"
+      - key: ANTHROPIC_API_KEY
+        sync: false  # Set manually if using voice features
