@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/app_config.dart';
 import '../storage/secure_storage.dart';
 import 'api_interceptor.dart';
+import 'retry_interceptor.dart';
 
 final dioProvider = Provider<Dio>((ref) {
   final dio = Dio(
@@ -14,6 +15,7 @@ final dioProvider = Provider<Dio>((ref) {
     ),
   );
   dio.interceptors.add(AuthInterceptor(ref.read(secureStorageProvider)));
+  dio.interceptors.add(RetryInterceptor(dio: dio));
   dio.interceptors.add(LogInterceptor(
     requestBody: true,
     responseBody: true,
