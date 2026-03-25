@@ -152,6 +152,19 @@ class AuthNotifier extends Notifier<AuthState> {
     state = state.copyWith(activeTeam: team);
   }
 
+  Future<void> updateTeamName(String teamId, String name) async {
+    try {
+      final updated = await _repo.updateTeam(teamId, {'name': name});
+      final teams = state.teams.map((t) => t.id == teamId ? updated : t).toList();
+      state = state.copyWith(
+        teams: teams,
+        activeTeam: state.activeTeam?.id == teamId ? updated : state.activeTeam,
+      );
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+    }
+  }
+
   Future<void> logout() async {
     await _repo.logout();
     state = const AuthState(status: AuthStatus.unauthenticated);

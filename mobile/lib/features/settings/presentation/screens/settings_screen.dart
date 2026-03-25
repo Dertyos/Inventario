@@ -4,6 +4,41 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/providers/auth_provider.dart';
 
+void _showEditTeamNameDialog(BuildContext context, WidgetRef ref) {
+  final auth = ref.read(authProvider);
+  final controller = TextEditingController(text: auth.activeTeam?.name ?? '');
+  showDialog(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Nombre de la tienda'),
+      content: TextField(
+        controller: controller,
+        autofocus: true,
+        textCapitalization: TextCapitalization.sentences,
+        decoration: const InputDecoration(
+          labelText: 'Nombre',
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: () {
+            final name = controller.text.trim();
+            if (name.isNotEmpty && auth.activeTeam != null) {
+              ref.read(authProvider.notifier).updateTeamName(auth.activeTeam!.id, name);
+            }
+            Navigator.pop(ctx);
+          },
+          child: const Text('Guardar'),
+        ),
+      ],
+    ),
+  );
+}
+
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -60,57 +95,62 @@ class SettingsScreen extends ConsumerWidget {
           // Team card
           if (auth.activeTeam != null)
             Card(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: colorScheme.secondaryContainer,
-                        borderRadius: BorderRadius.circular(10),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () => _showEditTeamNameDialog(context, ref),
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: colorScheme.secondaryContainer,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.store_rounded,
+                          color: colorScheme.onSecondaryContainer,
+                        ),
                       ),
-                      child: Icon(
-                        Icons.store_rounded,
-                        color: colorScheme.onSecondaryContainer,
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              auth.activeTeam!.name,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            Text(
+                              '${auth.activeTeam!.currency} · Toca para editar',
+                              style:
+                                  Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: colorScheme.onSurfaceVariant,
+                                      ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            auth.activeTeam!.name,
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          Text(
-                            '${auth.activeTeam!.currency} · ${auth.activeTeam!.timezone}',
-                            style:
-                                Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: colorScheme.onSurfaceVariant,
-                                    ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (auth.teams.length > 1)
-                      PopupMenuButton<String>(
-                        icon: const Icon(Icons.swap_horiz),
-                        onSelected: (teamId) {
-                          final team =
-                              auth.teams.firstWhere((t) => t.id == teamId);
-                          ref.read(authProvider.notifier).switchTeam(team);
-                        },
-                        itemBuilder: (context) => auth.teams
-                            .map((t) => PopupMenuItem(
-                                  value: t.id,
-                                  child: Text(t.name),
-                                ))
-                            .toList(),
-                      ),
-                  ],
+                      Icon(Icons.edit_outlined, color: colorScheme.onSurfaceVariant, size: 20),
+                      if (auth.teams.length > 1)
+                        PopupMenuButton<String>(
+                          icon: const Icon(Icons.swap_horiz),
+                          onSelected: (teamId) {
+                            final team =
+                                auth.teams.firstWhere((t) => t.id == teamId);
+                            ref.read(authProvider.notifier).switchTeam(team);
+                          },
+                          itemBuilder: (context) => auth.teams
+                              .map((t) => PopupMenuItem(
+                                    value: t.id,
+                                    child: Text(t.name),
+                                  ))
+                              .toList(),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -127,21 +167,6 @@ class SettingsScreen extends ConsumerWidget {
             title: 'Registrar con voz',
             subtitle: 'Ventas y compras en lenguaje natural',
             onTap: () => context.push('/voice-transaction'),
-          ),
-          _SettingsTile(
-            icon: Icons.notifications_outlined,
-            title: 'Notificaciones',
-            onTap: () {},
-          ),
-          _SettingsTile(
-            icon: Icons.group_outlined,
-            title: 'Equipo y miembros',
-            onTap: () {},
-          ),
-          _SettingsTile(
-            icon: Icons.tune_rounded,
-            title: 'Configuración del equipo',
-            onTap: () {},
           ),
           const SizedBox(height: AppSpacing.lg),
 

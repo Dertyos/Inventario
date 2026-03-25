@@ -117,13 +117,6 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Nueva venta'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.qr_code_scanner_rounded),
-            onPressed: () {},
-            tooltip: 'Escanear producto',
-          ),
-        ],
       ),
       body: Column(
         children: [
@@ -210,7 +203,7 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
                   Padding(
                     padding: const EdgeInsets.all(AppSpacing.lg),
                     child: Text(
-                      'Agrega productos al carrito',
+                      'Selecciona productos de la lista',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: colorScheme.onSurfaceVariant,
                           ),

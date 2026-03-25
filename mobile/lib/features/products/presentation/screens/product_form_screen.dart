@@ -68,7 +68,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     final teamId = ref.read(authProvider).teamId;
     final data = {
       'name': _nameController.text.trim(),
-      'sku': _skuController.text.trim(),
+      if (_skuController.text.trim().isNotEmpty)
+        'sku': _skuController.text.trim(),
       if (_barcodeController.text.isNotEmpty)
         'barcode': _barcodeController.text.trim(),
       if (_descriptionController.text.isNotEmpty)
@@ -77,7 +78,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       if (_costController.text.isNotEmpty)
         'cost': double.parse(_costController.text),
       'minStock': int.parse(_minStockController.text),
-      'categoryId': _selectedCategoryId,
+      if (_selectedCategoryId != null)
+        'categoryId': _selectedCategoryId,
     };
 
     try {
@@ -151,6 +153,58 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     }
   }
 
+  Future<void> _showCreateCategoryDialog() async {
+    final nameController = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Nueva categoría'),
+        content: TextField(
+          controller: nameController,
+          autofocus: true,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: const InputDecoration(
+            labelText: 'Nombre de la categoría',
+            hintText: 'Ej: Bebidas, Snacks, Lácteos...',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, nameController.text.trim()),
+            child: const Text('Crear'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && result.isNotEmpty && mounted) {
+      try {
+        final teamId = ref.read(authProvider).teamId;
+        final category = await ref
+            .read(productsRepositoryProvider)
+            .createCategory(teamId, {'name': result});
+        ref.invalidate(categoriesProvider(teamId));
+        setState(() => _selectedCategoryId = category.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Categoría "$result" creada')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e')),
+          );
+        }
+      }
+    }
+    nameController.dispose();
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -210,11 +264,10 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                     controller: _skuController,
                     textCapitalization: TextCapitalization.characters,
                     decoration: const InputDecoration(
-                      labelText: 'SKU *',
+                      labelText: 'SKU',
                       prefixIcon: Icon(Icons.tag),
+                      helperText: 'Opcional, se genera automáticamente',
                     ),
-                    validator: (v) =>
-                        v == null || v.trim().isEmpty ? 'Requerido' : null,
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
@@ -231,20 +284,45 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
             ),
             const SizedBox(height: AppSpacing.md),
             categories.whenOrNull(
-                  data: (cats) => DropdownButtonFormField<String>(
-                    value: _selectedCategoryId,
-                    decoration: const InputDecoration(
-                      labelText: 'Categoría *',
-                      prefixIcon: Icon(Icons.category_outlined),
-                    ),
-                    items: cats
-                        .map((c) => DropdownMenuItem(
-                              value: c.id,
-                              child: Text(c.name),
-                            ))
-                        .toList(),
-                    onChanged: (v) => setState(() => _selectedCategoryId = v),
-                    validator: (v) => v == null ? 'Selecciona una categoría' : null,
+                  data: (cats) => Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      DropdownButtonFormField<String>(
+                        value: _selectedCategoryId,
+                        decoration: const InputDecoration(
+                          labelText: 'Categoría',
+                          prefixIcon: Icon(Icons.category_outlined),
+                        ),
+                        items: cats
+                            .map((c) => DropdownMenuItem(
+                                  value: c.id,
+                                  child: Text(c.name),
+                                ))
+                            .toList(),
+                        onChanged: (v) => setState(() => _selectedCategoryId = v),
+                      ),
+                      if (cats.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: AppSpacing.xs),
+                          child: TextButton.icon(
+                            onPressed: () => _showCreateCategoryDialog(),
+                            icon: const Icon(Icons.add, size: 18),
+                            label: const Text('Crear categoría'),
+                          ),
+                        )
+                      else
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton.icon(
+                            onPressed: () => _showCreateCategoryDialog(),
+                            icon: const Icon(Icons.add, size: 18),
+                            label: const Text('Nueva categoría'),
+                            style: TextButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ) ??
                 const LinearProgressIndicator(),

@@ -83,6 +83,15 @@ class AuthRepository {
     }
   }
 
+  Future<TeamModel> updateTeam(String teamId, Map<String, dynamic> data) async {
+    try {
+      final response = await _dio.patch('/teams/$teamId', data: data);
+      return TeamModel.fromJson(response.data);
+    } on DioException catch (e) {
+      throw ApiException.fromDioError(e);
+    }
+  }
+
   Future<void> logout() async {
     await _storage.clearAll();
   }

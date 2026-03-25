@@ -42,13 +42,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Productos'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.qr_code_scanner_rounded),
-            onPressed: () {},
-            tooltip: 'Escanear código',
-          ),
-        ],
+        actions: const [],
       ),
       body: Column(
         children: [
