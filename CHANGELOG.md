@@ -4,6 +4,35 @@ Todos los cambios notables del proyecto se documentan aquí.
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 Versionado según [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.2.0] - 2026-03-25
+
+### Agregado
+- **Asistente IA copiloto completo**: La IA ahora entiende 9 tipos de acciones en lenguaje natural
+  - Crear productos con SKU auto-generado
+  - Crear categorias
+  - Crear clientes con telefono, email, documento
+  - Crear proveedores con NIT, contacto
+  - Entrada y salida de stock con fuzzy matching de productos
+  - Invitar miembros al equipo con rol
+  - Ventas y compras (existente, mejorado)
+- **Nuevo endpoint** `POST /teams/:id/ai/parse-command` con tool schema de 9 acciones
+- **Contexto enriquecido**: La IA recibe catalogo de productos, categorias, clientes y proveedores para fuzzy matching
+- **Ejecucion directa**: Cada accion se ejecuta via API al confirmar (sin navegar a otra pantalla)
+- **URL del servidor configurable**: En login y settings, para conectar a backend en Render/Railway/etc
+- **Build workflow mejorado**: Input opcional `api_base_url` para compilar APK con URL pre-configurada
+- **README.md completo**: Documentacion del proyecto con todas las funcionalidades
+
+### Cambiado
+- Pantalla "Registrar con voz" renombrada a "Asistente IA" con icono actualizado
+- 8 ejemplos diversos cubriendo todos los tipos de accion
+- Errores descriptivos cuando backend/IA no disponible
+- `flutter_lints` downgraded a ^5.0.0 (compatibilidad con Dart 3.7.x)
+
+### Corregido
+- Build CI fallaba por `flutter_lints 6.0.0` requiriendo Dart ^3.8.0
+- Google Sign-In crash (`PlatformException sign_in_failed 10`) removido
+- `pubspec.lock` regenerado para compatibilidad
+
 ## [1.1.0] - 2026-03-25
 
 ### Agregado
