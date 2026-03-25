@@ -7,6 +7,8 @@ class InventoryMovementModel {
   final String? reason;
   final String productId;
   final String? productName;
+  final String? supplierId;
+  final String? supplierName;
   final DateTime createdAt;
 
   const InventoryMovementModel({
@@ -16,6 +18,8 @@ class InventoryMovementModel {
     this.reason,
     required this.productId,
     this.productName,
+    this.supplierId,
+    this.supplierName,
     required this.createdAt,
   });
 
@@ -29,6 +33,8 @@ class InventoryMovementModel {
             json['product']?['id'] as String? ??
             '',
         productName: json['product']?['name'] as String?,
+        supplierId: json['supplierId'] as String?,
+        supplierName: json['supplier']?['name'] as String?,
         createdAt: DateTime.parse(json['createdAt'] as String),
       );
 

@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/models/product_model.dart';
+import '../../../../shared/models/supplier_model.dart';
 import '../../../../shared/providers/auth_provider.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../products/data/products_repository.dart';
 import '../../../products/presentation/screens/products_screen.dart';
+import '../../../suppliers/data/suppliers_repository.dart';
 import '../../../../shared/models/inventory_movement_model.dart';
 import '../../data/inventory_repository.dart';
 
@@ -78,20 +80,21 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
     );
   }
 
-  void _showAddMovementDialog(
+  Future<void> _showAddMovementDialog(
     BuildContext context,
     WidgetRef ref,
     String teamId, {
     ProductModel? preselectedProduct,
-  }) {
-    // Ensure products are loaded
-    final productsAsync = ref.read(productsProvider(teamId));
-    final products = productsAsync.value ?? [];
+  }) async {
+    // Ensure products are loaded by awaiting the future
+    final products = await ref.read(productsProvider(teamId).future);
 
     String? selectedProductId = preselectedProduct?.id;
     String type = preselectedProduct != null ? 'in' : 'in';
     final quantityController = TextEditingController();
     final reasonController = TextEditingController();
+    SupplierModel? selectedSupplier;
+    final suppliers = await ref.read(suppliersProvider(teamId).future);
 
     showModalBottomSheet(
       context: context,
@@ -215,6 +218,94 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                 onSelectionChanged: (v) =>
                     setSheetState(() => type = v.first),
               ),
+              if (type == 'in') ...[
+                const SizedBox(height: AppSpacing.md),
+                GestureDetector(
+                  onTap: () {
+                    if (suppliers.isEmpty) {
+                      _showCreateSupplierDialog(ctx, ref, teamId, setSheetState, (s) {
+                        selectedSupplier = s;
+                        suppliers.add(s);
+                      });
+                      return;
+                    }
+                    showModalBottomSheet(
+                      context: ctx,
+                      builder: (innerCtx) => SafeArea(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(AppSpacing.md),
+                              child: Text(
+                                'Selecciona un proveedor',
+                                style: Theme.of(innerCtx).textTheme.titleMedium,
+                              ),
+                            ),
+                            if (selectedSupplier != null)
+                              ListTile(
+                                leading: const Icon(Icons.close),
+                                title: const Text('Sin proveedor'),
+                                onTap: () {
+                                  setSheetState(() => selectedSupplier = null);
+                                  Navigator.pop(innerCtx);
+                                },
+                              ),
+                            ...suppliers.map((s) => ListTile(
+                                  leading: Icon(
+                                    s.id == selectedSupplier?.id
+                                        ? Icons.radio_button_checked
+                                        : Icons.radio_button_unchecked,
+                                    color: s.id == selectedSupplier?.id
+                                        ? Theme.of(innerCtx).colorScheme.primary
+                                        : null,
+                                  ),
+                                  title: Text(s.name),
+                                  subtitle: s.phone != null ? Text(s.phone!) : null,
+                                  onTap: () {
+                                    setSheetState(() => selectedSupplier = s);
+                                    Navigator.pop(innerCtx);
+                                  },
+                                )),
+                            const SizedBox(height: AppSpacing.md),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: 'Proveedor',
+                      prefixIcon: Icon(Icons.local_shipping_outlined),
+                      suffixIcon: Icon(Icons.arrow_drop_down),
+                    ),
+                    child: Text(
+                      selectedSupplier?.name ?? 'Sin proveedor',
+                      style: selectedSupplier == null
+                          ? TextStyle(color: Theme.of(ctx).hintColor)
+                          : null,
+                    ),
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: () => _showCreateSupplierDialog(
+                      ctx, ref, teamId, setSheetState, (s) {
+                        selectedSupplier = s;
+                        suppliers.add(s);
+                      },
+                    ),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: Text(suppliers.isEmpty
+                        ? 'Crear proveedor'
+                        : 'Nuevo proveedor'),
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: AppSpacing.md),
               TextFormField(
                 controller: quantityController,
@@ -252,6 +343,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                       'quantity': int.parse(quantityController.text),
                       if (reasonController.text.isNotEmpty)
                         'reason': reasonController.text,
+                      if (selectedSupplier != null)
+                        'supplierId': selectedSupplier!.id,
                     });
                     ref.invalidate(movementsProvider(teamId));
                     ref.invalidate(productsProvider(teamId));
@@ -278,6 +371,87 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
         ),
       ),
     );
+  }
+
+  Future<void> _showCreateSupplierDialog(
+    BuildContext ctx,
+    WidgetRef ref,
+    String teamId,
+    StateSetter setSheetState,
+    void Function(SupplierModel supplier) onCreated,
+  ) async {
+    final nameController = TextEditingController();
+    final phoneController = TextEditingController();
+    final result = await showDialog<Map<String, String>>(
+      context: ctx,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('Nuevo proveedor'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              autofocus: true,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(
+                labelText: 'Nombre del proveedor',
+                hintText: 'Ej: Distribuidora El Éxito',
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            TextField(
+              controller: phoneController,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(
+                labelText: 'Teléfono (opcional)',
+                hintText: 'Ej: 3115551234',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final name = nameController.text.trim();
+              if (name.isEmpty) return;
+              Navigator.pop(dialogCtx, {
+                'name': name,
+                if (phoneController.text.trim().isNotEmpty)
+                  'phone': phoneController.text.trim(),
+              });
+            },
+            child: const Text('Crear'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && ctx.mounted) {
+      try {
+        final supplier = await ref
+            .read(suppliersRepositoryProvider)
+            .createSupplier(teamId, result);
+        ref.invalidate(suppliersProvider(teamId));
+        setSheetState(() => onCreated(supplier));
+        if (ctx.mounted) {
+          ScaffoldMessenger.of(ctx).showSnackBar(
+            SnackBar(content: Text('Proveedor "${result['name']}" creado')),
+          );
+        }
+      } catch (e) {
+        if (ctx.mounted) {
+          ScaffoldMessenger.of(ctx).showSnackBar(
+            SnackBar(content: Text('Error: $e')),
+          );
+        }
+      }
+    }
+    nameController.dispose();
+    phoneController.dispose();
   }
 }
 
@@ -331,7 +505,11 @@ class _MovementsTab extends ConsumerWidget {
                   ),
                   title: Text(m.productName ?? 'Producto'),
                   subtitle: Text(
-                    '${m.typeLabel} · ${m.reason ?? ''}',
+                    [
+                      m.typeLabel,
+                      if (m.supplierName != null) m.supplierName!,
+                      if (m.reason != null && m.reason!.isNotEmpty) m.reason!,
+                    ].join(' · '),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),

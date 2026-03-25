@@ -94,17 +94,23 @@ class SalesScreen extends ConsumerWidget {
                             decoration: BoxDecoration(
                               color: sale.isCancelled
                                   ? colorScheme.errorContainer
-                                  : colorScheme.primaryContainer,
+                                  : sale.isCredit
+                                      ? Colors.orange.withValues(alpha: 0.15)
+                                      : colorScheme.primaryContainer,
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Icon(
                               sale.isCancelled
                                   ? Icons.cancel_outlined
-                                  : Icons.receipt_outlined,
+                                  : sale.isCredit
+                                      ? Icons.credit_score_outlined
+                                      : Icons.receipt_outlined,
                               size: 20,
                               color: sale.isCancelled
                                   ? colorScheme.onErrorContainer
-                                  : colorScheme.onPrimaryContainer,
+                                  : sale.isCredit
+                                      ? Colors.orange
+                                      : colorScheme.onPrimaryContainer,
                             ),
                           ),
                           title: Row(
@@ -139,10 +145,64 @@ class SalesScreen extends ConsumerWidget {
                                   ),
                                 ),
                               ],
+                              if (sale.isCredit && !sale.isCancelled) ...[
+                                const SizedBox(width: AppSpacing.xs),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: sale.creditBalance > 0
+                                        ? Colors.orange.withValues(alpha: 0.15)
+                                        : Colors.green.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    sale.creditBalance > 0
+                                        ? 'Debe ${cop.format(sale.creditBalance)}'
+                                        : 'Pagado',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
+                                          color: sale.creditBalance > 0
+                                              ? Colors.orange
+                                              : Colors.green,
+                                        ),
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
-                          subtitle: Text(
-                            '${sale.saleNumber} · ${sale.customerName ?? 'Venta directa'} · ${sale.items.length} items',
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                [
+                                  sale.saleNumber,
+                                  sale.customerName ?? 'Venta directa',
+                                  if (sale.isCredit) ...[
+                                    if (sale.creditInstallments != null)
+                                      '${sale.creditInstallments} cuotas',
+                                    sale.creditFrequencyLabel,
+                                    if (sale.creditInterestRate != null &&
+                                        sale.creditInterestRate! > 0)
+                                      '${sale.creditInterestRate}%',
+                                  ],
+                                ].join(' · '),
+                              ),
+                              if (sale.isCredit &&
+                                  sale.creditNextPayment != null &&
+                                  sale.creditBalance > 0)
+                                Text(
+                                  'Próx. cuota: ${DateFormat('dd MMM yyyy', 'es').format(sale.creditNextPayment!)}',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .labelSmall
+                                      ?.copyWith(color: Colors.orange),
+                                ),
+                            ],
                           ),
                           trailing: Text(
                             DateFormat('HH:mm').format(sale.createdAt),

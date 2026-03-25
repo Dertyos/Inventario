@@ -85,6 +85,21 @@ export class Sale {
   })
   status: SaleStatus;
 
+  @Column({ type: 'int', nullable: true })
+  creditInstallments: number;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  creditPaidAmount: number;
+
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
+  creditInterestRate: number;
+
+  @Column({ nullable: true })
+  creditFrequency: string;
+
+  @Column({ type: 'date', nullable: true })
+  creditNextPayment: Date;
+
   @Column({ nullable: true })
   notes: string;
 

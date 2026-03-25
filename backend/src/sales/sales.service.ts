@@ -107,6 +107,13 @@ export class SalesService {
         subtotal,
         tax: 0, // Tax calculation done in Phase with enableTax
         total: subtotal,
+        creditInstallments: createSaleDto.creditInstallments || null,
+        creditPaidAmount: createSaleDto.creditPaidAmount ?? null,
+        creditInterestRate: createSaleDto.creditInterestRate ?? null,
+        creditFrequency: createSaleDto.creditFrequency || null,
+        creditNextPayment: createSaleDto.creditNextPayment
+          ? new Date(createSaleDto.creditNextPayment)
+          : null,
         notes: createSaleDto.notes,
       });
       const savedSale = await queryRunner.manager.save(sale);

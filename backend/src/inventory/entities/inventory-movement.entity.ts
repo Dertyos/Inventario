@@ -9,6 +9,7 @@ import {
 import { Product } from '../../products/entities/product.entity';
 import { User } from '../../users/entities/user.entity';
 import { Team } from '../../teams/entities/team.entity';
+import { Supplier } from '../../suppliers/entities/supplier.entity';
 
 export enum MovementType {
   IN = 'in',
@@ -53,6 +54,13 @@ export class InventoryMovement {
   @ManyToOne(() => User, (user) => user.inventoryMovements)
   @JoinColumn({ name: 'userId' })
   user: User;
+
+  @Column({ nullable: true })
+  supplierId: string;
+
+  @ManyToOne(() => Supplier, { nullable: true })
+  @JoinColumn({ name: 'supplierId' })
+  supplier: Supplier;
 
   @Column({ nullable: true })
   referenceType: string;
