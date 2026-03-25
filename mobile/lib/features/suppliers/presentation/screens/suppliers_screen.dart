@@ -154,6 +154,7 @@ class _SuppliersScreenState extends ConsumerState<SuppliersScreen> {
                           supplier.nit,
                           supplier.contactName,
                           supplier.phone,
+                          supplier.email,
                         ]
                             .where((e) => e != null && e.isNotEmpty)
                             .join(' · '),

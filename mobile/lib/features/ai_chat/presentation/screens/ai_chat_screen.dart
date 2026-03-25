@@ -139,10 +139,7 @@ class _VoiceTransactionScreenState
     if (_parsed!.type == TransactionType.sale) {
       context.push('/sales/new', extra: _parsed);
     } else {
-      // TODO: Purchase flow when implemented
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Compra registrada (flujo pendiente)')),
-      );
+      context.push('/purchases/new', extra: _parsed);
     }
   }
 

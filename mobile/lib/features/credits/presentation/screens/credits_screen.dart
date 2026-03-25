@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/models/credit_model.dart';
 import '../../../../shared/providers/auth_provider.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../data/credits_repository.dart';
-import 'credit_detail_screen.dart';
 
 final _currencyFormat =
     NumberFormat.currency(locale: 'es_CO', symbol: '\$', decimalDigits: 0);
