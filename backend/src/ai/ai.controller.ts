@@ -10,12 +10,12 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AiService } from './ai.service';
 import { ParseTransactionDto } from './dto/parse-transaction.dto';
-import { TeamMemberGuard } from '../teams/guards/team-member.guard';
+import { TeamRolesGuard } from '../teams/guards/team-roles.guard';
 
 @ApiTags('AI')
 @ApiBearerAuth()
 @Controller('teams/:teamId/ai')
-@UseGuards(TeamMemberGuard)
+@UseGuards(TeamRolesGuard)
 export class AiController {
   private readonly logger = new Logger(AiController.name);
 

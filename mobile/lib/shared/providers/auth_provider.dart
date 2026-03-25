@@ -45,13 +45,15 @@ class AuthState {
       );
 }
 
-class AuthNotifier extends StateNotifier<AuthState> {
-  final AuthRepository _repo;
-  final SecureStorage _storage;
-
-  AuthNotifier(this._repo, this._storage) : super(const AuthState()) {
+class AuthNotifier extends Notifier<AuthState> {
+  @override
+  AuthState build() {
     _init();
+    return const AuthState();
   }
+
+  AuthRepository get _repo => ref.read(authRepositoryProvider);
+  SecureStorage get _storage => ref.read(secureStorageProvider);
 
   Future<void> _init() async {
     final token = await _storage.getToken();
@@ -158,9 +160,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
   void clearError() => state = state.copyWith(error: null);
 }
 
-final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  return AuthNotifier(
-    ref.read(authRepositoryProvider),
-    ref.read(secureStorageProvider),
-  );
-});
+final authProvider = NotifierProvider<AuthNotifier, AuthState>(
+  AuthNotifier.new,
+);

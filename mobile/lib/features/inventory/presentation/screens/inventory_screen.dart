@@ -73,7 +73,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
 
   void _showAddMovementDialog(
       BuildContext context, WidgetRef ref, String teamId) {
-    final products = ref.read(productsProvider(teamId)).valueOrNull ?? [];
+    final products = ref.read(productsProvider(teamId)).value ?? [];
     if (products.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No hay productos disponibles')),
