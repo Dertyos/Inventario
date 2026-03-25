@@ -78,15 +78,14 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
     );
   }
 
-  void _showAddMovementDialog(
+  Future<void> _showAddMovementDialog(
     BuildContext context,
     WidgetRef ref,
     String teamId, {
     ProductModel? preselectedProduct,
-  }) {
-    // Ensure products are loaded
-    final productsAsync = ref.read(productsProvider(teamId));
-    final products = productsAsync.value ?? [];
+  }) async {
+    // Ensure products are loaded by awaiting the future
+    final products = await ref.read(productsProvider(teamId).future);
 
     String? selectedProductId = preselectedProduct?.id;
     String type = preselectedProduct != null ? 'in' : 'in';
