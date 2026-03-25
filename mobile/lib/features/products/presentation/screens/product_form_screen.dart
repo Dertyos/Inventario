@@ -153,6 +153,55 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     }
   }
 
+  void _showCategoryPicker(List<CategoryModel> cats) {
+    if (cats.isEmpty) {
+      _showCreateCategoryDialog();
+      return;
+    }
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Text(
+                'Selecciona una categoría',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+            if (_selectedCategoryId != null)
+              ListTile(
+                leading: const Icon(Icons.close),
+                title: const Text('Sin categoría'),
+                onTap: () {
+                  setState(() => _selectedCategoryId = null);
+                  Navigator.pop(ctx);
+                },
+              ),
+            ...cats.map((c) => ListTile(
+                  leading: Icon(
+                    c.id == _selectedCategoryId
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_unchecked,
+                    color: c.id == _selectedCategoryId
+                        ? Theme.of(context).colorScheme.primary
+                        : null,
+                  ),
+                  title: Text(c.name),
+                  onTap: () {
+                    setState(() => _selectedCategoryId = c.id);
+                    Navigator.pop(ctx);
+                  },
+                )),
+            const SizedBox(height: AppSpacing.md),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _showCreateCategoryDialog() async {
     final nameController = TextEditingController();
     final result = await showDialog<String>(
@@ -284,46 +333,44 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
             ),
             const SizedBox(height: AppSpacing.md),
             categories.whenOrNull(
-                  data: (cats) => Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      DropdownButtonFormField<String>(
-                        value: _selectedCategoryId,
-                        decoration: const InputDecoration(
-                          labelText: 'Categoría',
-                          prefixIcon: Icon(Icons.category_outlined),
-                        ),
-                        items: cats
-                            .map((c) => DropdownMenuItem(
-                                  value: c.id,
-                                  child: Text(c.name),
-                                ))
-                            .toList(),
-                        onChanged: (v) => setState(() => _selectedCategoryId = v),
-                      ),
-                      if (cats.isEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: AppSpacing.xs),
-                          child: TextButton.icon(
-                            onPressed: () => _showCreateCategoryDialog(),
-                            icon: const Icon(Icons.add, size: 18),
-                            label: const Text('Crear categoría'),
+                  data: (cats) {
+                    final selectedName = cats
+                        .where((c) => c.id == _selectedCategoryId)
+                        .map((c) => c.name)
+                        .firstOrNull;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        GestureDetector(
+                          onTap: () => _showCategoryPicker(cats),
+                          child: InputDecorator(
+                            decoration: const InputDecoration(
+                              labelText: 'Categoría',
+                              prefixIcon: Icon(Icons.category_outlined),
+                              suffixIcon: Icon(Icons.arrow_drop_down),
+                            ),
+                            child: Text(
+                              selectedName ?? 'Sin categoría',
+                              style: selectedName != null
+                                  ? null
+                                  : TextStyle(color: Theme.of(context).hintColor),
+                            ),
                           ),
-                        )
-                      else
+                        ),
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton.icon(
                             onPressed: () => _showCreateCategoryDialog(),
                             icon: const Icon(Icons.add, size: 18),
-                            label: const Text('Nueva categoría'),
+                            label: Text(cats.isEmpty ? 'Crear categoría' : 'Nueva categoría'),
                             style: TextButton.styleFrom(
                               visualDensity: VisualDensity.compact,
                             ),
                           ),
                         ),
-                    ],
-                  ),
+                      ],
+                    );
+                  },
                 ) ??
                 const LinearProgressIndicator(),
             const SizedBox(height: AppSpacing.md),

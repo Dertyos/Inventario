@@ -1,3 +1,5 @@
+import 'product_model.dart';
+
 class SaleModel {
   final String id;
   final String saleNumber;
@@ -28,7 +30,7 @@ class SaleModel {
   factory SaleModel.fromJson(Map<String, dynamic> json) => SaleModel(
         id: json['id'] as String,
         saleNumber: json['saleNumber'] as String? ?? '',
-        totalAmount: (json['totalAmount'] as num).toDouble(),
+        totalAmount: JsonParse.toDouble(json['totalAmount']) ?? 0,
         status: json['status'] as String? ?? 'completed',
         paymentMethod: json['paymentMethod'] as String?,
         notes: json['notes'] as String?,
@@ -60,8 +62,8 @@ class SaleItemModel {
   factory SaleItemModel.fromJson(Map<String, dynamic> json) => SaleItemModel(
         productId: json['productId'] as String? ?? json['product']?['id'] as String? ?? '',
         productName: json['product']?['name'] as String?,
-        quantity: json['quantity'] as int,
-        unitPrice: (json['unitPrice'] as num).toDouble(),
+        quantity: JsonParse.toInt(json['quantity']) ?? 0,
+        unitPrice: JsonParse.toDouble(json['unitPrice']) ?? 0,
       );
 
   Map<String, dynamic> toJson() => {

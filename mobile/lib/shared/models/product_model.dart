@@ -11,7 +11,7 @@ class ProductModel {
   final int minStock;
   final bool trackLots;
   final bool isActive;
-  final String categoryId;
+  final String? categoryId;
   final String? categoryName;
   final DateTime createdAt;
 
@@ -28,7 +28,7 @@ class ProductModel {
     this.minStock = 0,
     this.trackLots = false,
     this.isActive = true,
-    required this.categoryId,
+    this.categoryId,
     this.categoryName,
     required this.createdAt,
   });
@@ -38,18 +38,18 @@ class ProductModel {
 
   factory ProductModel.fromJson(Map<String, dynamic> json) => ProductModel(
         id: json['id'] as String,
-        sku: json['sku'] as String,
+        sku: json['sku'] as String? ?? '',
         name: json['name'] as String,
         barcode: json['barcode'] as String?,
         description: json['description'] as String?,
         imageUrl: json['imageUrl'] as String?,
-        price: (json['price'] as num).toDouble(),
-        cost: (json['cost'] as num?)?.toDouble(),
-        stock: json['stock'] as int? ?? 0,
-        minStock: json['minStock'] as int? ?? 0,
+        price: JsonParse.toDouble(json['price']) ?? 0,
+        cost: JsonParse.toDouble(json['cost']),
+        stock: JsonParse.toInt(json['stock']) ?? 0,
+        minStock: JsonParse.toInt(json['minStock']) ?? 0,
         trackLots: json['trackLots'] as bool? ?? false,
         isActive: json['isActive'] as bool? ?? true,
-        categoryId: json['categoryId'] as String? ?? json['category']?['id'] as String? ?? '',
+        categoryId: json['categoryId'] as String? ?? json['category']?['id'] as String?,
         categoryName: json['category']?['name'] as String?,
         createdAt: DateTime.parse(json['createdAt'] as String),
       );
@@ -74,4 +74,24 @@ class CategoryModel {
         description: json['description'] as String?,
         color: json['color'] as String?,
       );
+}
+
+/// Safe JSON number parsing — handles both num and String from backend.
+class JsonParse {
+  JsonParse._();
+
+  static double? toDouble(dynamic v) {
+    if (v == null) return null;
+    if (v is num) return v.toDouble();
+    if (v is String) return double.tryParse(v);
+    return null;
+  }
+
+  static int? toInt(dynamic v) {
+    if (v == null) return null;
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    if (v is String) return int.tryParse(v);
+    return null;
+  }
 }
