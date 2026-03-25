@@ -10,4 +10,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ping backend
-        run: curl -fsS --max-time 120 https://inventario-hxzw.onrender.com/ || true
+        run: curl -fsS --max-time 120 https://inventario.dertyos.com/ || true
