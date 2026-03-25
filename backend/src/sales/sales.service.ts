@@ -13,6 +13,8 @@ import {
   MovementType,
 } from '../inventory/entities/inventory-movement.entity';
 import { CreateSaleDto } from './dto/create-sale.dto';
+import { PaymentMethod } from './entities/sale.entity';
+import { CreditsService } from '../credits/credits.service';
 
 @Injectable()
 export class SalesService {
@@ -20,6 +22,7 @@ export class SalesService {
     @InjectRepository(Sale)
     private readonly salesRepository: Repository<Sale>,
     private readonly dataSource: DataSource,
+    private readonly creditsService: CreditsService,
   ) {}
 
   async create(
@@ -139,6 +142,29 @@ export class SalesService {
       );
 
       await queryRunner.commitTransaction();
+
+      // Auto-create credit account if credit sale with customer
+      if (createSaleDto.paymentMethod === PaymentMethod.CREDIT && createSaleDto.customerId) {
+        try {
+          const interestRate = createSaleDto.creditInterestRate || 0;
+          let interestType = 'none';
+          if (interestRate > 0) {
+            interestType = createSaleDto.creditFrequency === 'monthly' ? 'monthly' : 'fixed';
+          }
+          await this.creditsService.create(teamId, {
+            saleId: savedSale.id,
+            customerId: createSaleDto.customerId,
+            totalAmount: subtotal,
+            installments: createSaleDto.creditInstallments || 1,
+            interestRate: interestRate,
+            interestType: interestType as any,
+            startDate: new Date().toISOString().split('T')[0],
+          });
+        } catch (error) {
+          // Credit creation is non-blocking - sale is already committed
+          console.error('Failed to create credit account:', error.message);
+        }
+      }
 
       return this.findOne(teamId, savedSale.id);
     } catch (error) {

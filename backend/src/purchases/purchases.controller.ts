@@ -15,14 +15,17 @@ import { CreatePurchaseDto } from './dto/create-purchase.dto';
 import { PurchaseStatus } from './entities/purchase.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TeamRolesGuard } from '../teams/guards/team-roles.guard';
+import { FeatureGuard } from '../common/guards/feature.guard';
 import { TeamRoles } from '../teams/decorators/team-roles.decorator';
+import { RequireFeature } from '../common/decorators/require-feature.decorator';
 import { TeamRole } from '../teams/entities/team-member.entity';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
 @ApiTags('purchases')
 @ApiBearerAuth()
 @Controller('teams/:teamId/purchases')
-@UseGuards(JwtAuthGuard, TeamRolesGuard)
+@UseGuards(JwtAuthGuard, TeamRolesGuard, FeatureGuard)
+@RequireFeature('enableSuppliers')
 export class PurchasesController {
   constructor(private readonly purchasesService: PurchasesService) {}
 
