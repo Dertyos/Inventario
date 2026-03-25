@@ -207,3 +207,91 @@ class AppSpacing {
   static const xl = 32.0;
   static const xxl = 48.0;
 }
+
+/// Semantic status colors for consistent use across the app.
+/// Use these instead of hardcoding Colors.green/orange/red.
+class AppColors {
+  AppColors._();
+  // Status
+  static const success = Color(0xFF34A853);
+  static const warning = Color(0xFFFBAC44);
+  static const danger = Color(0xFFEA4335);
+  static const info = Color(0xFF1A73E8);
+
+  // Status with opacity for backgrounds
+  static Color successBg(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? success.withValues(alpha: 0.15)
+          : success.withValues(alpha: 0.1);
+  static Color warningBg(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? warning.withValues(alpha: 0.15)
+          : warning.withValues(alpha: 0.1);
+  static Color dangerBg(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? danger.withValues(alpha: 0.15)
+          : danger.withValues(alpha: 0.1);
+  static Color infoBg(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? info.withValues(alpha: 0.15)
+          : info.withValues(alpha: 0.1);
+}
+
+/// Standard dimensions to eliminate magic numbers.
+class AppDimensions {
+  AppDimensions._();
+  // Avatar / leading icon containers
+  static const avatarSm = 36.0;
+  static const avatarMd = 40.0;
+  static const avatarLg = 44.0;
+  static const iconSizeSm = 16.0;
+  static const iconSizeMd = 20.0;
+  static const iconSizeLg = 24.0;
+  // Border radius
+  static const radiusXs = 6.0;
+  static const radiusSm = 8.0;
+  static const radiusMd = 12.0;
+  static const radiusLg = 16.0;
+  static const radiusXl = 20.0;
+  static const radiusFull = 24.0;
+  // Touch targets (WCAG)
+  static const touchTarget = 48.0;
+  // Button height
+  static const buttonHeight = 52.0;
+}
+
+/// Shared shadow definitions.
+class AppShadows {
+  AppShadows._();
+  static List<BoxShadow> sm(BuildContext context) => [
+        BoxShadow(
+          color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
+          blurRadius: 4,
+          offset: const Offset(0, 1),
+        ),
+      ];
+  static List<BoxShadow> md(BuildContext context) => [
+        BoxShadow(
+          color: Theme.of(context).shadowColor.withValues(alpha: 0.08),
+          blurRadius: 8,
+          offset: const Offset(0, 2),
+        ),
+      ];
+  static List<BoxShadow> lg(BuildContext context) => [
+        BoxShadow(
+          color: Theme.of(context).shadowColor.withValues(alpha: 0.12),
+          blurRadius: 16,
+          offset: const Offset(0, 4),
+        ),
+      ];
+}
+
+/// Shared animation durations and curves.
+class AppAnimations {
+  AppAnimations._();
+  static const fast = Duration(milliseconds: 150);
+  static const normal = Duration(milliseconds: 300);
+  static const slow = Duration(milliseconds: 500);
+  static const defaultCurve = Curves.easeInOut;
+  static const bounceCurve = Curves.elasticOut;
+}

@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/models/customer_model.dart';
 import '../../../../shared/providers/auth_provider.dart';
+import '../../../../shared/widgets/app_list_tile.dart';
+import '../../../../shared/widgets/app_modal.dart';
+import '../../../../shared/widgets/app_search_field.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../data/customers_repository.dart';
 
@@ -25,78 +29,65 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
     final phoneController = TextEditingController();
     final emailController = TextEditingController();
 
-    showModalBottomSheet(
+    showAppModal(
       context: context,
-      isScrollControlled: true,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.fromLTRB(
-          AppSpacing.md,
-          AppSpacing.md,
-          AppSpacing.md,
-          MediaQuery.of(ctx).viewInsets.bottom + AppSpacing.md,
+      title: 'Nuevo cliente',
+      children: [
+        TextField(
+          controller: nameController,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(
+            labelText: 'Nombre *',
+            prefixIcon: Icon(Icons.person_outlined),
+          ),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('Nuevo cliente', style: Theme.of(ctx).textTheme.titleLarge),
-            const SizedBox(height: AppSpacing.md),
-            TextField(
-              controller: nameController,
-              textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: 'Nombre *',
-                prefixIcon: Icon(Icons.person_outlined),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            TextField(
-              controller: phoneController,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
-                labelText: 'Teléfono',
-                prefixIcon: Icon(Icons.phone_outlined),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            TextField(
-              controller: emailController,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                labelText: 'Email',
-                prefixIcon: Icon(Icons.email_outlined),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            ElevatedButton(
-              onPressed: () async {
-                if (nameController.text.trim().isEmpty) return;
-                final teamId = ref.read(authProvider).teamId;
-                try {
-                  await ref
-                      .read(customersRepositoryProvider)
-                      .createCustomer(teamId, {
-                    'name': nameController.text.trim(),
-                    if (phoneController.text.isNotEmpty)
-                      'phone': phoneController.text.trim(),
-                    if (emailController.text.isNotEmpty)
-                      'email': emailController.text.trim(),
-                  });
-                  ref.invalidate(customersProvider(teamId));
-                  if (ctx.mounted) Navigator.pop(ctx);
-                } catch (e) {
-                  if (ctx.mounted) {
-                    ScaffoldMessenger.of(ctx).showSnackBar(
-                      SnackBar(content: Text('Error: $e')),
-                    );
-                  }
-                }
-              },
-              child: const Text('Guardar'),
-            ),
-          ],
+        const SizedBox(height: AppSpacing.sm),
+        TextField(
+          controller: phoneController,
+          keyboardType: TextInputType.phone,
+          decoration: const InputDecoration(
+            labelText: 'Teléfono',
+            prefixIcon: Icon(Icons.phone_outlined),
+          ),
         ),
-      ),
+        const SizedBox(height: AppSpacing.sm),
+        TextField(
+          controller: emailController,
+          keyboardType: TextInputType.emailAddress,
+          decoration: const InputDecoration(
+            labelText: 'Email',
+            prefixIcon: Icon(Icons.email_outlined),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        ElevatedButton(
+          onPressed: () async {
+            if (nameController.text.trim().isEmpty) return;
+            final teamId = ref.read(authProvider).teamId;
+            final ctx = context;
+            try {
+              await ref
+                  .read(customersRepositoryProvider)
+                  .createCustomer(teamId, {
+                'name': nameController.text.trim(),
+                if (phoneController.text.isNotEmpty)
+                  'phone': phoneController.text.trim(),
+                if (emailController.text.isNotEmpty)
+                  'email': emailController.text.trim(),
+              });
+              ref.invalidate(customersProvider(teamId));
+              if (ctx.mounted) Navigator.pop(ctx);
+            } catch (e) {
+              if (ctx.mounted) {
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  SnackBar(content: Text('Error: $e')),
+                );
+              }
+            }
+          },
+          child: const Text('Guardar'),
+        ),
+      ],
     );
   }
 
@@ -110,22 +101,10 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
       appBar: AppBar(title: const Text('Clientes')),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md, AppSpacing.sm, AppSpacing.md, 0),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Buscar clientes...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () => setState(() => _searchQuery = ''),
-                      )
-                    : null,
-              ),
-              onChanged: (v) => setState(() => _searchQuery = v),
-            ),
+          AppSearchField(
+            hintText: 'Buscar clientes...',
+            value: _searchQuery,
+            onChanged: (v) => setState(() => _searchQuery = v),
           ),
           Expanded(
             child: customers.when(
@@ -163,27 +142,12 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                     itemCount: filtered.length,
                     itemBuilder: (context, index) {
                       final customer = filtered[index];
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: colorScheme.primaryContainer,
-                            child: Text(
-                              customer.name[0].toUpperCase(),
-                              style: TextStyle(
-                                color: colorScheme.onPrimaryContainer,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                          title: Text(customer.name),
-                          subtitle: Text(
-                            [customer.phone, customer.email]
-                                .where((e) => e != null && e.isNotEmpty)
-                                .join(' · '),
-                          ),
-                          trailing: const Icon(Icons.chevron_right),
-                        ),
+                      return AppListTile.initial(
+                        initial: customer.name[0],
+                        title: customer.name,
+                        subtitle: [customer.phone, customer.email]
+                            .where((e) => e != null && e.isNotEmpty)
+                            .join(' · '),
                       );
                     },
                   ),
