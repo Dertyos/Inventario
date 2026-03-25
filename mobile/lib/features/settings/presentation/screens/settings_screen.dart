@@ -175,6 +175,41 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => context.go('/customers'),
           ),
           _SettingsTile(
+            icon: Icons.local_shipping_outlined,
+            title: 'Proveedores',
+            subtitle: 'Gestiona tus proveedores',
+            onTap: () => context.push('/suppliers'),
+          ),
+          _SettingsTile(
+            icon: Icons.credit_score_outlined,
+            title: 'Créditos',
+            subtitle: 'Cuentas por cobrar y cuotas',
+            onTap: () => context.push('/credits'),
+          ),
+          _SettingsTile(
+            icon: Icons.shopping_cart_outlined,
+            title: 'Compras',
+            subtitle: 'Órdenes de compra a proveedores',
+            onTap: () => context.push('/purchases'),
+          ),
+          _SettingsTile(
+            icon: Icons.inventory_outlined,
+            title: 'Lotes',
+            subtitle: 'Lotes y fechas de vencimiento',
+            onTap: () => context.push('/lots'),
+          ),
+          _SettingsTile(
+            icon: Icons.notifications_outlined,
+            title: 'Notificaciones',
+            onTap: () => context.push('/notifications'),
+          ),
+          _SettingsTile(
+            icon: Icons.schedule_outlined,
+            title: 'Recordatorios de pago',
+            subtitle: 'Genera y gestiona cobros',
+            onTap: () => context.push('/reminders'),
+          ),
+          _SettingsTile(
             icon: Icons.mic,
             title: 'Registrar con voz',
             subtitle: 'Ventas y compras en lenguaje natural',

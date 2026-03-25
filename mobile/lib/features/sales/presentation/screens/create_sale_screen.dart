@@ -6,6 +6,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/models/customer_model.dart';
 import '../../../../shared/models/product_model.dart';
 import '../../../../shared/providers/auth_provider.dart';
+import '../../../credits/data/credits_repository.dart';
 import '../../../customers/data/customers_repository.dart';
 import '../../../customers/presentation/screens/customers_screen.dart';
 import '../../../products/presentation/screens/products_screen.dart';
@@ -193,7 +194,7 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
     final teamId = ref.read(authProvider).teamId;
 
     try {
-      await ref.read(salesRepositoryProvider).createSale(teamId, {
+      final sale = await ref.read(salesRepositoryProvider).createSale(teamId, {
         'items': _cart
             .map((c) => {
                   'productId': c.product.id,
@@ -217,6 +218,33 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
               _creditNextPayment.toIso8601String().split('T').first,
         },
       });
+
+      // Create credit account if credit sale with customer
+      if (_paymentMethod == 'credit' && _selectedCustomer != null) {
+        try {
+          final interestText = _interestController.text.trim();
+          final interestRate = double.tryParse(interestText) ?? 0;
+          String interestType = 'none';
+          if (interestRate > 0) {
+            interestType = _creditFrequency == 'monthly' ? 'monthly' : 'fixed';
+          }
+
+          await ref.read(creditsRepositoryProvider).createCredit(teamId, {
+            'saleId': sale.id,
+            'customerId': _selectedCustomer!.id,
+            'totalAmount': _total,
+            'installments':
+                int.tryParse(_installmentsController.text) ?? 1,
+            if (interestRate > 0) 'interestRate': interestRate,
+            if (interestRate > 0) 'interestType': interestType,
+            'startDate':
+                DateTime.now().toIso8601String().split('T').first,
+          });
+        } catch (_) {
+          // Credit account creation is best-effort; sale already saved
+        }
+      }
+
       ref.invalidate(salesProvider(teamId));
       ref.invalidate(productsProvider(teamId));
       if (mounted) {
