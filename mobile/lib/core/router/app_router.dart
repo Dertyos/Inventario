@@ -1,0 +1,127 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../features/auth/presentation/screens/login_screen.dart';
+import '../../features/auth/presentation/screens/register_screen.dart';
+import '../../features/auth/presentation/screens/create_team_screen.dart';
+import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
+import '../../features/products/presentation/screens/products_screen.dart';
+import '../../features/products/presentation/screens/product_form_screen.dart';
+import '../../features/sales/presentation/screens/sales_screen.dart';
+import '../../features/sales/presentation/screens/create_sale_screen.dart';
+import '../../features/inventory/presentation/screens/inventory_screen.dart';
+import '../../features/customers/presentation/screens/customers_screen.dart';
+import '../../features/settings/presentation/screens/settings_screen.dart';
+import '../../features/ai_chat/presentation/screens/ai_chat_screen.dart'
+    show VoiceTransactionScreen;
+import '../../shared/providers/auth_provider.dart';
+import '../../shared/widgets/app_shell.dart';
+
+final _rootNavigatorKey = GlobalKey<NavigatorState>();
+final _shellNavigatorKey = GlobalKey<NavigatorState>();
+
+final routerProvider = Provider<GoRouter>((ref) {
+  final authState = ref.watch(authProvider);
+
+  return GoRouter(
+    navigatorKey: _rootNavigatorKey,
+    initialLocation: '/dashboard',
+    redirect: (context, state) {
+      final isAuth = authState.isAuthenticated;
+      final isAuthRoute = state.matchedLocation == '/login' ||
+          state.matchedLocation == '/register';
+      final isCreateTeam = state.matchedLocation == '/create-team';
+
+      if (authState.status == AuthStatus.initial) return null;
+
+      if (!isAuth && !isAuthRoute) return '/login';
+      if (isAuth && isAuthRoute) return '/dashboard';
+      if (isAuth && authState.activeTeam == null && !isCreateTeam) {
+        return '/create-team';
+      }
+      return null;
+    },
+    routes: [
+      GoRoute(
+        path: '/login',
+        builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/register',
+        builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: '/create-team',
+        builder: (context, state) => const CreateTeamScreen(),
+      ),
+      ShellRoute(
+        navigatorKey: _shellNavigatorKey,
+        builder: (context, state, child) => AppShell(child: child),
+        routes: [
+          GoRoute(
+            path: '/dashboard',
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: DashboardScreen(),
+            ),
+          ),
+          GoRoute(
+            path: '/products',
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: ProductsScreen(),
+            ),
+            routes: [
+              GoRoute(
+                path: 'new',
+                parentNavigatorKey: _rootNavigatorKey,
+                builder: (context, state) => const ProductFormScreen(),
+              ),
+              GoRoute(
+                path: ':id/edit',
+                parentNavigatorKey: _rootNavigatorKey,
+                builder: (context, state) => ProductFormScreen(
+                  productId: state.pathParameters['id'],
+                ),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: '/sales',
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: SalesScreen(),
+            ),
+            routes: [
+              GoRoute(
+                path: 'new',
+                parentNavigatorKey: _rootNavigatorKey,
+                builder: (context, state) => const CreateSaleScreen(),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: '/inventory',
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: InventoryScreen(),
+            ),
+          ),
+          GoRoute(
+            path: '/customers',
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: CustomersScreen(),
+            ),
+          ),
+          GoRoute(
+            path: '/settings',
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: SettingsScreen(),
+            ),
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/voice-transaction',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const VoiceTransactionScreen(),
+      ),
+    ],
+  );
+});

@@ -39,6 +39,7 @@
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.0",
     "typeorm": "^0.3.28",
+    "@anthropic-ai/sdk": "^0.80.0",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
