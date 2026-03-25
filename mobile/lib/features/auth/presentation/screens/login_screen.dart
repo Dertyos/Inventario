@@ -165,21 +165,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       backgroundColor: colorScheme.surface,
                     ),
                   ),
-                  if (Platform.isIOS) ...[
-                    const SizedBox(height: AppSpacing.sm),
-                    ElevatedButton.icon(
-                      onPressed: auth.isLoading
-                          ? null
-                          : () => ref.read(authProvider.notifier).signInWithApple(),
-                      icon: const Icon(Icons.apple, size: 24),
-                      label: const Text('Continuar con Apple'),
-                      style: ElevatedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        backgroundColor: Colors.black,
-                        side: BorderSide.none,
-                      ),
-                    ),
-                  ],
+                  // Apple Sign-In — hidden until Apple Developer account is configured
+                  // if (Platform.isIOS) ...[
+                  //   const SizedBox(height: AppSpacing.sm),
+                  //   ElevatedButton.icon(
+                  //     onPressed: auth.isLoading
+                  //         ? null
+                  //         : () => ref.read(authProvider.notifier).signInWithApple(),
+                  //     icon: const Icon(Icons.apple, size: 24),
+                  //     label: const Text('Continuar con Apple'),
+                  //     style: ElevatedButton.styleFrom(
+                  //       foregroundColor: Colors.white,
+                  //       backgroundColor: Colors.black,
+                  //       side: BorderSide.none,
+                  //     ),
+                  //   ),
+                  // ],
                   const SizedBox(height: AppSpacing.md),
                   TextButton(
                     onPressed: () => context.go('/register'),
