@@ -16,25 +16,34 @@ export class CategoriesService {
     private readonly categoriesRepository: Repository<Category>,
   ) {}
 
-  async create(createCategoryDto: CreateCategoryDto): Promise<Category> {
+  async create(
+    teamId: string,
+    createCategoryDto: CreateCategoryDto,
+  ): Promise<Category> {
     const existing = await this.categoriesRepository.findOne({
-      where: { name: createCategoryDto.name },
+      where: { teamId, name: createCategoryDto.name },
     });
     if (existing) {
-      throw new ConflictException('Category name already exists');
+      throw new ConflictException('Category name already exists in this team');
     }
 
-    const category = this.categoriesRepository.create(createCategoryDto);
+    const category = this.categoriesRepository.create({
+      ...createCategoryDto,
+      teamId,
+    });
     return this.categoriesRepository.save(category);
   }
 
-  async findAll(): Promise<Category[]> {
-    return this.categoriesRepository.find({ order: { name: 'ASC' } });
+  async findAll(teamId: string): Promise<Category[]> {
+    return this.categoriesRepository.find({
+      where: { teamId },
+      order: { name: 'ASC' },
+    });
   }
 
-  async findOne(id: string): Promise<Category> {
+  async findOne(teamId: string, id: string): Promise<Category> {
     const category = await this.categoriesRepository.findOne({
-      where: { id },
+      where: { id, teamId },
       relations: ['products'],
     });
     if (!category) {
@@ -44,16 +53,17 @@ export class CategoriesService {
   }
 
   async update(
+    teamId: string,
     id: string,
     updateCategoryDto: UpdateCategoryDto,
   ): Promise<Category> {
-    const category = await this.findOne(id);
+    const category = await this.findOne(teamId, id);
     Object.assign(category, updateCategoryDto);
     return this.categoriesRepository.save(category);
   }
 
-  async remove(id: string): Promise<void> {
-    const category = await this.findOne(id);
+  async remove(teamId: string, id: string): Promise<void> {
+    const category = await this.findOne(teamId, id);
     if (category.products && category.products.length > 0) {
       throw new ConflictException(
         'Cannot delete category with associated products',

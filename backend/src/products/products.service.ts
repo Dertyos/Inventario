@@ -16,26 +16,36 @@ export class ProductsService {
     private readonly productsRepository: Repository<Product>,
   ) {}
 
-  async create(createProductDto: CreateProductDto): Promise<Product> {
+  async create(
+    teamId: string,
+    createProductDto: CreateProductDto,
+  ): Promise<Product> {
     const existing = await this.productsRepository.findOne({
-      where: { sku: createProductDto.sku },
+      where: { teamId, sku: createProductDto.sku },
     });
     if (existing) {
-      throw new ConflictException('SKU already exists');
+      throw new ConflictException('SKU already exists in this team');
     }
 
-    const product = this.productsRepository.create(createProductDto);
+    const product = this.productsRepository.create({
+      ...createProductDto,
+      teamId,
+    });
     return this.productsRepository.save(product);
   }
 
-  async findAll(options?: {
-    categoryId?: string;
-    isActive?: boolean;
-    search?: string;
-  }): Promise<Product[]> {
+  async findAll(
+    teamId: string,
+    options?: {
+      categoryId?: string;
+      isActive?: boolean;
+      search?: string;
+    },
+  ): Promise<Product[]> {
     const query = this.productsRepository
       .createQueryBuilder('product')
-      .leftJoinAndSelect('product.category', 'category');
+      .leftJoinAndSelect('product.category', 'category')
+      .where('product.teamId = :teamId', { teamId });
 
     if (options?.categoryId) {
       query.andWhere('product.categoryId = :categoryId', {
@@ -59,9 +69,9 @@ export class ProductsService {
     return query.orderBy('product.name', 'ASC').getMany();
   }
 
-  async findOne(id: string): Promise<Product> {
+  async findOne(teamId: string, id: string): Promise<Product> {
     const product = await this.productsRepository.findOne({
-      where: { id },
+      where: { id, teamId },
       relations: ['category'],
     });
     if (!product) {
@@ -71,25 +81,27 @@ export class ProductsService {
   }
 
   async update(
+    teamId: string,
     id: string,
     updateProductDto: UpdateProductDto,
   ): Promise<Product> {
-    const product = await this.findOne(id);
+    const product = await this.findOne(teamId, id);
     Object.assign(product, updateProductDto);
     return this.productsRepository.save(product);
   }
 
-  async remove(id: string): Promise<void> {
-    const product = await this.findOne(id);
+  async remove(teamId: string, id: string): Promise<void> {
+    const product = await this.findOne(teamId, id);
     product.isActive = false;
     await this.productsRepository.save(product);
   }
 
-  async findLowStock(): Promise<Product[]> {
+  async findLowStock(teamId: string): Promise<Product[]> {
     return this.productsRepository
       .createQueryBuilder('product')
       .leftJoinAndSelect('product.category', 'category')
-      .where('product.stock <= product.minStock')
+      .where('product.teamId = :teamId', { teamId })
+      .andWhere('product.stock <= product.minStock')
       .andWhere('product.isActive = true')
       .orderBy('product.stock', 'ASC')
       .getMany();

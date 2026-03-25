@@ -8,12 +8,7 @@ import {
 } from 'typeorm';
 import { Exclude } from 'class-transformer';
 import { InventoryMovement } from '../../inventory/entities/inventory-movement.entity';
-
-export enum UserRole {
-  ADMIN = 'admin',
-  MANAGER = 'manager',
-  EMPLOYEE = 'employee',
-}
+import { TeamMember } from '../../teams/entities/team-member.entity';
 
 @Entity('users')
 export class User {
@@ -33,11 +28,14 @@ export class User {
   @Column()
   lastName: string;
 
-  @Column({ type: 'enum', enum: UserRole, default: UserRole.EMPLOYEE })
-  role: UserRole;
+  @Column({ nullable: true })
+  phone: string;
 
   @Column({ default: true })
   isActive: boolean;
+
+  @OneToMany(() => TeamMember, (membership) => membership.user)
+  teamMemberships: TeamMember[];
 
   @OneToMany(() => InventoryMovement, (movement) => movement.user)
   inventoryMovements: InventoryMovement[];

@@ -1,8 +1,19 @@
-import { IsString, IsNumber, IsOptional, IsUUID, Min } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsUUID,
+  IsBoolean,
+  Min,
+} from 'class-validator';
 
 export class CreateProductDto {
   @IsString()
   sku: string;
+
+  @IsString()
+  @IsOptional()
+  barcode?: string;
 
   @IsString()
   name: string;
@@ -10,6 +21,10 @@ export class CreateProductDto {
   @IsString()
   @IsOptional()
   description?: string;
+
+  @IsString()
+  @IsOptional()
+  imageUrl?: string;
 
   @IsNumber()
   @Min(0)
@@ -24,6 +39,10 @@ export class CreateProductDto {
   @Min(0)
   @IsOptional()
   minStock?: number;
+
+  @IsBoolean()
+  @IsOptional()
+  trackLots?: boolean;
 
   @IsUUID()
   categoryId: string;

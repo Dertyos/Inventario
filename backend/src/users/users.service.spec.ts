@@ -3,7 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { UsersService } from './users.service';
-import { User, UserRole } from './entities/user.entity';
+import { User } from './entities/user.entity';
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -15,10 +15,11 @@ describe('UsersService', () => {
     password: 'hashedpassword',
     firstName: 'John',
     lastName: 'Doe',
-    role: UserRole.EMPLOYEE,
+    phone: null,
     isActive: true,
     createdAt: new Date(),
     updatedAt: new Date(),
+    teamMemberships: [],
     inventoryMovements: [],
   };
 

@@ -5,18 +5,23 @@ import { Repository } from 'typeorm';
 import { CategoriesService } from './categories.service';
 import { Category } from './entities/category.entity';
 
+const TEAM_ID = 'team-uuid-1';
+
 describe('CategoriesService', () => {
   let service: CategoriesService;
   let repository: Partial<Repository<Category>>;
 
-  const mockCategory: Category = {
+  const mockCategory = {
     id: 'uuid-cat-1',
+    teamId: TEAM_ID,
+    team: null,
     name: 'Electronics',
     description: 'Electronic devices',
+    color: null,
     products: [],
     createdAt: new Date(),
     updatedAt: new Date(),
-  };
+  } as Category;
 
   beforeEach(async () => {
     repository = {
@@ -40,7 +45,7 @@ describe('CategoriesService', () => {
   describe('create', () => {
     it('should create a category', async () => {
       (repository.findOne as jest.Mock).mockResolvedValue(null);
-      const result = await service.create({
+      const result = await service.create(TEAM_ID, {
         name: 'Electronics',
         description: 'Electronic devices',
       });
@@ -49,15 +54,15 @@ describe('CategoriesService', () => {
 
     it('should throw ConflictException for duplicate name', async () => {
       (repository.findOne as jest.Mock).mockResolvedValue(mockCategory);
-      await expect(service.create({ name: 'Electronics' })).rejects.toThrow(
-        ConflictException,
-      );
+      await expect(
+        service.create(TEAM_ID, { name: 'Electronics' }),
+      ).rejects.toThrow(ConflictException);
     });
   });
 
   describe('findAll', () => {
-    it('should return all categories', async () => {
-      const result = await service.findAll();
+    it('should return all categories for a team', async () => {
+      const result = await service.findAll(TEAM_ID);
       expect(result).toHaveLength(1);
     });
   });
@@ -65,13 +70,13 @@ describe('CategoriesService', () => {
   describe('findOne', () => {
     it('should return a category', async () => {
       (repository.findOne as jest.Mock).mockResolvedValue(mockCategory);
-      const result = await service.findOne('uuid-cat-1');
+      const result = await service.findOne(TEAM_ID, 'uuid-cat-1');
       expect(result.name).toBe('Electronics');
     });
 
     it('should throw NotFoundException', async () => {
       (repository.findOne as jest.Mock).mockResolvedValue(null);
-      await expect(service.findOne('uuid-999')).rejects.toThrow(
+      await expect(service.findOne(TEAM_ID, 'uuid-999')).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -83,7 +88,7 @@ describe('CategoriesService', () => {
         ...mockCategory,
         products: [],
       });
-      await service.remove('uuid-cat-1');
+      await service.remove(TEAM_ID, 'uuid-cat-1');
       expect(repository.remove).toHaveBeenCalled();
     });
 
@@ -92,7 +97,7 @@ describe('CategoriesService', () => {
         ...mockCategory,
         products: [{ id: 'prod-1' }],
       });
-      await expect(service.remove('uuid-cat-1')).rejects.toThrow(
+      await expect(service.remove(TEAM_ID, 'uuid-cat-1')).rejects.toThrow(
         ConflictException,
       );
     });

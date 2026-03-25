@@ -7,23 +7,39 @@ import {
   ManyToOne,
   OneToMany,
   JoinColumn,
+  Unique,
 } from 'typeorm';
 import { Category } from '../../categories/entities/category.entity';
 import { InventoryMovement } from '../../inventory/entities/inventory-movement.entity';
+import { Team } from '../../teams/entities/team.entity';
 
 @Entity('products')
+@Unique(['teamId', 'sku'])
 export class Product {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ unique: true })
+  @Column()
+  teamId: string;
+
+  @ManyToOne(() => Team)
+  @JoinColumn({ name: 'teamId' })
+  team: Team;
+
+  @Column()
   sku: string;
+
+  @Column({ nullable: true })
+  barcode: string;
 
   @Column()
   name: string;
 
   @Column({ nullable: true })
   description: string;
+
+  @Column({ nullable: true })
+  imageUrl: string;
 
   @Column({ type: 'decimal', precision: 12, scale: 2 })
   price: number;
@@ -36,6 +52,9 @@ export class Product {
 
   @Column({ type: 'int', default: 0 })
   minStock: number;
+
+  @Column({ default: false })
+  trackLots: boolean;
 
   @Column()
   categoryId: string;

@@ -14,7 +14,15 @@ export class UpdateProductDto {
 
   @IsString()
   @IsOptional()
+  barcode?: string;
+
+  @IsString()
+  @IsOptional()
   description?: string;
+
+  @IsString()
+  @IsOptional()
+  imageUrl?: string;
 
   @IsNumber()
   @Min(0)
@@ -30,6 +38,10 @@ export class UpdateProductDto {
   @Min(0)
   @IsOptional()
   minStock?: number;
+
+  @IsBoolean()
+  @IsOptional()
+  trackLots?: boolean;
 
   @IsUUID()
   @IsOptional()

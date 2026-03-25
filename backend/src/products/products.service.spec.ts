@@ -4,11 +4,14 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { Product } from './entities/product.entity';
 
+const TEAM_ID = 'team-uuid-1';
+
 describe('ProductsService', () => {
   let service: ProductsService;
 
   const mockProduct = {
     id: 'uuid-prod-1',
+    teamId: TEAM_ID,
     sku: 'SKU-001',
     name: 'Laptop',
     description: 'A laptop',
@@ -18,14 +21,15 @@ describe('ProductsService', () => {
     minStock: 5,
     categoryId: 'uuid-cat-1',
     isActive: true,
+    trackLots: false,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
 
   const mockQueryBuilder = {
     leftJoinAndSelect: jest.fn().mockReturnThis(),
-    andWhere: jest.fn().mockReturnThis(),
     where: jest.fn().mockReturnThis(),
+    andWhere: jest.fn().mockReturnThis(),
     orderBy: jest.fn().mockReturnThis(),
     getMany: jest.fn().mockResolvedValue([mockProduct]),
   };
@@ -53,7 +57,7 @@ describe('ProductsService', () => {
   describe('create', () => {
     it('should create a product', async () => {
       mockRepository.findOne.mockResolvedValue(null);
-      const result = await service.create({
+      const result = await service.create(TEAM_ID, {
         sku: 'SKU-001',
         name: 'Laptop',
         price: 999.99,
@@ -65,7 +69,7 @@ describe('ProductsService', () => {
     it('should throw ConflictException for duplicate SKU', async () => {
       mockRepository.findOne.mockResolvedValue(mockProduct);
       await expect(
-        service.create({
+        service.create(TEAM_ID, {
           sku: 'SKU-001',
           name: 'Laptop',
           price: 999.99,
@@ -76,13 +80,13 @@ describe('ProductsService', () => {
   });
 
   describe('findAll', () => {
-    it('should return products', async () => {
-      const result = await service.findAll();
+    it('should return products for a team', async () => {
+      const result = await service.findAll(TEAM_ID);
       expect(result).toHaveLength(1);
     });
 
     it('should filter by categoryId', async () => {
-      await service.findAll({ categoryId: 'uuid-cat-1' });
+      await service.findAll(TEAM_ID, { categoryId: 'uuid-cat-1' });
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         'product.categoryId = :categoryId',
         { categoryId: 'uuid-cat-1' },
@@ -90,7 +94,7 @@ describe('ProductsService', () => {
     });
 
     it('should filter by search term', async () => {
-      await service.findAll({ search: 'laptop' });
+      await service.findAll(TEAM_ID, { search: 'laptop' });
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         '(product.name ILIKE :search OR product.sku ILIKE :search)',
         { search: '%laptop%' },
@@ -101,13 +105,13 @@ describe('ProductsService', () => {
   describe('findOne', () => {
     it('should return a product', async () => {
       mockRepository.findOne.mockResolvedValue(mockProduct);
-      const result = await service.findOne('uuid-prod-1');
+      const result = await service.findOne(TEAM_ID, 'uuid-prod-1');
       expect(result.name).toBe('Laptop');
     });
 
     it('should throw NotFoundException', async () => {
       mockRepository.findOne.mockResolvedValue(null);
-      await expect(service.findOne('uuid-999')).rejects.toThrow(
+      await expect(service.findOne(TEAM_ID, 'uuid-999')).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -115,7 +119,7 @@ describe('ProductsService', () => {
 
   describe('findLowStock', () => {
     it('should return low stock products', async () => {
-      const result = await service.findLowStock();
+      const result = await service.findLowStock(TEAM_ID);
       expect(result).toHaveLength(1);
     });
   });

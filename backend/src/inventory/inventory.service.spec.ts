@@ -9,16 +9,20 @@ import {
 } from './entities/inventory-movement.entity';
 import { Product } from '../products/entities/product.entity';
 
+const TEAM_ID = 'team-uuid-1';
+
 describe('InventoryService', () => {
   let service: InventoryService;
 
   const mockProduct = {
     id: 'uuid-prod-1',
+    teamId: TEAM_ID,
     stock: 10,
   };
 
   const mockMovement = {
     id: 'uuid-mov-1',
+    teamId: TEAM_ID,
     type: MovementType.IN,
     quantity: 5,
     productId: 'uuid-prod-1',
@@ -43,6 +47,7 @@ describe('InventoryService', () => {
 
   const mockQueryBuilder = {
     leftJoinAndSelect: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
     andWhere: jest.fn().mockReturnThis(),
     orderBy: jest.fn().mockReturnThis(),
     getMany: jest.fn().mockResolvedValue([mockMovement]),
@@ -83,6 +88,7 @@ describe('InventoryService', () => {
   describe('createMovement', () => {
     it('should create an IN movement and increase stock', async () => {
       await service.createMovement(
+        TEAM_ID,
         { type: MovementType.IN, quantity: 5, productId: 'uuid-prod-1' },
         'uuid-user-1',
       );
@@ -95,6 +101,7 @@ describe('InventoryService', () => {
 
     it('should create an OUT movement and decrease stock', async () => {
       await service.createMovement(
+        TEAM_ID,
         { type: MovementType.OUT, quantity: 3, productId: 'uuid-prod-1' },
         'uuid-user-1',
       );
@@ -107,6 +114,7 @@ describe('InventoryService', () => {
     it('should throw BadRequestException for insufficient stock', async () => {
       await expect(
         service.createMovement(
+          TEAM_ID,
           { type: MovementType.OUT, quantity: 20, productId: 'uuid-prod-1' },
           'uuid-user-1',
         ),
@@ -116,6 +124,7 @@ describe('InventoryService', () => {
 
     it('should create an ADJUSTMENT movement setting exact stock', async () => {
       await service.createMovement(
+        TEAM_ID,
         {
           type: MovementType.ADJUSTMENT,
           quantity: 50,
@@ -134,6 +143,7 @@ describe('InventoryService', () => {
 
       await expect(
         service.createMovement(
+          TEAM_ID,
           { type: MovementType.IN, quantity: 5, productId: 'uuid-999' },
           'uuid-user-1',
         ),
@@ -142,13 +152,13 @@ describe('InventoryService', () => {
   });
 
   describe('findAll', () => {
-    it('should return movements', async () => {
-      const result = await service.findAll();
+    it('should return movements for a team', async () => {
+      const result = await service.findAll(TEAM_ID);
       expect(result).toHaveLength(1);
     });
 
     it('should filter by productId', async () => {
-      await service.findAll({ productId: 'uuid-prod-1' });
+      await service.findAll(TEAM_ID, { productId: 'uuid-prod-1' });
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         'movement.productId = :productId',
         { productId: 'uuid-prod-1' },

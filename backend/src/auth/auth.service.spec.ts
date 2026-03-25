@@ -3,7 +3,6 @@ import { JwtService } from '@nestjs/jwt';
 import { UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
-import { UserRole } from '../users/entities/user.entity';
 import * as bcrypt from 'bcrypt';
 
 jest.mock('bcrypt');
@@ -19,10 +18,11 @@ describe('AuthService', () => {
     password: 'hashedpassword',
     firstName: 'John',
     lastName: 'Doe',
-    role: UserRole.EMPLOYEE,
+    phone: null,
     isActive: true,
     createdAt: new Date(),
     updatedAt: new Date(),
+    teamMemberships: [],
     inventoryMovements: [],
   };
 

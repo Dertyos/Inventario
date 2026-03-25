@@ -19,6 +19,7 @@ export class InventoryService {
   ) {}
 
   async createMovement(
+    teamId: string,
     createMovementDto: CreateMovementDto,
     userId: string,
   ): Promise<InventoryMovement> {
@@ -28,12 +29,12 @@ export class InventoryService {
 
     try {
       const product = await queryRunner.manager.findOne(Product, {
-        where: { id: createMovementDto.productId },
+        where: { id: createMovementDto.productId, teamId },
         lock: { mode: 'pessimistic_write' },
       });
 
       if (!product) {
-        throw new BadRequestException('Product not found');
+        throw new BadRequestException('Product not found in this team');
       }
 
       const stockBefore = product.stock;
@@ -54,6 +55,8 @@ export class InventoryService {
         case MovementType.ADJUSTMENT:
           stockAfter = createMovementDto.quantity;
           break;
+        default:
+          stockAfter = stockBefore;
       }
 
       product.stock = stockAfter;
@@ -61,6 +64,7 @@ export class InventoryService {
 
       const movement = queryRunner.manager.create(InventoryMovement, {
         ...createMovementDto,
+        teamId,
         userId,
         stockBefore,
         stockAfter,
@@ -77,14 +81,18 @@ export class InventoryService {
     }
   }
 
-  async findAll(options?: {
-    productId?: string;
-    type?: MovementType;
-  }): Promise<InventoryMovement[]> {
+  async findAll(
+    teamId: string,
+    options?: {
+      productId?: string;
+      type?: MovementType;
+    },
+  ): Promise<InventoryMovement[]> {
     const query = this.movementsRepository
       .createQueryBuilder('movement')
       .leftJoinAndSelect('movement.product', 'product')
-      .leftJoinAndSelect('movement.user', 'user');
+      .leftJoinAndSelect('movement.user', 'user')
+      .where('movement.teamId = :teamId', { teamId });
 
     if (options?.productId) {
       query.andWhere('movement.productId = :productId', {
@@ -99,9 +107,9 @@ export class InventoryService {
     return query.orderBy('movement.createdAt', 'DESC').getMany();
   }
 
-  async findOne(id: string): Promise<InventoryMovement> {
+  async findOne(teamId: string, id: string): Promise<InventoryMovement> {
     const movement = await this.movementsRepository.findOne({
-      where: { id },
+      where: { id, teamId },
       relations: ['product', 'user'],
     });
     if (!movement) {

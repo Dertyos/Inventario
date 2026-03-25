@@ -13,31 +13,40 @@ import { InventoryService } from './inventory.service';
 import { CreateMovementDto } from './dto/create-movement.dto';
 import { MovementType } from './entities/inventory-movement.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../common/guards/roles.guard';
-import { Roles } from '../common/decorators/roles.decorator';
-import { UserRole } from '../users/entities/user.entity';
+import { TeamRolesGuard } from '../teams/guards/team-roles.guard';
 
-@Controller('inventory')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@Controller('teams/:teamId/inventory')
+@UseGuards(JwtAuthGuard, TeamRolesGuard)
 export class InventoryController {
   constructor(private readonly inventoryService: InventoryService) {}
 
   @Post('movements')
-  @Roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.EMPLOYEE)
-  createMovement(@Body() createMovementDto: CreateMovementDto, @Request() req) {
-    return this.inventoryService.createMovement(createMovementDto, req.user.id);
+  createMovement(
+    @Param('teamId', ParseUUIDPipe) teamId: string,
+    @Body() createMovementDto: CreateMovementDto,
+    @Request() req,
+  ) {
+    return this.inventoryService.createMovement(
+      teamId,
+      createMovementDto,
+      req.user.id,
+    );
   }
 
   @Get('movements')
   findAllMovements(
+    @Param('teamId', ParseUUIDPipe) teamId: string,
     @Query('productId') productId?: string,
     @Query('type') type?: MovementType,
   ) {
-    return this.inventoryService.findAll({ productId, type });
+    return this.inventoryService.findAll(teamId, { productId, type });
   }
 
   @Get('movements/:id')
-  findOneMovement(@Param('id', ParseUUIDPipe) id: string) {
-    return this.inventoryService.findOne(id);
+  findOneMovement(
+    @Param('teamId', ParseUUIDPipe) teamId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.inventoryService.findOne(teamId, id);
   }
 }
