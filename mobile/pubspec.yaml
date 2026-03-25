@@ -49,6 +49,10 @@ dependencies:
   # Forms & Validation
   reactive_forms: ^18.2.2
 
+  # Notifications
+  flutter_local_notifications: ^18.0.0
+  timezone: ^0.10.0
+
   # Utils
   intl: ^0.20.2
   uuid: ^4.5.1

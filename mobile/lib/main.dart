@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'core/notifications/notification_service.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 
@@ -24,6 +25,9 @@ void main() async {
 
   // Initialize Spanish locale for date formatting
   await initializeDateFormatting('es');
+
+  // Initialize local notifications
+  await NotificationService().initialize();
 
   runApp(const ProviderScope(child: InventarioApp()));
 }

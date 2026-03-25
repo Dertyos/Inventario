@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/notifications/notification_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/providers/auth_provider.dart';
 import '../../data/dashboard_repository.dart';
@@ -65,7 +66,10 @@ class DashboardScreen extends ConsumerWidget {
               ],
             ),
           ),
-          data: (data) => ListView(
+          data: (data) {
+            // Check low stock alerts once per session
+            NotificationService().checkLowStockAlerts(data.lowStockProducts);
+            return ListView(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md + 4, vertical: AppSpacing.sm),
             children: [
               // Stats grid
@@ -224,7 +228,8 @@ class DashboardScreen extends ConsumerWidget {
 
               const SizedBox(height: AppSpacing.xxl),
             ],
-          ),
+          );
+          },
         ),
       ),
       floatingActionButton: Column(
