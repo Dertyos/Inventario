@@ -307,30 +307,22 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                   v == null || v.trim().isEmpty ? 'Requerido' : null,
             ),
             const SizedBox(height: AppSpacing.md),
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _skuController,
-                    textCapitalization: TextCapitalization.characters,
-                    decoration: const InputDecoration(
-                      labelText: 'SKU',
-                      prefixIcon: Icon(Icons.tag),
-                      helperText: 'Opcional, se genera automáticamente',
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: TextFormField(
-                    controller: _barcodeController,
-                    decoration: const InputDecoration(
-                      labelText: 'Código de barras',
-                      prefixIcon: Icon(Icons.qr_code),
-                    ),
-                  ),
-                ),
-              ],
+            TextFormField(
+              controller: _skuController,
+              textCapitalization: TextCapitalization.characters,
+              decoration: const InputDecoration(
+                labelText: 'SKU',
+                prefixIcon: Icon(Icons.tag),
+                hintText: 'Se genera automáticamente',
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextFormField(
+              controller: _barcodeController,
+              decoration: const InputDecoration(
+                labelText: 'Código de barras',
+                prefixIcon: Icon(Icons.qr_code),
+              ),
             ),
             const SizedBox(height: AppSpacing.md),
             categories.whenOrNull(

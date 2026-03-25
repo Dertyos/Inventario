@@ -9,6 +9,11 @@ import {
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateProductDto {
+  @ApiPropertyOptional({ example: 'BEB-001', description: 'Código SKU del producto' })
+  @IsString()
+  @IsOptional()
+  sku?: string;
+
   @ApiPropertyOptional({
     example: 'Coca-Cola 350ml',
     description: 'Nombre del producto',
