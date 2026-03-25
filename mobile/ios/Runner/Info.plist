@@ -53,6 +53,10 @@
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Esta app usa reconocimiento de voz para registrar ventas y compras.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Esta app necesita acceso al micrófono para reconocimiento de voz.</string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

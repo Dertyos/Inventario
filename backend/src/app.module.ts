@@ -19,6 +19,7 @@ import { LotsModule } from './lots/lots.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
 import { PurchasesModule } from './purchases/purchases.module';
 import { RemindersModule } from './reminders/reminders.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -69,6 +70,7 @@ import { RemindersModule } from './reminders/reminders.module';
     SuppliersModule,
     PurchasesModule,
     RemindersModule,
+    AiModule,
   ],
   controllers: [AppController],
   providers: [

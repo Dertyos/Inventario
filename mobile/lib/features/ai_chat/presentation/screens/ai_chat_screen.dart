@@ -22,6 +22,8 @@ class _VoiceTransactionScreenState
   bool _isListening = false;
   bool _isProcessing = false;
   bool _speechAvailable = false;
+  double _soundLevel = 0.0;
+  String _localeId = 'es_CO';
   ParsedTransaction? _parsed;
   String? _error;
 
@@ -44,6 +46,17 @@ class _VoiceTransactionScreenState
         setState(() => _isListening = false);
       },
     );
+    if (_speechAvailable) {
+      // Check available locales and fallback gracefully
+      final locales = await _speech.locales();
+      final hasEsCO = locales.any((l) => l.localeId == 'es_CO');
+      final hasEs = locales.any((l) => l.localeId.startsWith('es'));
+      if (hasEsCO) {
+        _localeId = 'es_CO';
+      } else if (hasEs) {
+        _localeId = locales.firstWhere((l) => l.localeId.startsWith('es')).localeId;
+      }
+    }
     setState(() {});
   }
 
@@ -76,7 +89,12 @@ class _VoiceTransactionScreenState
           }
         }
       },
-      localeId: 'es_CO',
+      onSoundLevelChange: (level) {
+        setState(() => _soundLevel = level);
+      },
+      localeId: _localeId,
+      listenFor: const Duration(seconds: 30),
+      pauseFor: const Duration(seconds: 5),
       listenMode: stt.ListenMode.dictation,
     );
   }
@@ -245,20 +263,26 @@ class _VoiceTransactionScreenState
     }
 
     if (_isListening) {
+      // Scale mic icon based on sound level (0-10 range typical)
+      final scale = 1.0 + (_soundLevel.clamp(0, 10) / 10) * 0.3;
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.xl),
-              decoration: BoxDecoration(
-                color: colorScheme.errorContainer.withValues(alpha: 0.3),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.mic,
-                size: 64,
-                color: colorScheme.error,
+            AnimatedScale(
+              scale: scale,
+              duration: const Duration(milliseconds: 100),
+              child: Container(
+                padding: const EdgeInsets.all(AppSpacing.xl),
+                decoration: BoxDecoration(
+                  color: colorScheme.errorContainer.withValues(alpha: 0.3),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.mic,
+                  size: 64,
+                  color: colorScheme.error,
+                ),
               ),
             ),
             const SizedBox(height: AppSpacing.md),
