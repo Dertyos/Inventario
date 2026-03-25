@@ -61,4 +61,32 @@ export class UsersService {
     user.isActive = false;
     await this.usersRepository.save(user);
   }
+
+  async updateVerification(
+    id: string,
+    data: Partial<
+      Pick<
+        User,
+        | 'emailVerified'
+        | 'verificationCode'
+        | 'verificationCodeExpiry'
+        | 'verificationAttempts'
+      >
+    >,
+  ): Promise<void> {
+    await this.usersRepository.update(id, data);
+  }
+
+  async updateResetCode(
+    id: string,
+    data: Partial<
+      Pick<User, 'resetCode' | 'resetCodeExpiry' | 'resetAttempts'>
+    >,
+  ): Promise<void> {
+    await this.usersRepository.update(id, data);
+  }
+
+  async updatePassword(id: string, hashedPassword: string): Promise<void> {
+    await this.usersRepository.update(id, { password: hashedPassword });
+  }
 }
