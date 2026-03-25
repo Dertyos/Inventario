@@ -9,8 +9,9 @@ import 'products_screen.dart';
 
 class ProductFormScreen extends ConsumerStatefulWidget {
   final String? productId;
+  final String? initialBarcode;
 
-  const ProductFormScreen({super.key, this.productId});
+  const ProductFormScreen({super.key, this.productId, this.initialBarcode});
 
   @override
   ConsumerState<ProductFormScreen> createState() => _ProductFormScreenState();
@@ -34,7 +35,11 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   @override
   void initState() {
     super.initState();
-    if (isEditing) _loadProduct();
+    if (isEditing) {
+      _loadProduct();
+    } else if (widget.initialBarcode != null) {
+      _barcodeController.text = widget.initialBarcode!;
+    }
   }
 
   Future<void> _loadProduct() async {

@@ -232,6 +232,14 @@ class DashboardScreen extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           FloatingActionButton.small(
+            heroTag: 'scanner',
+            onPressed: () => context.push('/scanner'),
+            backgroundColor: colorScheme.tertiaryContainer,
+            foregroundColor: colorScheme.onTertiaryContainer,
+            child: const Icon(Icons.qr_code_scanner),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          FloatingActionButton.small(
             heroTag: 'voice',
             onPressed: () => context.push('/voice-transaction'),
             backgroundColor: colorScheme.secondaryContainer,

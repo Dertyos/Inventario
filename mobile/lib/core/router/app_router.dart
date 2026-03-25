@@ -12,8 +12,11 @@ import '../../features/sales/presentation/screens/create_sale_screen.dart';
 import '../../features/inventory/presentation/screens/inventory_screen.dart';
 import '../../features/customers/presentation/screens/customers_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
+import '../../features/settings/presentation/screens/team_settings_screen.dart';
+import '../../features/settings/presentation/screens/team_members_screen.dart';
 import '../../features/ai_chat/presentation/screens/ai_chat_screen.dart'
     show VoiceTransactionScreen;
+import '../../features/scanner/presentation/screens/barcode_scanner_screen.dart';
 import '../../shared/providers/auth_provider.dart';
 import '../../shared/widgets/app_shell.dart';
 
@@ -73,7 +76,9 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'new',
                 parentNavigatorKey: _rootNavigatorKey,
-                builder: (context, state) => const ProductFormScreen(),
+                builder: (context, state) => ProductFormScreen(
+                  initialBarcode: state.extra as String?,
+                ),
               ),
               GoRoute(
                 path: ':id/edit',
@@ -118,9 +123,24 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
       GoRoute(
+        path: '/team-settings',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const TeamSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/team-members',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const TeamMembersScreen(),
+      ),
+      GoRoute(
         path: '/voice-transaction',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const VoiceTransactionScreen(),
+      ),
+      GoRoute(
+        path: '/scanner',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const BarcodeScannerScreen(),
       ),
     ],
   );

@@ -158,6 +158,18 @@ class SettingsScreen extends ConsumerWidget {
 
           // Menu items
           _SettingsTile(
+            icon: Icons.group_outlined,
+            title: 'Equipo y miembros',
+            subtitle: 'Gestiona los miembros de tu equipo',
+            onTap: () => context.push('/team-members'),
+          ),
+          _SettingsTile(
+            icon: Icons.settings_outlined,
+            title: 'Configuración del equipo',
+            subtitle: 'Nombre, moneda y más',
+            onTap: () => context.push('/team-settings'),
+          ),
+          _SettingsTile(
             icon: Icons.people_outlined,
             title: 'Clientes',
             onTap: () => context.go('/customers'),
