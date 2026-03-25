@@ -3,9 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../network/api_client.dart';
 import '../network/api_exception.dart';
 
-/// Servicio de IA integrado en el core.
-/// Se conecta al backend que a su vez llama a Claude API.
-/// Todos los módulos pueden usarlo para insights, sugerencias, y análisis.
+/// Servicio de IA para procesar transacciones por voz/texto en lenguaje natural.
+/// El backend usa Claude API para parsear el texto a una transacción estructurada.
 final aiServiceProvider = Provider<AiService>((ref) {
   return AiService(ref.read(dioProvider));
 });
@@ -15,146 +14,83 @@ class AiService {
 
   AiService(this._dio);
 
-  /// Analiza datos de inventario y retorna insights en lenguaje natural.
-  /// Usado en: Dashboard para resumen inteligente del negocio.
-  Future<AiInsight> getDashboardInsights(String teamId) async {
-    try {
-      final response = await _dio.post(
-        '/teams/$teamId/ai/insights',
-        data: {'context': 'dashboard'},
-      );
-      return AiInsight.fromJson(response.data);
-    } on DioException catch (e) {
-      throw ApiException.fromDioError(e);
-    }
-  }
-
-  /// Sugiere precio óptimo basado en historial de ventas y competencia.
-  /// Usado en: ProductFormScreen al crear/editar producto.
-  Future<AiPriceSuggestion> suggestPrice(
-    String teamId, {
-    required String productName,
-    required String categoryName,
-    double? currentCost,
-  }) async {
-    try {
-      final response = await _dio.post(
-        '/teams/$teamId/ai/suggest-price',
-        data: {
-          'productName': productName,
-          'categoryName': categoryName,
-          'cost': currentCost,
-        },
-      );
-      return AiPriceSuggestion.fromJson(response.data);
-    } on DioException catch (e) {
-      throw ApiException.fromDioError(e);
-    }
-  }
-
-  /// Predice demanda de un producto para planificar compras.
-  /// Usado en: Inventory / Products para recomendaciones de restock.
-  Future<AiDemandForecast> forecastDemand(
+  /// Envía texto en lenguaje natural y recibe una transacción parseada.
+  /// Ejemplo: "Venta de 5 tornillos a Pedro por 25mil"
+  /// Retorna los datos estructurados para que el usuario confirme.
+  Future<ParsedTransaction> parseTransaction(
     String teamId,
-    String productId,
+    String naturalText,
   ) async {
     try {
       final response = await _dio.post(
-        '/teams/$teamId/ai/forecast-demand',
-        data: {'productId': productId},
+        '/teams/$teamId/ai/parse-transaction',
+        data: {'text': naturalText},
       );
-      return AiDemandForecast.fromJson(response.data);
-    } on DioException catch (e) {
-      throw ApiException.fromDioError(e);
-    }
-  }
-
-  /// Chat libre con contexto del negocio.
-  /// Usado en: Pantalla de AI Assistant.
-  Future<String> chat(
-    String teamId,
-    String message, {
-    List<Map<String, String>>? history,
-  }) async {
-    try {
-      final response = await _dio.post(
-        '/teams/$teamId/ai/chat',
-        data: {
-          'message': message,
-          'history': history ?? [],
-        },
-      );
-      return response.data['reply'] as String;
+      return ParsedTransaction.fromJson(response.data);
     } on DioException catch (e) {
       throw ApiException.fromDioError(e);
     }
   }
 }
 
-class AiInsight {
-  final String summary;
-  final List<String> recommendations;
-  final Map<String, dynamic>? metrics;
+/// Transacción parseada desde lenguaje natural.
+class ParsedTransaction {
+  final TransactionType type;
+  final List<ParsedItem> items;
+  final String? customerOrSupplier;
+  final double? totalAmount;
+  final String? notes;
+  final String rawText;
+  final double confidence;
 
-  const AiInsight({
-    required this.summary,
-    required this.recommendations,
-    this.metrics,
-  });
-
-  factory AiInsight.fromJson(Map<String, dynamic> json) => AiInsight(
-        summary: json['summary'] as String? ?? '',
-        recommendations: (json['recommendations'] as List<dynamic>?)
-                ?.cast<String>() ??
-            [],
-        metrics: json['metrics'] as Map<String, dynamic>?,
-      );
-}
-
-class AiPriceSuggestion {
-  final double suggestedPrice;
-  final double minPrice;
-  final double maxPrice;
-  final String reasoning;
-
-  const AiPriceSuggestion({
-    required this.suggestedPrice,
-    required this.minPrice,
-    required this.maxPrice,
-    required this.reasoning,
-  });
-
-  factory AiPriceSuggestion.fromJson(Map<String, dynamic> json) =>
-      AiPriceSuggestion(
-        suggestedPrice: (json['suggestedPrice'] as num).toDouble(),
-        minPrice: (json['minPrice'] as num).toDouble(),
-        maxPrice: (json['maxPrice'] as num).toDouble(),
-        reasoning: json['reasoning'] as String? ?? '',
-      );
-}
-
-class AiDemandForecast {
-  final int predictedDemand;
-  final int daysUntilStockout;
-  final int suggestedReorderQuantity;
-  final String confidence;
-  final String reasoning;
-
-  const AiDemandForecast({
-    required this.predictedDemand,
-    required this.daysUntilStockout,
-    required this.suggestedReorderQuantity,
+  const ParsedTransaction({
+    required this.type,
+    required this.items,
+    this.customerOrSupplier,
+    this.totalAmount,
+    this.notes,
+    required this.rawText,
     required this.confidence,
-    required this.reasoning,
   });
 
-  factory AiDemandForecast.fromJson(Map<String, dynamic> json) =>
-      AiDemandForecast(
-        predictedDemand: json['predictedDemand'] as int? ?? 0,
-        daysUntilStockout: json['daysUntilStockout'] as int? ?? 0,
-        suggestedReorderQuantity:
-            json['suggestedReorderQuantity'] as int? ?? 0,
-        confidence: json['confidence'] as String? ?? 'medium',
-        reasoning: json['reasoning'] as String? ?? '',
+  factory ParsedTransaction.fromJson(Map<String, dynamic> json) =>
+      ParsedTransaction(
+        type: TransactionType.values.firstWhere(
+          (t) => t.name == json['type'],
+          orElse: () => TransactionType.sale,
+        ),
+        items: (json['items'] as List<dynamic>?)
+                ?.map((i) =>
+                    ParsedItem.fromJson(i as Map<String, dynamic>))
+                .toList() ??
+            [],
+        customerOrSupplier: json['customerOrSupplier'] as String?,
+        totalAmount: (json['totalAmount'] as num?)?.toDouble(),
+        notes: json['notes'] as String?,
+        rawText: json['rawText'] as String? ?? '',
+        confidence: (json['confidence'] as num?)?.toDouble() ?? 0.0,
+      );
+}
+
+enum TransactionType { sale, purchase }
+
+class ParsedItem {
+  final String name;
+  final int quantity;
+  final double? unitPrice;
+  final String? matchedProductId;
+
+  const ParsedItem({
+    required this.name,
+    required this.quantity,
+    this.unitPrice,
+    this.matchedProductId,
+  });
+
+  factory ParsedItem.fromJson(Map<String, dynamic> json) => ParsedItem(
+        name: json['name'] as String? ?? '',
+        quantity: json['quantity'] as int? ?? 1,
+        unitPrice: (json['unitPrice'] as num?)?.toDouble(),
+        matchedProductId: json['matchedProductId'] as String?,
       );
 }

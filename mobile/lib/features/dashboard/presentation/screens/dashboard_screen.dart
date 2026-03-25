@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/ai/ai_service.dart';
 import '../../../../shared/providers/auth_provider.dart';
 import '../../data/dashboard_repository.dart';
 import '../../../../shared/widgets/stat_card.dart';
@@ -11,15 +10,6 @@ import '../../../../shared/widgets/stat_card.dart';
 final dashboardProvider =
     FutureProvider.autoDispose.family<DashboardData, String>((ref, teamId) {
   return ref.read(dashboardRepositoryProvider).getDashboardData(teamId);
-});
-
-final aiInsightProvider =
-    FutureProvider.autoDispose.family<AiInsight?, String>((ref, teamId) async {
-  try {
-    return await ref.read(aiServiceProvider).getDashboardInsights(teamId);
-  } catch (_) {
-    return null;
-  }
 });
 
 class DashboardScreen extends ConsumerWidget {
@@ -30,7 +20,6 @@ class DashboardScreen extends ConsumerWidget {
     final auth = ref.watch(authProvider);
     final teamId = auth.teamId;
     final dashboard = ref.watch(dashboardProvider(teamId));
-    final aiInsight = ref.watch(aiInsightProvider(teamId));
     final colorScheme = Theme.of(context).colorScheme;
     final cop = NumberFormat.currency(locale: 'es_CO', symbol: '\$', decimalDigits: 0);
 
@@ -62,7 +51,6 @@ class DashboardScreen extends ConsumerWidget {
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(dashboardProvider(teamId));
-          ref.invalidate(aiInsightProvider(teamId));
         },
         child: dashboard.when(
           loading: () => const Center(child: CircularProgressIndicator()),
@@ -83,16 +71,6 @@ class DashboardScreen extends ConsumerWidget {
           data: (data) => ListView(
             padding: const EdgeInsets.all(AppSpacing.md),
             children: [
-              // AI Insight card
-              aiInsight.whenOrNull(
-                    data: (insight) => insight != null
-                        ? _AiInsightCard(insight: insight)
-                        : null,
-                  ) ??
-                  const SizedBox.shrink(),
-              if (aiInsight.valueOrNull != null)
-                const SizedBox(height: AppSpacing.md),
-
               // Stats grid
               GridView.count(
                 crossAxisCount: 2,
@@ -245,76 +223,27 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.go('/sales/new'),
-        icon: const Icon(Icons.add),
-        label: const Text('Nueva venta'),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          FloatingActionButton.small(
+            heroTag: 'voice',
+            onPressed: () => context.push('/voice-transaction'),
+            backgroundColor: colorScheme.secondaryContainer,
+            foregroundColor: colorScheme.onSecondaryContainer,
+            child: const Icon(Icons.mic),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          FloatingActionButton.extended(
+            heroTag: 'sale',
+            onPressed: () => context.go('/sales/new'),
+            icon: const Icon(Icons.add),
+            label: const Text('Nueva venta'),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _AiInsightCard extends StatelessWidget {
-  final AiInsight insight;
-
-  const _AiInsightCard({required this.insight});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Card(
-      color: colorScheme.primaryContainer.withValues(alpha: 0.3),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.auto_awesome, size: 18, color: colorScheme.primary),
-                const SizedBox(width: AppSpacing.xs),
-                Text(
-                  'Insights de IA',
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: colorScheme.primary,
-                      ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              insight.summary,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            if (insight.recommendations.isNotEmpty) ...[
-              const SizedBox(height: AppSpacing.sm),
-              ...insight.recommendations.take(2).map(
-                    (r) => Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(
-                            Icons.lightbulb_outline,
-                            size: 14,
-                            color: colorScheme.primary,
-                          ),
-                          const SizedBox(width: AppSpacing.xs),
-                          Expanded(
-                            child: Text(
-                              r,
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}

@@ -123,10 +123,10 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => context.go('/customers'),
           ),
           _SettingsTile(
-            icon: Icons.auto_awesome,
-            title: 'Asistente IA',
-            subtitle: 'Pregunta sobre tu negocio',
-            onTap: () => context.push('/ai-chat'),
+            icon: Icons.mic,
+            title: 'Registrar con voz',
+            subtitle: 'Ventas y compras en lenguaje natural',
+            onTap: () => context.push('/voice-transaction'),
           ),
           _SettingsTile(
             icon: Icons.notifications_outlined,

@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/ai/ai_service.dart';
 import '../../../../shared/models/product_model.dart';
 import '../../../../shared/providers/auth_provider.dart';
 import '../../data/products_repository.dart';
@@ -30,7 +29,6 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   String? _selectedCategoryId;
   bool _isLoading = false;
   bool _isSaving = false;
-  AiPriceSuggestion? _priceSuggestion;
 
   bool get isEditing => widget.productId != null;
 
@@ -63,31 +61,6 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       }
     }
     if (mounted) setState(() => _isLoading = false);
-  }
-
-  Future<void> _askAiPrice() async {
-    final teamId = ref.read(authProvider).teamId;
-    final categories = ref.read(categoriesProvider(teamId)).valueOrNull ?? [];
-    final categoryName = categories
-        .where((c) => c.id == _selectedCategoryId)
-        .map((c) => c.name)
-        .firstOrNull ?? 'General';
-
-    try {
-      final suggestion = await ref.read(aiServiceProvider).suggestPrice(
-            teamId,
-            productName: _nameController.text,
-            categoryName: categoryName,
-            currentCost: double.tryParse(_costController.text),
-          );
-      setState(() => _priceSuggestion = suggestion);
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No se pudo obtener sugerencia de IA')),
-        );
-      }
-    }
   }
 
   Future<void> _save() async {
@@ -321,44 +294,6 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                 ),
               ],
             ),
-            // AI price suggestion
-            if (_nameController.text.isNotEmpty && _selectedCategoryId != null)
-              Padding(
-                padding: const EdgeInsets.only(top: AppSpacing.sm),
-                child: _priceSuggestion != null
-                    ? Card(
-                        color: colorScheme.primaryContainer.withValues(alpha: 0.3),
-                        child: Padding(
-                          padding: const EdgeInsets.all(AppSpacing.sm),
-                          child: Row(
-                            children: [
-                              Icon(Icons.auto_awesome,
-                                  size: 16, color: colorScheme.primary),
-                              const SizedBox(width: AppSpacing.xs),
-                              Expanded(
-                                child: Text(
-                                  'IA sugiere: ${cop.format(_priceSuggestion!.suggestedPrice)}',
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                              ),
-                              TextButton(
-                                onPressed: () {
-                                  _priceController.text = _priceSuggestion!
-                                      .suggestedPrice
-                                      .toStringAsFixed(0);
-                                },
-                                child: const Text('Aplicar'),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                    : TextButton.icon(
-                        onPressed: _askAiPrice,
-                        icon: const Icon(Icons.auto_awesome, size: 16),
-                        label: const Text('Sugerir precio con IA'),
-                      ),
-              ),
             const SizedBox(height: AppSpacing.md),
             TextFormField(
               controller: _minStockController,

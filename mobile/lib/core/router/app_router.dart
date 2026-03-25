@@ -12,7 +12,8 @@ import '../../features/sales/presentation/screens/create_sale_screen.dart';
 import '../../features/inventory/presentation/screens/inventory_screen.dart';
 import '../../features/customers/presentation/screens/customers_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
-import '../../features/ai_chat/presentation/screens/ai_chat_screen.dart';
+import '../../features/ai_chat/presentation/screens/ai_chat_screen.dart'
+    show VoiceTransactionScreen;
 import '../../shared/providers/auth_provider.dart';
 import '../../shared/widgets/app_shell.dart';
 
@@ -117,9 +118,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
       GoRoute(
-        path: '/ai-chat',
+        path: '/voice-transaction',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const AiChatScreen(),
+        builder: (context, state) => const VoiceTransactionScreen(),
       ),
     ],
   );
