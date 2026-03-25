@@ -11,6 +11,8 @@ import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { GoogleAuthDto } from './dto/google-auth.dto';
+import { AppleAuthDto } from './dto/apple-auth.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
@@ -33,6 +35,21 @@ export class AuthController {
   @ApiOperation({ summary: 'Iniciar sesión' })
   login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
+  }
+
+  @Post('google')
+  @ApiOperation({ summary: 'Iniciar sesión con Google' })
+  googleAuth(@Body() googleAuthDto: GoogleAuthDto) {
+    return this.authService.googleAuth(googleAuthDto.idToken);
+  }
+
+  @Post('apple')
+  @ApiOperation({ summary: 'Iniciar sesión con Apple' })
+  appleAuth(@Body() appleAuthDto: AppleAuthDto) {
+    const fullName = appleAuthDto.firstName || appleAuthDto.lastName
+      ? { firstName: appleAuthDto.firstName, lastName: appleAuthDto.lastName }
+      : undefined;
+    return this.authService.appleAuth(appleAuthDto.identityToken, fullName);
   }
 
   @Get('profile')

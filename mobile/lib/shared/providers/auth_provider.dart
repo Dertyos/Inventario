@@ -1,4 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../../core/network/api_client.dart';
 import '../../core/storage/secure_storage.dart';
 import '../../features/auth/data/auth_repository.dart';
@@ -128,6 +130,94 @@ class AuthNotifier extends Notifier<AuthState> {
         isLoading: false,
       );
     } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+    }
+  }
+
+  Future<void> signInWithGoogle() async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final googleSignIn = GoogleSignIn(scopes: ['email']);
+      final account = await googleSignIn.signIn();
+      if (account == null) {
+        // User cancelled
+        state = state.copyWith(isLoading: false);
+        return;
+      }
+
+      final googleAuth = await account.authentication;
+      final idToken = googleAuth.idToken;
+      if (idToken == null) {
+        state = state.copyWith(
+          isLoading: false,
+          error: 'No se pudo obtener el token de Google',
+        );
+        return;
+      }
+
+      final auth = await _repo.googleSignIn(idToken);
+      final teams = await _repo.getTeams();
+      TeamModel? activeTeam;
+      if (teams.isNotEmpty) {
+        activeTeam = teams.first;
+        await _storage.saveActiveTeamId(activeTeam.id);
+      }
+      state = state.copyWith(
+        status: AuthStatus.authenticated,
+        user: auth.user,
+        teams: teams,
+        activeTeam: activeTeam,
+        isLoading: false,
+      );
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+    }
+  }
+
+  Future<void> signInWithApple() async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+
+      final identityToken = credential.identityToken;
+      if (identityToken == null) {
+        state = state.copyWith(
+          isLoading: false,
+          error: 'No se pudo obtener el token de Apple',
+        );
+        return;
+      }
+
+      final auth = await _repo.appleSignIn(
+        identityToken,
+        firstName: credential.givenName,
+        lastName: credential.familyName,
+      );
+      final teams = await _repo.getTeams();
+      TeamModel? activeTeam;
+      if (teams.isNotEmpty) {
+        activeTeam = teams.first;
+        await _storage.saveActiveTeamId(activeTeam.id);
+      }
+      state = state.copyWith(
+        status: AuthStatus.authenticated,
+        user: auth.user,
+        teams: teams,
+        activeTeam: activeTeam,
+        isLoading: false,
+      );
+    } catch (e) {
+      // User cancelled Apple Sign-In
+      if (e is SignInWithAppleAuthorizationException &&
+          e.code == AuthorizationErrorCode.canceled) {
+        state = state.copyWith(isLoading: false);
+        return;
+      }
       state = state.copyWith(isLoading: false, error: e.toString());
     }
   }

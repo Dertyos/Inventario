@@ -89,4 +89,19 @@ export class UsersService {
   async updatePassword(id: string, hashedPassword: string): Promise<void> {
     await this.usersRepository.update(id, { password: hashedPassword });
   }
+
+  async createFromSocial(data: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    emailVerified: boolean;
+  }): Promise<User> {
+    const user = this.usersRepository.create({
+      email: data.email,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      emailVerified: data.emailVerified,
+    });
+    return this.usersRepository.save(user);
+  }
 }

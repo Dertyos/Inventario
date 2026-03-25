@@ -5,6 +5,10 @@ import {
   Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
+import { OAuth2Client } from 'google-auth-library';
+import * as jwksRsa from 'jwks-rsa';
+import * as jwt from 'jsonwebtoken';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import { UsersService } from '../users/users.service';
@@ -16,11 +20,37 @@ import { LoginDto } from './dto/login.dto';
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
+  private googleClient: OAuth2Client | null = null;
+  private appleJwksClient: jwksRsa.JwksClient;
+
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    const clientId = this.configService.get<string>('GOOGLE_CLIENT_ID');
+    if (clientId) {
+      this.googleClient = new OAuth2Client(clientId);
+    } else {
+      this.logger.warn(
+        'GOOGLE_CLIENT_ID is not set. Google Sign-In will not work.',
+      );
+    }
+
+    this.appleJwksClient = jwksRsa({
+      jwksUri: 'https://appleid.apple.com/auth/keys',
+      cache: true,
+      rateLimit: true,
+    });
+
+    const appleBundleId = this.configService.get<string>('APPLE_BUNDLE_ID');
+    if (!appleBundleId) {
+      this.logger.warn(
+        'APPLE_BUNDLE_ID is not set. Apple Sign-In audience verification will be skipped.',
+      );
+    }
+  }
 
   async register(registerDto: RegisterDto) {
     const user = await this.usersService.create(registerDto);
@@ -282,6 +312,137 @@ export class AuthService {
     });
 
     return { message: 'Contraseña restablecida exitosamente' };
+  }
+
+  async googleAuth(idToken: string) {
+    if (!this.googleClient) {
+      throw new BadRequestException(
+        'Google Sign-In is not configured on the server',
+      );
+    }
+
+    let payload;
+    try {
+      const ticket = await this.googleClient.verifyIdToken({
+        idToken,
+        audience: this.configService.get<string>('GOOGLE_CLIENT_ID'),
+      });
+      payload = ticket.getPayload();
+    } catch (error) {
+      this.logger.error('Google token verification failed', error);
+      throw new UnauthorizedException('Invalid Google token');
+    }
+
+    if (!payload || !payload.email) {
+      throw new UnauthorizedException('Invalid Google token payload');
+    }
+
+    const { email, given_name, family_name, picture } = payload;
+
+    let user = await this.usersService.findByEmail(email);
+
+    if (!user) {
+      user = await this.usersService.createFromSocial({
+        email,
+        firstName: given_name || '',
+        lastName: family_name || '',
+        emailVerified: true,
+      });
+    }
+
+    if (!user.isActive) {
+      throw new UnauthorizedException('Account is deactivated');
+    }
+
+    const token = this.generateToken(user.id, user.email);
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        emailVerified: user.emailVerified,
+      },
+      accessToken: token,
+    };
+  }
+
+  async appleAuth(
+    identityToken: string,
+    fullName?: { firstName?: string; lastName?: string },
+  ) {
+    let payload: any;
+    try {
+      // Decode header to get kid
+      const decoded = jwt.decode(identityToken, { complete: true });
+      if (!decoded || !decoded.header || !decoded.header.kid) {
+        throw new Error('Invalid token header');
+      }
+
+      const kid = decoded.header.kid;
+
+      // Fetch Apple's signing key
+      const signingKey = await this.appleJwksClient.getSigningKey(kid);
+      const publicKey = signingKey.getPublicKey();
+
+      // Build verify options
+      const verifyOptions: jwt.VerifyOptions = {
+        algorithms: ['RS256'],
+        issuer: 'https://appleid.apple.com',
+      };
+
+      const appleBundleId =
+        this.configService.get<string>('APPLE_BUNDLE_ID');
+      if (appleBundleId) {
+        verifyOptions.audience = appleBundleId;
+      }
+
+      // Verify the JWT
+      payload = jwt.verify(identityToken, publicKey, verifyOptions);
+    } catch (error) {
+      this.logger.error('Apple token verification failed', error);
+      throw new UnauthorizedException('Invalid Apple identity token');
+    }
+
+    if (!payload || !payload.sub) {
+      throw new UnauthorizedException('Invalid Apple token payload');
+    }
+
+    const email: string | undefined = payload.email;
+    const appleUserId: string = payload.sub;
+
+    if (!email) {
+      throw new UnauthorizedException(
+        'Apple token does not contain an email address',
+      );
+    }
+
+    let user = await this.usersService.findByEmail(email);
+
+    if (!user) {
+      user = await this.usersService.createFromSocial({
+        email,
+        firstName: fullName?.firstName || '',
+        lastName: fullName?.lastName || '',
+        emailVerified: true,
+      });
+    }
+
+    if (!user.isActive) {
+      throw new UnauthorizedException('Account is deactivated');
+    }
+
+    const token = this.generateToken(user.id, user.email);
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        emailVerified: user.emailVerified,
+      },
+      accessToken: token,
+    };
   }
 
   private generateToken(userId: string, email: string): string {
