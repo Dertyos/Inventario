@@ -82,6 +82,15 @@ export class CreateSaleDto {
   creditPaidAmount?: number;
 
   @ApiPropertyOptional({
+    example: 5.0,
+    description: 'Porcentaje de interés (solo para crédito)',
+  })
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  creditInterestRate?: number;
+
+  @ApiPropertyOptional({
     example: 'Venta de mostrador',
     description: 'Notas de la venta',
   })

@@ -109,6 +109,7 @@ export class SalesService {
         total: subtotal,
         creditInstallments: createSaleDto.creditInstallments || null,
         creditPaidAmount: createSaleDto.creditPaidAmount ?? null,
+        creditInterestRate: createSaleDto.creditInterestRate ?? null,
         notes: createSaleDto.notes,
       });
       const savedSale = await queryRunner.manager.save(sale);

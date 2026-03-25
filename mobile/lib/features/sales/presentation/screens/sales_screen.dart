@@ -179,8 +179,13 @@ class SalesScreen extends ConsumerWidget {
                             [
                               sale.saleNumber,
                               sale.customerName ?? 'Venta directa',
-                              if (sale.isCredit && sale.creditInstallments != null)
-                                '${sale.creditInstallments} cuotas',
+                              if (sale.isCredit) ...[
+                                if (sale.creditInstallments != null)
+                                  '${sale.creditInstallments} cuotas',
+                                if (sale.creditInterestRate != null &&
+                                    sale.creditInterestRate! > 0)
+                                  '${sale.creditInterestRate}%',
+                              ],
                               '${sale.items.length} items',
                             ].join(' · '),
                           ),

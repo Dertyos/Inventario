@@ -26,6 +26,7 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
   CustomerModel? _selectedCustomer;
   final _installmentsController = TextEditingController(text: '1');
   final _paidAmountController = TextEditingController();
+  final _interestController = TextEditingController();
 
   double get _total =>
       _cart.fold(0, (sum, item) => sum + (item.product.price * item.quantity));
@@ -193,6 +194,9 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
               int.tryParse(_installmentsController.text) ?? 1,
           'creditPaidAmount':
               double.tryParse(_paidAmountController.text) ?? 0,
+          if (_interestController.text.isNotEmpty)
+            'creditInterestRate':
+                double.tryParse(_interestController.text) ?? 0,
         },
       });
       ref.invalidate(salesProvider(teamId));
@@ -217,6 +221,7 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
   void dispose() {
     _installmentsController.dispose();
     _paidAmountController.dispose();
+    _interestController.dispose();
     super.dispose();
   }
 
@@ -500,17 +505,32 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
                           const SizedBox(width: AppSpacing.sm),
                           Expanded(
                             child: TextFormField(
-                              controller: _paidAmountController,
-                              keyboardType: TextInputType.number,
-                              decoration: InputDecoration(
-                                labelText: 'Abono',
-                                hintText: cop.format(0),
-                                prefixIcon: const Icon(Icons.payments_outlined),
+                              controller: _interestController,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              decoration: const InputDecoration(
+                                labelText: 'Interés %',
+                                hintText: 'Sin interés',
+                                prefixIcon: Icon(Icons.percent),
                                 isDense: true,
                               ),
                             ),
                           ),
                         ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.md, AppSpacing.sm, AppSpacing.md, 0,
+                      ),
+                      child: TextFormField(
+                        controller: _paidAmountController,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: 'Abono inicial',
+                          hintText: cop.format(0),
+                          prefixIcon: const Icon(Icons.payments_outlined),
+                          isDense: true,
+                        ),
                       ),
                     ),
                   ],

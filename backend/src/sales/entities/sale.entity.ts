@@ -91,6 +91,9 @@ export class Sale {
   @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
   creditPaidAmount: number;
 
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
+  creditInterestRate: number;
+
   @Column({ nullable: true })
   notes: string;
 
