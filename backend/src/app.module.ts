@@ -9,6 +9,9 @@ import { CategoriesModule } from './categories/categories.module';
 import { ProductsModule } from './products/products.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { TeamsModule } from './teams/teams.module';
+import { CustomersModule } from './customers/customers.module';
+import { SalesModule } from './sales/sales.module';
+import { PaymentsModule } from './payments/payments.module';
 
 @Module({
   imports: [
@@ -30,6 +33,9 @@ import { TeamsModule } from './teams/teams.module';
     CategoriesModule,
     ProductsModule,
     InventoryModule,
+    CustomersModule,
+    SalesModule,
+    PaymentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
