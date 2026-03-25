@@ -15,9 +15,7 @@ import { ProductsModule } from '../products/products.module';
       useFactory: (config: ConfigService) => {
         const apiKey = config.get<string>('ANTHROPIC_API_KEY');
         if (!apiKey) {
-          throw new Error(
-            'ANTHROPIC_API_KEY environment variable is not configured',
-          );
+          return null;
         }
         return new Anthropic({
           apiKey,
