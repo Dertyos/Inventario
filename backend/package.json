@@ -13,8 +13,9 @@
     "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
     "test": "jest",
     "test:cov": "jest --coverage",
-    "test:e2e": "jest --config ./test/jest-e2e.json",
-    "test:e2e:ci": "jest --config ./test/jest-e2e.json --forceExit --detectOpenHandles",
+    "test:e2e": "jest --config ./test/jest-e2e.json --runInBand",
+    "test:e2e:ci": "jest --config ./test/jest-e2e.json --runInBand --forceExit --detectOpenHandles",
+    "test:e2e:setup": "bash ./test/setup-test-db.sh",
     "migration:generate": "typeorm migration:generate -d dist/data-source.js",
     "migration:run": "typeorm migration:run -d dist/data-source.js"
   },

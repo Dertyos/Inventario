@@ -1,32 +1,45 @@
+import * as path from 'path';
+import * as fs from 'fs';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
+
+// ── Load .env.test before anything else ──────────────────────────
+// ConfigModule.forRoot() in AppModule honours process.env when
+// envFilePath is not set.  By populating process.env here we make
+// sure the test database URL and JWT secret are picked up.
+const envTestPath = path.resolve(__dirname, '..', '.env.test');
+if (fs.existsSync(envTestPath)) {
+  const envContent = fs.readFileSync(envTestPath, 'utf-8');
+  for (const line of envContent.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eqIdx = trimmed.indexOf('=');
+    if (eqIdx === -1) continue;
+    const key = trimmed.slice(0, eqIdx).trim();
+    const value = trimmed.slice(eqIdx + 1).trim();
+    // Only set if not already defined (allows CI to override)
+    if (process.env[key] === undefined) {
+      process.env[key] = value;
+    }
+  }
+}
+
+// Import AppModule *after* env vars are loaded so ConfigService
+// sees the test values during module initialisation.
 import { AppModule } from '../src/app.module';
 
 /**
  * Creates a fully bootstrapped NestJS application for E2E testing.
  *
- * The app uses the real AppModule but overrides the TypeORM configuration
- * to point at the test database defined by DATABASE_URL in .env.test.
- * Global validation pipes are applied to match production behavior.
+ * Uses the real AppModule with the PostgreSQL test database defined
+ * in `.env.test`.  Global validation pipes are applied to match
+ * production behavior.
  */
 export async function createTestApp(): Promise<INestApplication> {
-  // Load .env.test so the ConfigService picks up test values
-  process.env.NODE_ENV = 'test';
-
   const moduleFixture: TestingModule = await Test.createTestingModule({
     imports: [AppModule],
-  })
-    .overrideModule(ConfigModule)
-    .useModule(
-      ConfigModule.forRoot({
-        isGlobal: true,
-        envFilePath: '.env.test',
-      }),
-    )
-    .compile();
+  }).compile();
 
   const app = moduleFixture.createNestApplication();
 
@@ -45,8 +58,8 @@ export async function createTestApp(): Promise<INestApplication> {
 
 /**
  * Truncates every table in the database (CASCADE) so each test suite
- * starts from a clean state. Tables are truncated in a single statement
- * to avoid FK-ordering issues.
+ * starts from a clean state.  Tables are truncated in a single
+ * statement to avoid FK-ordering issues.
  */
 export async function cleanDatabase(app: INestApplication): Promise<void> {
   const dataSource = app.get(DataSource);
