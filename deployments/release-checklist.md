@@ -1,50 +1,40 @@
-# Checklist Pre-Release
+# Checklist de Release — Inventario
 
-Completar antes de cada release a producción.
+## Pre-release
 
-## Código
+- [ ] Todos los tests pasan (`npm test` en backend, `flutter test` en mobile)
+- [ ] Lint sin errores (`npm run lint`, `dart analyze`)
+- [ ] Code review aprobado por al menos 1 reviewer
+- [ ] `CHANGELOG.md` actualizado con los cambios de la versión
+- [ ] Versión actualizada en `/VERSION`
+- [ ] Release notes creadas en `deployments/releases/vX.Y.Z.md`
+- [ ] No hay secrets ni credenciales en el código (verificar `.env.example`)
 
-- [ ] Todos los tests unitarios pasan (`npm test` / `flutter test`)
-- [ ] Lint limpio (`npm run lint` / `flutter analyze`)
-- [ ] TypeScript compila sin errores (`npx tsc --noEmit`)
-- [ ] Prettier formateado (`npm run format:check`)
-- [ ] No hay secretos hardcodeados (API keys, passwords)
-- [ ] No hay `console.log` / `print()` de debug en producción
+## Backend
 
-## Seguridad
-
-- [ ] `npm audit` sin vulnerabilidades críticas o altas
-- [ ] Trivy scan del Docker image sin CVEs críticas
-- [ ] Variables de entorno documentadas en `.env.example`
-- [ ] Secretos nuevos agregados a AWS Secrets Manager
-
-## Base de datos
-
-- [ ] Migraciones generadas y probadas (`migration:generate`, `migration:run`)
-- [ ] Migraciones son reversibles (tiene `down()`)
-- [ ] No hay `synchronize: true` en producción
+- [ ] Build Docker exitoso: `docker build -t inventario-backend .`
+- [ ] Deploy a **staging** automático (push a `main`)
+- [ ] Verificar API en staging: `curl https://staging.inventario.app/health`
+- [ ] Ejecutar tests e2e contra staging
+- [ ] Migraciones de base de datos aplicadas correctamente
+- [ ] Variables de entorno actualizadas en AWS Secrets Manager (si aplica)
 
 ## Mobile
 
-- [ ] `flutter build apk --release` genera APK firmado
-- [ ] `flutter build ios --release` genera IPA
-- [ ] Versión actualizada en `pubspec.yaml` (version: X.Y.Z+BUILD)
-- [ ] Permisos nativos actualizados (AndroidManifest, Info.plist)
-- [ ] Tamaño del APK/IPA revisado (no hay assets innecesarios)
+- [ ] Version bump en `pubspec.yaml` (version + build number)
+- [ ] Build Android APK: `flutter build apk --release`
+- [ ] Build iOS: `flutter build ios --release`
+- [ ] Probar en dispositivo físico (Android + iOS)
+- [ ] Screenshots actualizados (si hay cambios de UI)
+- [ ] Submit a Play Store (internal track) vía Codemagic
+- [ ] Submit a TestFlight vía Codemagic
 
-## Documentación
+## Post-release
 
-- [ ] `VERSION` actualizado en raíz del repo
-- [ ] `CHANGELOG.md` actualizado con cambios de esta versión
-- [ ] Release notes creado en `deployments/releases/vX.Y.Z.md`
-- [ ] API docs actualizados (Swagger decorators en nuevos endpoints)
-
-## Deploy
-
-- [ ] Staging desplegado y probado manualmente
-- [ ] Smoke tests en staging (auth, CRUD básico, nueva funcionalidad)
-- [ ] Tag creado: `git tag -a vX.Y.Z -m "Release vX.Y.Z"`
-- [ ] Tag pusheado: `git push origin vX.Y.Z`
-- [ ] GitHub Actions deploy completado sin errores
-- [ ] Codemagic build completado para Android + iOS
-- [ ] Verificar health check en producción post-deploy
+- [ ] Verificar deploy en producción: `curl https://api.inventario.app/health`
+- [ ] Verificar app móvil descargada desde stores
+- [ ] Monitorear Sentry por errores nuevos (primeras 24h)
+- [ ] Monitorear CloudWatch por anomalías en logs
+- [ ] Crear tag: `git tag -a vX.Y.Z -m "Release vX.Y.Z"`
+- [ ] Push del tag: `git push origin vX.Y.Z`
+- [ ] Notificar al equipo que el release está en producción

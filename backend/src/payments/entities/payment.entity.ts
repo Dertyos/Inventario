@@ -9,6 +9,8 @@ import {
 import { Team } from '../../teams/entities/team.entity';
 import { Sale } from '../../sales/entities/sale.entity';
 import { User } from '../../users/entities/user.entity';
+import { CreditAccount } from '../../credits/entities/credit-account.entity';
+import { CreditInstallment } from '../../credits/entities/credit-installment.entity';
 
 export enum PaymentMethodType {
   CASH = 'cash',
@@ -57,6 +59,20 @@ export class Payment {
   @ManyToOne(() => User)
   @JoinColumn({ name: 'receivedBy' })
   receivedByUser: User;
+
+  @Column({ nullable: true })
+  creditAccountId: string;
+
+  @ManyToOne(() => CreditAccount, { nullable: true })
+  @JoinColumn({ name: 'creditAccountId' })
+  creditAccount: CreditAccount;
+
+  @Column({ nullable: true })
+  installmentId: string;
+
+  @ManyToOne(() => CreditInstallment, { nullable: true })
+  @JoinColumn({ name: 'installmentId' })
+  installment: CreditInstallment;
 
   @Column({ type: 'timestamp' })
   paidAt: Date;

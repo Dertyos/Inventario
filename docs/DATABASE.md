@@ -106,15 +106,16 @@ Sistema multi-tenant donde cada **equipo (team)** es un negocio independiente co
 │ id           UUID PK  │      │ id            UUID PK    │
 │ teamId       FK       │      │ teamId        FK         │
 │ name                  │      │ name                     │
-│ email                 │      │ email                    │
-│ phone                 │      │ phone                    │
-│ documentType          │      │ documentType             │
-│   CC|NIT|CE|PASSPORT  │      │ documentNumber           │
+│ email                 │      │ nit            VARCHAR   │
+│ phone                 │      │ contactName    VARCHAR   │
+│ documentType          │      │ email                    │
+│   CC|NIT|CE|PASSPORT  │      │ phone                    │
 │ documentNumber        │      │ address                  │
 │ address               │      │ notes                    │
-│ notes                 │      │ createdAt                │
-│ createdAt             │      │ updatedAt                │
-│ updatedAt             │      └────────────┬─────────────┘
+│ notes                 │      │ isActive       BOOL      │
+│ createdAt             │      │ createdAt                │
+│ updatedAt             │      │ updatedAt                │
+│                       │      └────────────┬─────────────┘
 └───────────┬───────────┘                   │
             │                    Solo si team.enableSuppliers
             │

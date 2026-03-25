@@ -4,6 +4,9 @@ class SupplierModel {
   final String? nit;
   final String? contactName;
   final String? phone;
+  final String? email;
+  final String? address;
+  final String? notes;
   final bool isActive;
   final DateTime createdAt;
 
@@ -13,6 +16,9 @@ class SupplierModel {
     this.nit,
     this.contactName,
     this.phone,
+    this.email,
+    this.address,
+    this.notes,
     this.isActive = true,
     required this.createdAt,
   });
@@ -23,6 +29,9 @@ class SupplierModel {
         nit: json['nit'] as String?,
         contactName: json['contactName'] as String?,
         phone: json['phone'] as String?,
+        email: json['email'] as String?,
+        address: json['address'] as String?,
+        notes: json['notes'] as String?,
         isActive: json['isActive'] as bool? ?? true,
         createdAt: DateTime.parse(json['createdAt'] as String),
       );

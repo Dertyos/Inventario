@@ -36,7 +36,7 @@ class SalesScreen extends ConsumerWidget {
               title: 'Sin ventas',
               subtitle: 'Registra tu primera venta',
               actionLabel: 'Nueva venta',
-              onAction: () => context.go('/sales/new'),
+              onAction: () => context.push('/sales/new'),
             );
           }
 
@@ -219,7 +219,7 @@ class SalesScreen extends ConsumerWidget {
         },
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.go('/sales/new'),
+        onPressed: () => context.push('/sales/new'),
         icon: const Icon(Icons.add),
         label: const Text('Nueva venta'),
       ),
