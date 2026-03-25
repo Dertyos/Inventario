@@ -5,9 +5,10 @@ import { AiService } from './ai.service';
 import { AiController } from './ai.controller';
 import { ANTHROPIC_CLIENT } from './claude.provider';
 import { ProductsModule } from '../products/products.module';
+import { TeamsModule } from '../teams/teams.module';
 
 @Module({
-  imports: [ConfigModule, ProductsModule],
+  imports: [ConfigModule, ProductsModule, TeamsModule],
   controllers: [AiController],
   providers: [
     {
