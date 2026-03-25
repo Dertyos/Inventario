@@ -12,6 +12,7 @@ import { TeamsModule } from './teams/teams.module';
 import { CustomersModule } from './customers/customers.module';
 import { SalesModule } from './sales/sales.module';
 import { PaymentsModule } from './payments/payments.module';
+import { CreditsModule } from './credits/credits.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { PaymentsModule } from './payments/payments.module';
     CustomersModule,
     SalesModule,
     PaymentsModule,
+    CreditsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
