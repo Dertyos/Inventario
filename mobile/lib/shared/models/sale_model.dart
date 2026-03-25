@@ -9,6 +9,8 @@ class SaleModel {
   final String? notes;
   final String? customerId;
   final String? customerName;
+  final int? creditInstallments;
+  final double? creditPaidAmount;
   final List<SaleItemModel> items;
   final DateTime createdAt;
 
@@ -21,11 +23,16 @@ class SaleModel {
     this.notes,
     this.customerId,
     this.customerName,
+    this.creditInstallments,
+    this.creditPaidAmount,
     this.items = const [],
     required this.createdAt,
   });
 
   bool get isCancelled => status == 'cancelled';
+  bool get isCredit => paymentMethod == 'credit';
+  double get creditBalance =>
+      isCredit ? totalAmount - (creditPaidAmount ?? 0) : 0;
 
   factory SaleModel.fromJson(Map<String, dynamic> json) => SaleModel(
         id: json['id'] as String,
@@ -36,6 +43,8 @@ class SaleModel {
         notes: json['notes'] as String?,
         customerId: json['customerId'] as String?,
         customerName: json['customer']?['name'] as String?,
+        creditInstallments: JsonParse.toInt(json['creditInstallments']),
+        creditPaidAmount: JsonParse.toDouble(json['creditPaidAmount']),
         items: (json['items'] as List<dynamic>?)
                 ?.map((e) => SaleItemModel.fromJson(e as Map<String, dynamic>))
                 .toList() ??

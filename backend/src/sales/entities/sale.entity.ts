@@ -85,6 +85,12 @@ export class Sale {
   })
   status: SaleStatus;
 
+  @Column({ type: 'int', nullable: true })
+  creditInstallments: number;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  creditPaidAmount: number;
+
   @Column({ nullable: true })
   notes: string;
 

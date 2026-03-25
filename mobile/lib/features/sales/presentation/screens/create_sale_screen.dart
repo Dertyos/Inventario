@@ -24,6 +24,8 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
   String _paymentMethod = 'cash';
   bool _isSaving = false;
   CustomerModel? _selectedCustomer;
+  final _installmentsController = TextEditingController(text: '1');
+  final _paidAmountController = TextEditingController();
 
   double get _total =>
       _cart.fold(0, (sum, item) => sum + (item.product.price * item.quantity));
@@ -186,6 +188,12 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
             .toList(),
         'paymentMethod': _paymentMethod,
         if (_selectedCustomer != null) 'customerId': _selectedCustomer!.id,
+        if (_paymentMethod == 'credit') ...{
+          'creditInstallments':
+              int.tryParse(_installmentsController.text) ?? 1,
+          'creditPaidAmount':
+              double.tryParse(_paidAmountController.text) ?? 0,
+        },
       });
       ref.invalidate(salesProvider(teamId));
       ref.invalidate(productsProvider(teamId));
@@ -203,6 +211,13 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
       }
     }
     if (mounted) setState(() => _isSaving = false);
+  }
+
+  @override
+  void dispose() {
+    _installmentsController.dispose();
+    _paidAmountController.dispose();
+    super.dispose();
   }
 
   @override
@@ -447,27 +462,58 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
                   const Divider(),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                    child: Row(
-                      children: [
-                        SegmentedButton<String>(
-                          segments: const [
-                            ButtonSegment(value: 'cash', label: Text('Efectivo')),
-                            ButtonSegment(value: 'card', label: Text('Tarjeta')),
-                            ButtonSegment(value: 'transfer', label: Text('Transfer')),
-                          ],
-                          selected: {_paymentMethod},
-                          onSelectionChanged: (v) =>
-                              setState(() => _paymentMethod = v.first),
-                          style: ButtonStyle(
-                            visualDensity: VisualDensity.compact,
-                            textStyle: WidgetStatePropertyAll(
-                              Theme.of(context).textTheme.labelSmall,
-                            ),
-                          ),
-                        ),
+                    child: SegmentedButton<String>(
+                      segments: const [
+                        ButtonSegment(value: 'cash', label: Text('Efectivo')),
+                        ButtonSegment(value: 'credit', label: Text('Crédito')),
+                        ButtonSegment(value: 'transfer', label: Text('Transfer')),
                       ],
+                      selected: {_paymentMethod},
+                      onSelectionChanged: (v) =>
+                          setState(() => _paymentMethod = v.first),
+                      style: ButtonStyle(
+                        visualDensity: VisualDensity.compact,
+                        textStyle: WidgetStatePropertyAll(
+                          Theme.of(context).textTheme.labelSmall,
+                        ),
+                      ),
                     ),
                   ),
+                  if (_paymentMethod == 'credit') ...[
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.md, AppSpacing.sm, AppSpacing.md, 0,
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _installmentsController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                labelText: 'Cuotas',
+                                prefixIcon: Icon(Icons.calendar_month_outlined),
+                                isDense: true,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _paidAmountController,
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                labelText: 'Abono',
+                                hintText: cop.format(0),
+                                prefixIcon: const Icon(Icons.payments_outlined),
+                                isDense: true,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   Padding(
                     padding: const EdgeInsets.all(AppSpacing.md),
                     child: Row(

@@ -64,6 +64,24 @@ export class CreateSaleDto {
   paymentMethod?: PaymentMethod;
 
   @ApiPropertyOptional({
+    example: 3,
+    description: 'Número de cuotas (solo para crédito)',
+  })
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  creditInstallments?: number;
+
+  @ApiPropertyOptional({
+    example: 10000,
+    description: 'Monto abonado al momento (solo para crédito)',
+  })
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  creditPaidAmount?: number;
+
+  @ApiPropertyOptional({
     example: 'Venta de mostrador',
     description: 'Notas de la venta',
   })
