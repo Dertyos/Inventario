@@ -5,7 +5,9 @@ import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/models/product_model.dart';
 import '../../../../shared/providers/auth_provider.dart';
+import '../../../../shared/widgets/app_search_field.dart';
 import '../../../../shared/widgets/empty_state.dart';
+import '../../../../shared/widgets/status_badge.dart';
 import '../../data/products_repository.dart';
 
 final productsProvider =
@@ -51,22 +53,10 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
       body: Column(
         children: [
           // Search bar
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md, AppSpacing.sm, AppSpacing.md, 0),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Buscar productos...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () => setState(() => _searchQuery = ''),
-                      )
-                    : null,
-              ),
-              onChanged: (v) => setState(() => _searchQuery = v),
-            ),
+          AppSearchField(
+            hintText: 'Buscar productos...',
+            value: _searchQuery,
+            onChanged: (v) => setState(() => _searchQuery = v),
           ),
 
           // Category chips
@@ -178,29 +168,9 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                             children: [
                               Text(cop.format(product.price)),
                               const SizedBox(width: AppSpacing.sm),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: product.isLowStock
-                                      ? Colors.orange.withValues(alpha: 0.1)
-                                      : Colors.green.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  'Stock: ${product.stock}',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .labelSmall
-                                      ?.copyWith(
-                                        color: product.isLowStock
-                                            ? Colors.orange
-                                            : Colors.green,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                ),
+                              StatusBadge(
+                                label: 'Stock: ${product.stock}',
+                                color: product.isLowStock ? AppColors.warning : AppColors.success,
                               ),
                             ],
                           ),

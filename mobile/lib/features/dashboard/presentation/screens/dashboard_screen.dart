@@ -101,8 +101,8 @@ class DashboardScreen extends ConsumerWidget {
                     value: '${data.lowStockProducts.length}',
                     icon: Icons.warning_rounded,
                     color: data.lowStockProducts.isEmpty
-                        ? Colors.green
-                        : Colors.orange,
+                        ? AppColors.success
+                        : AppColors.warning,
                     subtitle: data.lowStockProducts.isEmpty
                         ? 'Todo bien'
                         : 'Requiere atención',
@@ -142,12 +142,12 @@ class DashboardScreen extends ConsumerWidget {
                             width: 40,
                             height: 40,
                             decoration: BoxDecoration(
-                              color: Colors.orange.withValues(alpha: 0.1),
+                              color: AppColors.warning.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: const Icon(
                               Icons.warning_amber_rounded,
-                              color: Colors.orange,
+                              color: AppColors.warning,
                               size: 20,
                             ),
                           ),

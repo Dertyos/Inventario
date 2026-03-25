@@ -95,7 +95,6 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
   Widget build(BuildContext context) {
     final teamId = ref.watch(authProvider).teamId;
     final customers = ref.watch(customersProvider(teamId));
-    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Clientes')),
