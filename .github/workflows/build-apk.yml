@@ -40,14 +40,33 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
 
+      - name: Setup keystore
+        if: ${{ env.KEYSTORE_BASE64 != '' }}
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 --decode > "${{ github.workspace }}/inventario-release.jks"
+          printf "storePassword=%s\nkeyPassword=%s\nkeyAlias=%s\nstoreFile=%s\n" \
+            "$KEYSTORE_PASSWORD" "$KEY_PASSWORD" "$KEY_ALIAS" \
+            "${{ github.workspace }}/inventario-release.jks" \
+            > "${{ github.workspace }}/mobile/android/key.properties"
+
       - name: Install dependencies
         run: flutter pub get
 
       - name: Build APK
+        env:
+          GOOGLE_SERVER_CLIENT_ID: ${{ secrets.GOOGLE_SERVER_CLIENT_ID }}
         run: |
           DART_DEFINES=""
           if [ -n "${{ github.event.inputs.api_base_url }}" ]; then
-            DART_DEFINES="--dart-define=API_BASE_URL=${{ github.event.inputs.api_base_url }}"
+            DART_DEFINES="$DART_DEFINES --dart-define=API_BASE_URL=${{ github.event.inputs.api_base_url }}"
+          fi
+          if [ -n "$GOOGLE_SERVER_CLIENT_ID" ]; then
+            DART_DEFINES="$DART_DEFINES --dart-define=GOOGLE_SERVER_CLIENT_ID=$GOOGLE_SERVER_CLIENT_ID"
           fi
           flutter build apk --release --split-per-abi $DART_DEFINES
 

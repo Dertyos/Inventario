@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import '../../core/config/app_config.dart';
 import '../../core/network/api_client.dart';
 import '../../core/storage/secure_storage.dart';
 import '../../features/auth/data/auth_repository.dart';
@@ -197,7 +198,12 @@ class AuthNotifier extends Notifier<AuthState> {
   Future<void> signInWithGoogle() async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final googleSignIn = GoogleSignIn(scopes: ['email']);
+      final googleSignIn = GoogleSignIn(
+        scopes: ['email'],
+        serverClientId: AppConfig.googleServerClientId.isNotEmpty
+            ? AppConfig.googleServerClientId
+            : null,
+      );
       final account = await googleSignIn.signIn();
       if (account == null) {
         // User cancelled
