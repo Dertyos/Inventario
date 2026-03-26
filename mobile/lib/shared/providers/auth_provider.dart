@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../../core/config/app_config.dart';
-import '../../core/network/api_client.dart' show dioProvider, setSessionExpiredCallback;
+import '../../core/network/api_client.dart' show dioProvider, setSessionExpiredCallback, secureStorageProvider;
 import '../../core/storage/secure_storage.dart';
 import '../../features/auth/data/auth_repository.dart';
 import '../models/user_model.dart';
