@@ -114,7 +114,9 @@ class DashboardScreen extends ConsumerWidget {
                     value: cop.format(data.todayRevenue),
                     icon: Icons.trending_up_rounded,
                     color: colorScheme.primary,
-                    subtitle: '${data.todaySalesCount} transacciones',
+                    subtitle: pendingCount > 0
+                        ? '${data.todaySalesCount} trans. · $pendingCount pendientes'
+                        : '${data.todaySalesCount} transacciones',
                     onTap: () => context.go('/sales'),
                   ),
                   StatCard(
