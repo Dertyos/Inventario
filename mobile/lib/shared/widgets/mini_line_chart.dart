@@ -29,10 +29,10 @@ class MiniLineChart extends StatelessWidget {
           gridData: const FlGridData(show: false),
           titlesData: const FlTitlesData(show: false),
           borderData: FlBorderData(show: false),
-          lineTouchData: const LineTouchData(enabled: false),
           clipData: const FlClipData.all(),
           minY: minY - padding,
           maxY: maxY + padding,
+          lineTouchData: const LineTouchData(enabled: false),
           lineBarsData: [
             LineChartBarData(
               spots: List.generate(

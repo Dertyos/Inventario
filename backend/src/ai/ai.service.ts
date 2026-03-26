@@ -8,6 +8,8 @@ import {
 import Anthropic from '@anthropic-ai/sdk';
 import { ANTHROPIC_CLIENT } from './claude.provider';
 import { ProductsService } from '../products/products.service';
+import { Product } from '../products/entities/product.entity';
+import { Customer } from '../customers/entities/customer.entity';
 import { CategoriesService } from '../categories/categories.service';
 import { CustomersService } from '../customers/customers.service';
 import { SuppliersService } from '../suppliers/suppliers.service';
@@ -332,7 +334,7 @@ export class AiService {
     // --- Layer 2: Build prompt with product catalog ---
     const products = await this.productsService.findAll(teamId, {
       isActive: true,
-    });
+    }) as Product[];
     const catalog = products
       .map((p) => `- ${p.name} (SKU: ${p.sku}, precio: $${p.price})`)
       .join('\n');
@@ -492,9 +494,9 @@ export class AiService {
 
     // --- Layer 2: Build context with catalog, categories, customers, suppliers ---
     const [products, categories, customers, suppliers] = await Promise.all([
-      this.productsService.findAll(teamId, { isActive: true }),
+      this.productsService.findAll(teamId, { isActive: true }) as Promise<Product[]>,
       this.categoriesService.findAll(teamId),
-      this.customersService.findAll(teamId, {}),
+      this.customersService.findAll(teamId, {}) as Promise<Customer[]>,
       this.suppliersService.findAll(teamId, {}),
     ]);
 
