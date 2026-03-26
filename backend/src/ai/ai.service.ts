@@ -344,7 +344,7 @@ export class AiService {
     // --- Layer 3: Call Claude with tool_use (constrained decoding) ---
     try {
       const response = await this.claude.messages.create({
-        model: 'claude-haiku-4-5-20241022',
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 512,
         temperature: 0,
         tools: [TRANSACTION_TOOL],
@@ -524,7 +524,7 @@ export class AiService {
     // --- Layer 3: Call Claude with tool_use (constrained decoding) ---
     try {
       const response = await this.claude.messages.create({
-        model: 'claude-haiku-4-5-20241022',
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 1024,
         temperature: 0,
         tools: [COMMAND_TOOL],
