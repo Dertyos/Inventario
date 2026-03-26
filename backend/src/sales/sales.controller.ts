@@ -16,6 +16,7 @@ import { SaleStatus } from './entities/sale.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TeamRolesGuard } from '../teams/guards/team-roles.guard';
 import { TeamRoles } from '../teams/decorators/team-roles.decorator';
+import { RequirePermission } from '../teams/decorators/require-permission.decorator';
 import { TeamRole } from '../teams/entities/team-member.entity';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
@@ -27,6 +28,7 @@ export class SalesController {
   constructor(private readonly salesService: SalesService) {}
 
   @Post()
+  @RequirePermission('sales.create')
   create(
     @Param('teamId', ParseUUIDPipe) teamId: string,
     @Body() createSaleDto: CreateSaleDto,
@@ -65,6 +67,7 @@ export class SalesController {
 
   @Patch(':id/cancel')
   @TeamRoles(TeamRole.OWNER, TeamRole.ADMIN, TeamRole.MANAGER)
+  @RequirePermission('sales.cancel')
   cancel(
     @Param('teamId', ParseUUIDPipe) teamId: string,
     @Param('id', ParseUUIDPipe) id: string,

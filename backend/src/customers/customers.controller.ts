@@ -16,6 +16,7 @@ import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TeamRolesGuard } from '../teams/guards/team-roles.guard';
 import { TeamRoles } from '../teams/decorators/team-roles.decorator';
+import { RequirePermission } from '../teams/decorators/require-permission.decorator';
 import { TeamRole } from '../teams/entities/team-member.entity';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
@@ -28,6 +29,7 @@ export class CustomersController {
 
   @Post()
   @TeamRoles(TeamRole.OWNER, TeamRole.ADMIN, TeamRole.MANAGER)
+  @RequirePermission('customers.create')
   create(
     @Param('teamId', ParseUUIDPipe) teamId: string,
     @Body() createCustomerDto: CreateCustomerDto,

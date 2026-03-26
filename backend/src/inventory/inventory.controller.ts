@@ -14,6 +14,7 @@ import { CreateMovementDto } from './dto/create-movement.dto';
 import { MovementType } from './entities/inventory-movement.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TeamRolesGuard } from '../teams/guards/team-roles.guard';
+import { RequirePermission } from '../teams/decorators/require-permission.decorator';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
 @ApiTags('inventory')
@@ -24,6 +25,7 @@ export class InventoryController {
   constructor(private readonly inventoryService: InventoryService) {}
 
   @Post('movements')
+  @RequirePermission('inventory.movements')
   createMovement(
     @Param('teamId', ParseUUIDPipe) teamId: string,
     @Body() createMovementDto: CreateMovementDto,
