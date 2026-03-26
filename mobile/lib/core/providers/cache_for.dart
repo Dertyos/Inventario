@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-extension CacheForExtension on AutoDisposeRef {
+extension CacheForExtension on Ref {
   /// Keeps the provider alive for [duration] after losing all listeners.
   ///
   /// This is the standard production pattern: data stays in memory for a while
