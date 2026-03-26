@@ -6,9 +6,19 @@ import { AiController } from './ai.controller';
 import { ANTHROPIC_CLIENT } from './claude.provider';
 import { ProductsModule } from '../products/products.module';
 import { TeamsModule } from '../teams/teams.module';
+import { CategoriesModule } from '../categories/categories.module';
+import { CustomersModule } from '../customers/customers.module';
+import { SuppliersModule } from '../suppliers/suppliers.module';
 
 @Module({
-  imports: [ConfigModule, ProductsModule, TeamsModule],
+  imports: [
+    ConfigModule,
+    ProductsModule,
+    TeamsModule,
+    CategoriesModule,
+    CustomersModule,
+    SuppliersModule,
+  ],
   controllers: [AiController],
   providers: [
     {

@@ -6,9 +6,10 @@ import 'api_interceptor.dart';
 import 'retry_interceptor.dart';
 
 final dioProvider = Provider<Dio>((ref) {
+  final serverUrl = ref.watch(serverUrlProvider);
   final dio = Dio(
     BaseOptions(
-      baseUrl: AppConfig.baseUrl,
+      baseUrl: serverUrl,
       connectTimeout: AppConfig.connectTimeout,
       receiveTimeout: AppConfig.receiveTimeout,
       headers: {'Content-Type': 'application/json'},

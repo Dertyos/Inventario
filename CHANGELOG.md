@@ -6,11 +6,22 @@ Versionado según [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [1.2.0] - 2026-03-25
 
-### Corregido
-- **Detección de productos en inventario**: El diálogo de nuevo movimiento no detectaba productos existentes (usaba `ref.read` en vez de `await ref.read(.future)` para un provider `autoDispose`)
-- **Ventas mostrando $0**: El modelo Flutter leía `json['totalAmount']` pero el backend envía el campo como `total`
-
 ### Agregado
+- **Asistente IA copiloto completo**: La IA ahora entiende 9 tipos de acciones en lenguaje natural
+  - Crear productos con SKU auto-generado
+  - Crear categorias
+  - Crear clientes con telefono, email, documento
+  - Crear proveedores con NIT, contacto
+  - Entrada y salida de stock con fuzzy matching de productos
+  - Invitar miembros al equipo con rol
+  - Ventas y compras (existente, mejorado)
+- **Nuevo endpoint** `POST /teams/:id/ai/parse-command` con tool schema de 9 acciones
+- **Contexto enriquecido**: La IA recibe catalogo de productos, categorias, clientes y proveedores para fuzzy matching
+- **Ejecucion directa**: Cada accion se ejecuta via API al confirmar (sin navegar a otra pantalla)
+- **URL del servidor configurable**: En login y settings, para conectar a backend en Render/Railway/etc
+- **Build workflow mejorado**: Input opcional `api_base_url` para compilar APK con URL pre-configurada
+- **App shortcuts**: Accesos directos desde pantalla de inicio (Nueva venta, Asistente IA, Nuevo producto)
+- **Home widget**: Widget de pantalla de inicio para acceso rápido a funciones principales
 - **Selección de cliente en ventas**: Selector opcional de cliente al crear una venta (el backend ya lo soportaba, faltaba el UI)
 - **Proveedor en movimientos de inventario**: Selector de proveedor para entradas de stock con opción de crear uno nuevo inline (nombre + teléfono)
   - Nuevo campo `supplierId` en entidad `InventoryMovement`
@@ -32,6 +43,18 @@ Versionado según [Semantic Versioning](https://semver.org/lang/es/).
 - **Pantalla de Lotes de Productos**: Lista de lotes con estado (activo/por vencer/expirado/agotado), creación con fecha de vencimiento
 - **Pantalla de Proveedores**: CRUD completo con búsqueda (nombre, NIT, teléfono)
 - **Navegación**: Todos los nuevos módulos accesibles desde la pestaña "Más"
+
+### Cambiado
+- Pantalla "Registrar con voz" renombrada a "Asistente IA" con icono actualizado
+- 8 ejemplos diversos cubriendo todos los tipos de accion
+- Errores descriptivos cuando backend/IA no disponible
+- `flutter_lints` downgraded a ^5.0.0 (compatibilidad con Dart 3.7.x)
+
+### Corregido
+- **Detección de productos en inventario**: El diálogo de nuevo movimiento no detectaba productos existentes (usaba `ref.read` en vez de `await ref.read(.future)` para un provider `autoDispose`)
+- **Ventas mostrando $0**: El modelo Flutter leía `json['totalAmount']` pero el backend envía el campo como `total`
+- Build CI fallaba por `flutter_lints 6.0.0` requiriendo Dart ^3.8.0
+- `pubspec.lock` regenerado para compatibilidad
 
 ## [1.1.0] - 2026-03-25
 

@@ -2,6 +2,8 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/config/app_config.dart';
+import '../../../../core/network/api_client.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/providers/auth_provider.dart';
 
@@ -33,10 +35,69 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         );
   }
 
+  void _showServerConfig() {
+    final controller = TextEditingController(
+      text: ref.read(serverUrlProvider),
+    );
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Servidor'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Configura la URL de tu backend antes de iniciar sesion.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.url,
+              decoration: const InputDecoration(
+                hintText: 'https://mi-api.onrender.com',
+                prefixIcon: Icon(Icons.link),
+              ),
+              autofocus: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              var url = controller.text.trim();
+              if (url.isEmpty) return;
+              if (url.endsWith('/')) url = url.substring(0, url.length - 1);
+              await ref.read(secureStorageProvider).saveServerUrl(url);
+              ref.read(serverUrlProvider.notifier).state = url;
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Servidor: $url')),
+                );
+              }
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
     final colorScheme = Theme.of(context).colorScheme;
+    final serverUrl = ref.watch(serverUrlProvider);
+    final isDefaultUrl = serverUrl == AppConfig.defaultBaseUrl;
 
     ref.listen<AuthState>(authProvider, (prev, next) {
       if (next.error != null) {
@@ -74,12 +135,46 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
-                    'Inicia sesión para continuar',
+                    'Inicia sesion para continuar',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                         ),
                     textAlign: TextAlign.center,
                   ),
+
+                  // Server warning if not configured
+                  if (isDefaultUrl) ...[
+                    const SizedBox(height: AppSpacing.md),
+                    Card(
+                      color: AppColors.warningBg(context),
+                      child: InkWell(
+                        onTap: _showServerConfig,
+                        borderRadius: BorderRadius.circular(16),
+                        child: Padding(
+                          padding: const EdgeInsets.all(AppSpacing.sm),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.dns_outlined,
+                                  color: AppColors.warning, size: 20),
+                              const SizedBox(width: AppSpacing.sm),
+                              Expanded(
+                                child: Text(
+                                  'Configura tu servidor primero',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(color: AppColors.warning),
+                                ),
+                              ),
+                              const Icon(Icons.chevron_right,
+                                  color: AppColors.warning, size: 18),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+
                   const SizedBox(height: AppSpacing.xxl),
                   TextFormField(
                     controller: _emailController,
@@ -87,7 +182,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     textInputAction: TextInputAction.next,
                     autofillHints: const [AutofillHints.email],
                     decoration: const InputDecoration(
-                      labelText: 'Correo electrónico',
+                      labelText: 'Correo electronico',
                       prefixIcon: Icon(Icons.email_outlined),
                     ),
                     validator: (v) {
@@ -95,7 +190,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         return 'Ingresa tu correo';
                       }
                       if (!v.contains('@') || !v.contains('.')) {
-                        return 'Correo inválido';
+                        return 'Correo invalido';
                       }
                       return null;
                     },
@@ -107,7 +202,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     textInputAction: TextInputAction.done,
                     autofillHints: const [AutofillHints.password],
                     decoration: InputDecoration(
-                      labelText: 'Contraseña',
+                      labelText: 'Contrasena',
                       prefixIcon: const Icon(Icons.lock_outlined),
                       suffixIcon: IconButton(
                         icon: Icon(_obscurePassword
@@ -118,8 +213,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                     ),
                     validator: (v) {
-                      if (v == null || v.isEmpty) return 'Ingresa tu contraseña';
-                      if (v.length < 8) return 'Mínimo 8 caracteres';
+                      if (v == null || v.isEmpty) return 'Ingresa tu contrasena';
+                      if (v.length < 8) return 'Minimo 8 caracteres';
                       return null;
                     },
                     onFieldSubmitted: (_) => _submit(),
@@ -133,7 +228,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             width: 20,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Text('Iniciar sesión'),
+                        : const Text('Iniciar sesion'),
                   ),
                   const SizedBox(height: AppSpacing.md),
                   Row(
@@ -186,10 +281,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     onPressed: () => context.go('/register'),
                     child: Text.rich(
                       TextSpan(
-                        text: '¿No tienes cuenta? ',
+                        text: 'No tienes cuenta? ',
                         children: [
                           TextSpan(
-                            text: 'Regístrate',
+                            text: 'Registrate',
                             style: TextStyle(
                               color: colorScheme.primary,
                               fontWeight: FontWeight.w600,

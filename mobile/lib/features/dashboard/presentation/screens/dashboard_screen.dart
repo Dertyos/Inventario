@@ -4,13 +4,22 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/notifications/notification_service.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/home_widget_updater.dart';
 import '../../../../shared/providers/auth_provider.dart';
 import '../../data/dashboard_repository.dart';
 import '../../../../shared/widgets/stat_card.dart';
 
 final dashboardProvider =
-    FutureProvider.autoDispose.family<DashboardData, String>((ref, teamId) {
-  return ref.read(dashboardRepositoryProvider).getDashboardData(teamId);
+    FutureProvider.autoDispose.family<DashboardData, String>((ref, teamId) async {
+  final data = await ref.read(dashboardRepositoryProvider).getDashboardData(teamId);
+  // Push metrics to home screen widget
+  HomeWidgetUpdater.updateDashboard(
+    todayRevenue: data.todayRevenue,
+    todaySalesCount: data.todaySalesCount,
+    totalProducts: data.totalProducts,
+    lowStockCount: data.lowStockProducts.length,
+  );
+  return data;
 });
 
 class DashboardScreen extends ConsumerWidget {

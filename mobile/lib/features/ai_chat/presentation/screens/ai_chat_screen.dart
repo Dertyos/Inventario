@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/ai/ai_service.dart';
+import '../../../../core/network/api_client.dart';
 import '../../../../shared/providers/auth_provider.dart';
 
 class VoiceTransactionScreen extends ConsumerStatefulWidget {
@@ -24,14 +26,19 @@ class _VoiceTransactionScreenState
   bool _speechAvailable = false;
   double _soundLevel = 0.0;
   String _localeId = 'es_CO';
-  ParsedTransaction? _parsed;
+  ParsedCommand? _parsed;
   String? _error;
+  String? _successMsg;
 
   final _examples = [
     'Venta de 5 tornillos a Pedro por 25 mil',
-    'Compra de 20 clavos al proveedor García',
-    'Vendí 3 martillos a 15 mil cada uno',
+    'Crear producto Coca-Cola 350ml a 2500',
+    'Agregar cliente Maria Garcia tel 3001234567',
+    'Nuevo proveedor Distribuidora ABC nit 900123456',
     'Entrada de 100 tuercas a bodega',
+    'Crear categoria Bebidas',
+    'Invitar a juan@email.com como admin',
+    'Compra de 20 clavos al proveedor Garcia',
   ];
 
   @override
@@ -47,14 +54,14 @@ class _VoiceTransactionScreenState
       },
     );
     if (_speechAvailable) {
-      // Check available locales and fallback gracefully
       final locales = await _speech.locales();
       final hasEsCO = locales.any((l) => l.localeId == 'es_CO');
       final hasEs = locales.any((l) => l.localeId.startsWith('es'));
       if (hasEsCO) {
         _localeId = 'es_CO';
       } else if (hasEs) {
-        _localeId = locales.firstWhere((l) => l.localeId.startsWith('es')).localeId;
+        _localeId =
+            locales.firstWhere((l) => l.localeId.startsWith('es')).localeId;
       }
     }
     setState(() {});
@@ -68,13 +75,14 @@ class _VoiceTransactionScreenState
     }
 
     if (!_speechAvailable) {
-      _showError('Micrófono no disponible');
+      _showSnack('Microfono no disponible');
       return;
     }
 
     setState(() {
       _isListening = true;
       _error = null;
+      _successMsg = null;
     });
 
     await _speech.listen(
@@ -107,39 +115,195 @@ class _VoiceTransactionScreenState
       _isProcessing = true;
       _parsed = null;
       _error = null;
+      _successMsg = null;
     });
 
     final teamId = ref.read(authProvider).teamId;
+    if (teamId.isEmpty) {
+      setState(() {
+        _error = 'No hay equipo activo. Crea uno en Configuracion.';
+        _isProcessing = false;
+      });
+      return;
+    }
 
     try {
       final result =
-          await ref.read(aiServiceProvider).parseTransaction(teamId, text);
+          await ref.read(aiServiceProvider).parseCommand(teamId, text);
       setState(() {
         _parsed = result;
         _isProcessing = false;
       });
     } catch (e) {
+      final msg = e.toString();
+      String errorMsg;
+      if (msg.contains('conexion') ||
+          msg.contains('internet') ||
+          msg.contains('timeout') ||
+          msg.contains('Connection')) {
+        errorMsg =
+            'No se pudo conectar al servidor. Verifica la URL en Configuracion > Servidor.';
+      } else if (msg.contains('503') || msg.contains('unavailable')) {
+        errorMsg =
+            'El servicio de IA no esta disponible. Verifica que ANTHROPIC_API_KEY este configurada en el backend.';
+      } else if (msg.contains('403') || msg.contains('permisos')) {
+        errorMsg = 'No tienes permisos para usar esta funcion.';
+      } else {
+        errorMsg = 'No pude procesar: $msg';
+      }
       setState(() {
-        _error = 'No pude entender. Intenta de nuevo.';
+        _error = errorMsg;
         _isProcessing = false;
       });
     }
   }
 
-  void _showError(String message) {
+  void _showSnack(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );
   }
 
-  void _confirmTransaction() {
+  Future<void> _confirmAction() async {
     if (_parsed == null) return;
 
-    // Navigate to the appropriate creation screen with pre-filled data
-    if (_parsed!.type == TransactionType.sale) {
-      context.push('/sales/new', extra: _parsed);
-    } else {
-      context.push('/purchases/new', extra: _parsed);
+    final teamId = ref.read(authProvider).teamId;
+    final dio = ref.read(dioProvider);
+
+    // For sales, navigate to the sales screen
+    if (_parsed!.action == CommandAction.createSale) {
+      context.push('/sales/new');
+      return;
+    }
+
+    setState(() => _isProcessing = true);
+
+    try {
+      String successMsg;
+
+      switch (_parsed!.action) {
+        case CommandAction.createProduct:
+          final p = _parsed!.product!;
+          await dio.post('/teams/$teamId/products', data: {
+            'name': p.name,
+            'sku': p.sku ?? '${p.name.substring(0, 3).toUpperCase()}-001',
+            'price': p.price,
+            if (p.cost != null) 'cost': p.cost,
+            if (p.categoryId != null) 'categoryId': p.categoryId,
+            'minStock': p.minStock ?? 5,
+          });
+          successMsg = 'Producto "${p.name}" creado';
+
+        case CommandAction.createCategory:
+          final c = _parsed!.category!;
+          await dio.post('/teams/$teamId/categories', data: {
+            'name': c.name,
+            if (c.description != null) 'description': c.description,
+          });
+          successMsg = 'Categoria "${c.name}" creada';
+
+        case CommandAction.createCustomer:
+          final c = _parsed!.customer!;
+          await dio.post('/teams/$teamId/customers', data: {
+            'name': c.name,
+            if (c.phone != null) 'phone': c.phone,
+            if (c.email != null) 'email': c.email,
+            if (c.documentType != null) 'documentType': c.documentType,
+            if (c.documentNumber != null) 'documentNumber': c.documentNumber,
+            if (c.address != null) 'address': c.address,
+          });
+          successMsg = 'Cliente "${c.name}" creado';
+
+        case CommandAction.createSupplier:
+          final s = _parsed!.supplier!;
+          await dio.post('/teams/$teamId/suppliers', data: {
+            'name': s.name,
+            if (s.nit != null) 'nit': s.nit,
+            if (s.contactName != null) 'contactName': s.contactName,
+            if (s.phone != null) 'phone': s.phone,
+            if (s.email != null) 'email': s.email,
+            if (s.address != null) 'address': s.address,
+          });
+          successMsg = 'Proveedor "${s.name}" creado';
+
+        case CommandAction.addStock:
+          final inv = _parsed!.inventory!;
+          if (inv.productId == null) {
+            throw Exception(
+                'Producto "${inv.productName}" no encontrado en el catalogo');
+          }
+          await dio.post('/teams/$teamId/inventory/movements', data: {
+            'type': 'in',
+            'productId': inv.productId,
+            'quantity': inv.quantity,
+            if (inv.reason != null) 'reason': inv.reason,
+          });
+          successMsg = 'Entrada de ${inv.quantity}x ${inv.productName}';
+
+        case CommandAction.removeStock:
+          final inv = _parsed!.inventory!;
+          if (inv.productId == null) {
+            throw Exception(
+                'Producto "${inv.productName}" no encontrado en el catalogo');
+          }
+          await dio.post('/teams/$teamId/inventory/movements', data: {
+            'type': 'out',
+            'productId': inv.productId,
+            'quantity': inv.quantity,
+            if (inv.reason != null) 'reason': inv.reason,
+          });
+          successMsg = 'Salida de ${inv.quantity}x ${inv.productName}';
+
+        case CommandAction.inviteMember:
+          final m = _parsed!.member!;
+          await dio.post('/teams/$teamId/members', data: {
+            'email': m.email,
+            if (m.role != null) 'role': m.role,
+          });
+          successMsg = 'Invitacion enviada a ${m.email}';
+
+        case CommandAction.createPurchase:
+          final t = _parsed!.transaction!;
+          await dio.post('/teams/$teamId/purchases', data: {
+            'items': t.items
+                .where((i) => i.matchedProductId != null)
+                .map((i) => {
+                      'productId': i.matchedProductId,
+                      'quantity': i.quantity,
+                      'unitCost': i.unitPrice ?? 0,
+                    })
+                .toList(),
+            if (t.customerOrSupplier != null)
+              'notes': 'Proveedor: ${t.customerOrSupplier}',
+          });
+          successMsg = 'Compra registrada';
+
+        case CommandAction.createSale:
+          successMsg = '';
+      }
+
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+          _successMsg = successMsg;
+          _parsed = null;
+        });
+        _showSnack(successMsg);
+      }
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      final msg = data is Map && data.containsKey('message')
+          ? data['message'].toString()
+          : 'Error del servidor';
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        _showSnack('Error: $msg');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        _showSnack('Error: $e');
+      }
     }
   }
 
@@ -148,6 +312,7 @@ class _VoiceTransactionScreenState
       _controller.clear();
       _parsed = null;
       _error = null;
+      _successMsg = null;
     });
   }
 
@@ -158,6 +323,10 @@ class _VoiceTransactionScreenState
     super.dispose();
   }
 
+  // ---------------------------------------------------------------------------
+  // Build
+  // ---------------------------------------------------------------------------
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -166,9 +335,9 @@ class _VoiceTransactionScreenState
       appBar: AppBar(
         title: Row(
           children: [
-            Icon(Icons.mic, size: 20, color: colorScheme.primary),
+            Icon(Icons.auto_awesome, size: 20, color: colorScheme.primary),
             const SizedBox(width: AppSpacing.sm),
-            const Text('Registrar con voz'),
+            const Text('Asistente IA'),
           ],
         ),
       ),
@@ -200,7 +369,7 @@ class _VoiceTransactionScreenState
                   child: TextField(
                     controller: _controller,
                     decoration: InputDecoration(
-                      hintText: 'Ej: Venta de 5 tornillos a Pedro...',
+                      hintText: 'Ej: Crear producto Coca-Cola a 2500...',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24),
                       ),
@@ -216,7 +385,6 @@ class _VoiceTransactionScreenState
                   ),
                 ),
                 const SizedBox(width: AppSpacing.xs),
-                // Mic button
                 IconButton.filled(
                   onPressed: _isProcessing ? null : _toggleListening,
                   style: IconButton.styleFrom(
@@ -230,7 +398,6 @@ class _VoiceTransactionScreenState
                   icon: Icon(_isListening ? Icons.stop : Icons.mic),
                 ),
                 const SizedBox(width: 4),
-                // Send button
                 IconButton.filled(
                   onPressed: _isProcessing
                       ? null
@@ -244,6 +411,10 @@ class _VoiceTransactionScreenState
       ),
     );
   }
+
+  // ---------------------------------------------------------------------------
+  // Input area (idle / listening / processing)
+  // ---------------------------------------------------------------------------
 
   Widget _buildInputArea(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -262,7 +433,6 @@ class _VoiceTransactionScreenState
     }
 
     if (_isListening) {
-      // Scale mic icon based on sound level (0-10 range typical)
       final scale = 1.0 + (_soundLevel.clamp(0, 10) / 10) * 0.3;
       return Center(
         child: Column(
@@ -277,21 +447,15 @@ class _VoiceTransactionScreenState
                   color: colorScheme.errorContainer.withValues(alpha: 0.3),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  Icons.mic,
-                  size: 64,
-                  color: colorScheme.error,
-                ),
+                child: Icon(Icons.mic, size: 64, color: colorScheme.error),
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            Text(
-              'Escuchando...',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
+            Text('Escuchando...',
+                style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: AppSpacing.xs),
             Text(
-              'Describe tu venta o compra',
+              'Di lo que necesitas',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
@@ -318,26 +482,41 @@ class _VoiceTransactionScreenState
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (_successMsg != null) ...[
+              Card(
+                color: AppColors.successBg(context),
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.check_circle,
+                          color: AppColors.success, size: 24),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(_successMsg!,
+                            style: const TextStyle(color: AppColors.success)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+            ],
             Container(
               padding: const EdgeInsets.all(AppSpacing.lg),
               decoration: BoxDecoration(
                 color: colorScheme.primaryContainer.withValues(alpha: 0.3),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                Icons.mic,
-                size: 48,
-                color: colorScheme.primary,
-              ),
+              child:
+                  Icon(Icons.auto_awesome, size: 48, color: colorScheme.primary),
             ),
             const SizedBox(height: AppSpacing.md),
-            Text(
-              'Registra con tu voz',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
+            Text('Asistente IA',
+                style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: AppSpacing.xs),
             Text(
-              'Di o escribe una venta o compra en lenguaje natural.\nLa IA la convierte en transacción.',
+              'Di o escribe lo que necesitas.\nVentas, compras, productos, clientes, inventario y mas.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
@@ -378,18 +557,12 @@ class _VoiceTransactionScreenState
               children: _examples
                   .map(
                     (s) => ActionChip(
-                      label: Text(s, style: const TextStyle(fontSize: 12)),
+                      label: Text(s, style: const TextStyle(fontSize: 11)),
                       onPressed: () {
                         _controller.text = s;
                         _processText(s);
                       },
-                      avatar: Icon(
-                        s.toLowerCase().startsWith('venta') ||
-                                s.toLowerCase().startsWith('vendí')
-                            ? Icons.sell_outlined
-                            : Icons.shopping_cart_outlined,
-                        size: 14,
-                      ),
+                      avatar: Icon(_iconForExample(s), size: 14),
                     ),
                   )
                   .toList(),
@@ -400,164 +573,61 @@ class _VoiceTransactionScreenState
     );
   }
 
+  IconData _iconForExample(String s) {
+    final lower = s.toLowerCase();
+    if (lower.startsWith('venta') || lower.startsWith('vend')) {
+      return Icons.sell_outlined;
+    }
+    if (lower.startsWith('compra')) return Icons.shopping_cart_outlined;
+    if (lower.contains('producto')) return Icons.inventory_2_outlined;
+    if (lower.contains('cliente')) return Icons.person_add_outlined;
+    if (lower.contains('proveedor')) return Icons.business_outlined;
+    if (lower.contains('categoria')) return Icons.category_outlined;
+    if (lower.contains('invitar')) return Icons.group_add_outlined;
+    if (lower.contains('entrada') || lower.contains('stock')) {
+      return Icons.add_box_outlined;
+    }
+    return Icons.chat_outlined;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Parsed result display
+  // ---------------------------------------------------------------------------
+
   Widget _buildParsedResult(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final parsed = _parsed!;
-    final isSale = parsed.type == TransactionType.sale;
-    final cop =
-        NumberFormat.currency(locale: 'es_CO', symbol: '\$', decimalDigits: 0);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Transaction type badge
-          Card(
-            color: isSale
-                ? Colors.green.withValues(alpha: 0.1)
-                : Colors.blue.withValues(alpha: 0.1),
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        isSale
-                            ? Icons.sell_rounded
-                            : Icons.shopping_cart_rounded,
-                        color: isSale ? Colors.green : Colors.blue,
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Text(
-                        isSale ? 'Venta' : 'Compra',
-                        style:
-                            Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  color: isSale ? Colors.green : Colors.blue,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                      ),
-                      const Spacer(),
-                      if (parsed.confidence >= 0.8)
-                        Chip(
-                          label: const Text('Alta confianza'),
-                          labelStyle: const TextStyle(fontSize: 10),
-                          backgroundColor: Colors.green.withValues(alpha: 0.1),
-                          side: BorderSide.none,
-                          padding: EdgeInsets.zero,
-                          visualDensity: VisualDensity.compact,
-                        )
-                      else
-                        Chip(
-                          label: const Text('Verificar datos'),
-                          labelStyle: const TextStyle(fontSize: 10),
-                          backgroundColor:
-                              Colors.orange.withValues(alpha: 0.1),
-                          side: BorderSide.none,
-                          padding: EdgeInsets.zero,
-                          visualDensity: VisualDensity.compact,
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    '"${parsed.rawText}"',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontStyle: FontStyle.italic,
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          _buildActionHeader(context, parsed),
           const SizedBox(height: AppSpacing.md),
 
-          // Items
-          Text('Productos',
-              style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: AppSpacing.xs),
-          ...parsed.items.map(
-            (item) => Card(
-              child: ListTile(
-                leading: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Center(
-                    child: Text(
-                      '${item.quantity}',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            color: colorScheme.onPrimaryContainer,
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                  ),
-                ),
-                title: Text(item.name),
-                subtitle: item.unitPrice != null
-                    ? Text('${cop.format(item.unitPrice)} c/u')
-                    : null,
-                trailing: item.unitPrice != null
-                    ? Text(
-                        cop.format(item.unitPrice! * item.quantity),
-                        style:
-                            Theme.of(context).textTheme.titleSmall?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                      )
-                    : null,
-              ),
-            ),
-          ),
-
-          // Customer/Supplier
-          if (parsed.customerOrSupplier != null) ...[
-            const SizedBox(height: AppSpacing.md),
-            Card(
-              child: ListTile(
-                leading: Icon(
-                  isSale ? Icons.person_outline : Icons.business_outlined,
-                ),
-                title: Text(parsed.customerOrSupplier!),
-                subtitle: Text(isSale ? 'Cliente' : 'Proveedor'),
-              ),
-            ),
-          ],
-
-          // Total
-          if (parsed.totalAmount != null) ...[
-            const SizedBox(height: AppSpacing.md),
-            Card(
-              color: colorScheme.primaryContainer.withValues(alpha: 0.3),
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Total',
-                        style: Theme.of(context).textTheme.titleMedium),
-                    Text(
-                      cop.format(parsed.totalAmount),
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: colorScheme.primary,
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+          // Action-specific content
+          switch (parsed.action) {
+            CommandAction.createSale ||
+            CommandAction.createPurchase =>
+              _buildTransactionResult(context, parsed),
+            CommandAction.createProduct =>
+              _buildProductResult(context, parsed.product!),
+            CommandAction.createCategory =>
+              _buildCategoryResult(context, parsed.category!),
+            CommandAction.createCustomer =>
+              _buildCustomerResult(context, parsed.customer!),
+            CommandAction.createSupplier =>
+              _buildSupplierResult(context, parsed.supplier!),
+            CommandAction.addStock ||
+            CommandAction.removeStock =>
+              _buildInventoryResult(context, parsed),
+            CommandAction.inviteMember =>
+              _buildMemberResult(context, parsed.member!),
+          },
 
           const SizedBox(height: AppSpacing.lg),
 
-          // Actions
+          // Actions row
           Row(
             children: [
               Expanded(
@@ -571,15 +641,353 @@ class _VoiceTransactionScreenState
               Expanded(
                 flex: 2,
                 child: FilledButton.icon(
-                  onPressed: _confirmTransaction,
-                  icon: const Icon(Icons.check),
-                  label: Text(
-                      isSale ? 'Confirmar venta' : 'Confirmar compra'),
+                  onPressed: _isProcessing ? null : _confirmAction,
+                  icon: _isProcessing
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.check),
+                  label: Text(_confirmLabel(parsed.action)),
                 ),
               ),
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  String _confirmLabel(CommandAction action) {
+    switch (action) {
+      case CommandAction.createSale:
+        return 'Ir a nueva venta';
+      case CommandAction.createPurchase:
+        return 'Confirmar compra';
+      case CommandAction.createProduct:
+        return 'Crear producto';
+      case CommandAction.createCategory:
+        return 'Crear categoria';
+      case CommandAction.createCustomer:
+        return 'Crear cliente';
+      case CommandAction.createSupplier:
+        return 'Crear proveedor';
+      case CommandAction.addStock:
+        return 'Registrar entrada';
+      case CommandAction.removeStock:
+        return 'Registrar salida';
+      case CommandAction.inviteMember:
+        return 'Enviar invitacion';
+    }
+  }
+
+  Widget _buildActionHeader(BuildContext context, ParsedCommand parsed) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final (icon, label, color) = _actionMeta(parsed.action);
+
+    return Card(
+      color: color.withValues(alpha: 0.1),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: color),
+                const SizedBox(width: AppSpacing.sm),
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: color,
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const Spacer(),
+                _confidenceBadge(parsed.confidence),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              '"${parsed.rawText}"',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontStyle: FontStyle.italic,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  (IconData, String, Color) _actionMeta(CommandAction action) {
+    switch (action) {
+      case CommandAction.createSale:
+        return (Icons.sell_rounded, 'Venta', Colors.green);
+      case CommandAction.createPurchase:
+        return (Icons.shopping_cart_rounded, 'Compra', Colors.blue);
+      case CommandAction.createProduct:
+        return (Icons.inventory_2_rounded, 'Nuevo producto', Colors.purple);
+      case CommandAction.createCategory:
+        return (Icons.category_rounded, 'Nueva categoria', Colors.teal);
+      case CommandAction.createCustomer:
+        return (Icons.person_add_rounded, 'Nuevo cliente', Colors.indigo);
+      case CommandAction.createSupplier:
+        return (Icons.business_rounded, 'Nuevo proveedor', Colors.orange);
+      case CommandAction.addStock:
+        return (Icons.add_box_rounded, 'Entrada de stock', Colors.green);
+      case CommandAction.removeStock:
+        return (Icons.outbox_rounded, 'Salida de stock', Colors.red);
+      case CommandAction.inviteMember:
+        return (Icons.group_add_rounded, 'Invitar miembro', Colors.cyan);
+    }
+  }
+
+  Widget _confidenceBadge(double confidence) {
+    final isHigh = confidence >= 0.8;
+    return Chip(
+      label: Text(isHigh ? 'Alta confianza' : 'Verificar datos'),
+      labelStyle: const TextStyle(fontSize: 10),
+      backgroundColor: isHigh
+          ? Colors.green.withValues(alpha: 0.1)
+          : Colors.orange.withValues(alpha: 0.1),
+      side: BorderSide.none,
+      padding: EdgeInsets.zero,
+      visualDensity: VisualDensity.compact,
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Action-specific result builders
+  // ---------------------------------------------------------------------------
+
+  Widget _buildTransactionResult(BuildContext context, ParsedCommand parsed) {
+    final t = parsed.transaction!;
+    final cop =
+        NumberFormat.currency(locale: 'es_CO', symbol: '\$', decimalDigits: 0);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Productos', style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: AppSpacing.xs),
+        ...t.items.map((item) => _itemTile(context, item, cop)),
+        if (t.customerOrSupplier != null) ...[
+          const SizedBox(height: AppSpacing.md),
+          Card(
+            child: ListTile(
+              leading: Icon(
+                parsed.action == CommandAction.createSale
+                    ? Icons.person_outline
+                    : Icons.business_outlined,
+              ),
+              title: Text(t.customerOrSupplier!),
+              subtitle: Text(parsed.action == CommandAction.createSale
+                  ? 'Cliente'
+                  : 'Proveedor'),
+            ),
+          ),
+        ],
+        if (t.totalAmount != null) ...[
+          const SizedBox(height: AppSpacing.md),
+          _totalCard(context, cop.format(t.totalAmount)),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildProductResult(BuildContext context, ProductData p) {
+    final cop =
+        NumberFormat.currency(locale: 'es_CO', symbol: '\$', decimalDigits: 0);
+    return Column(
+      children: [
+        _detailTile(context, 'Nombre', p.name, Icons.inventory_2_outlined),
+        if (p.sku != null) _detailTile(context, 'SKU', p.sku!, Icons.qr_code),
+        _detailTile(
+            context, 'Precio', cop.format(p.price), Icons.attach_money),
+        if (p.cost != null)
+          _detailTile(context, 'Costo', cop.format(p.cost), Icons.money_off),
+        if (p.categoryName != null)
+          _detailTile(context, 'Categoria', p.categoryName!,
+              Icons.category_outlined),
+        _detailTile(context, 'Stock minimo', '${p.minStock ?? 5}',
+            Icons.warning_amber),
+      ],
+    );
+  }
+
+  Widget _buildCategoryResult(BuildContext context, CategoryData c) {
+    return Column(
+      children: [
+        _detailTile(context, 'Nombre', c.name, Icons.category_outlined),
+        if (c.description != null)
+          _detailTile(
+              context, 'Descripcion', c.description!, Icons.description),
+      ],
+    );
+  }
+
+  Widget _buildCustomerResult(BuildContext context, CustomerData c) {
+    return Column(
+      children: [
+        _detailTile(context, 'Nombre', c.name, Icons.person_outline),
+        if (c.phone != null)
+          _detailTile(context, 'Telefono', c.phone!, Icons.phone),
+        if (c.email != null)
+          _detailTile(context, 'Email', c.email!, Icons.email_outlined),
+        if (c.documentType != null)
+          _detailTile(
+              context,
+              'Documento',
+              '${c.documentType} ${c.documentNumber ?? ''}',
+              Icons.badge_outlined),
+        if (c.address != null)
+          _detailTile(
+              context, 'Direccion', c.address!, Icons.location_on_outlined),
+      ],
+    );
+  }
+
+  Widget _buildSupplierResult(BuildContext context, SupplierData s) {
+    return Column(
+      children: [
+        _detailTile(context, 'Nombre', s.name, Icons.business_outlined),
+        if (s.nit != null)
+          _detailTile(context, 'NIT', s.nit!, Icons.badge_outlined),
+        if (s.contactName != null)
+          _detailTile(
+              context, 'Contacto', s.contactName!, Icons.person_outline),
+        if (s.phone != null)
+          _detailTile(context, 'Telefono', s.phone!, Icons.phone),
+        if (s.email != null)
+          _detailTile(context, 'Email', s.email!, Icons.email_outlined),
+        if (s.address != null)
+          _detailTile(
+              context, 'Direccion', s.address!, Icons.location_on_outlined),
+      ],
+    );
+  }
+
+  Widget _buildInventoryResult(BuildContext context, ParsedCommand parsed) {
+    final inv = parsed.inventory!;
+    final isEntry = parsed.action == CommandAction.addStock;
+    return Column(
+      children: [
+        _detailTile(context, 'Producto', inv.productName,
+            Icons.inventory_2_outlined),
+        _detailTile(context, 'Cantidad', '${inv.quantity}',
+            isEntry ? Icons.add_box_outlined : Icons.outbox_outlined),
+        _detailTile(
+            context, 'Tipo', isEntry ? 'Entrada' : 'Salida', Icons.swap_vert),
+        if (inv.reason != null)
+          _detailTile(context, 'Razon', inv.reason!, Icons.notes),
+        if (inv.productId == null)
+          Card(
+            color: Colors.orange.withValues(alpha: 0.1),
+            child: const Padding(
+              padding: EdgeInsets.all(AppSpacing.sm),
+              child: Row(
+                children: [
+                  Icon(Icons.warning_amber, color: Colors.orange, size: 18),
+                  SizedBox(width: AppSpacing.xs),
+                  Expanded(
+                    child: Text(
+                      'Producto no encontrado en el catalogo. Crealo primero.',
+                      style: TextStyle(color: Colors.orange, fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildMemberResult(BuildContext context, MemberData m) {
+    return Column(
+      children: [
+        _detailTile(context, 'Email', m.email, Icons.email_outlined),
+        _detailTile(context, 'Rol', m.role ?? 'STAFF', Icons.shield_outlined),
+      ],
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Shared widgets
+  // ---------------------------------------------------------------------------
+
+  Widget _detailTile(
+      BuildContext context, String label, String value, IconData icon) {
+    return Card(
+      child: ListTile(
+        leading: Icon(icon),
+        title: Text(value),
+        subtitle: Text(label),
+      ),
+    );
+  }
+
+  Widget _itemTile(BuildContext context, ParsedItem item, NumberFormat cop) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Card(
+      child: ListTile(
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: colorScheme.primaryContainer,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Center(
+            child: Text(
+              '${item.quantity}',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: colorScheme.onPrimaryContainer,
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+          ),
+        ),
+        title: Text(item.name),
+        subtitle: item.unitPrice != null
+            ? Text('${cop.format(item.unitPrice)} c/u')
+            : null,
+        trailing: item.unitPrice != null
+            ? Text(
+                cop.format(item.unitPrice! * item.quantity),
+                style: Theme.of(context)
+                    .textTheme
+                    .titleSmall
+                    ?.copyWith(fontWeight: FontWeight.bold),
+              )
+            : null,
+      ),
+    );
+  }
+
+  Widget _totalCard(BuildContext context, String formatted) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Card(
+      color: colorScheme.primaryContainer.withValues(alpha: 0.3),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Total', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              formatted,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.primary,
+                  ),
+            ),
+          ],
+        ),
       ),
     );
   }

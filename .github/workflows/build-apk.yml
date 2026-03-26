@@ -8,6 +8,11 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      api_base_url:
+        description: 'Backend API URL (e.g. https://inventario-api.onrender.com)'
+        required: false
+        default: ''
 
 env:
   FLUTTER_VERSION: '3.41.x'
@@ -39,7 +44,12 @@ jobs:
         run: flutter pub get
 
       - name: Build APK
-        run: flutter build apk --release --split-per-abi
+        run: |
+          DART_DEFINES=""
+          if [ -n "${{ github.event.inputs.api_base_url }}" ]; then
+            DART_DEFINES="--dart-define=API_BASE_URL=${{ github.event.inputs.api_base_url }}"
+          fi
+          flutter build apk --release --split-per-abi $DART_DEFINES
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4

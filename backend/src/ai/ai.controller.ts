@@ -9,7 +9,10 @@ import {
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AiService } from './ai.service';
-import { ParseTransactionDto } from './dto/parse-transaction.dto';
+import {
+  ParseTransactionDto,
+  ParseCommandDto,
+} from './dto/parse-transaction.dto';
 import { TeamRolesGuard } from '../teams/guards/team-roles.guard';
 
 @ApiTags('AI')
@@ -36,5 +39,22 @@ export class AiController {
       `Parsing transaction for team ${teamId}: "${dto.text.substring(0, 50)}..."`,
     );
     return this.aiService.parseTransaction(teamId, dto.text);
+  }
+
+  @Post('parse-command')
+  @Throttle({ short: { limit: 5, ttl: 60000 } })
+  @ApiOperation({
+    summary: 'Parse natural language into a structured command',
+    description:
+      'Receives text in Spanish and returns a structured command for any inventory management operation. Rate limited to 5 requests/minute.',
+  })
+  async parseCommand(
+    @Param('teamId') teamId: string,
+    @Body() dto: ParseCommandDto,
+  ) {
+    this.logger.log(
+      `Parsing command for team ${teamId}: "${dto.text.substring(0, 50)}..."`,
+    );
+    return this.aiService.parseCommand(teamId, dto.text);
   }
 }

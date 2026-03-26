@@ -14,3 +14,17 @@ export class ParseTransactionDto {
   @MaxLength(500)
   text: string;
 }
+
+export class ParseCommandDto {
+  @ApiProperty({
+    example: 'Crear producto Coca-Cola a 3500 pesos',
+    description:
+      'Natural language text describing any inventory management operation',
+    maxLength: 500,
+  })
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(3)
+  @MaxLength(500)
+  text: string;
+}
