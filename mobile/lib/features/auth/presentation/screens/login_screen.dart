@@ -1,9 +1,6 @@
-import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/config/app_config.dart';
-import '../../../../core/network/api_client.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/providers/auth_provider.dart';
 
@@ -35,70 +32,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         );
   }
 
-  void _showServerConfig() {
-    final controller = TextEditingController(
-      text: ref.read(serverUrlProvider),
-    );
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Servidor'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Configura la URL de tu backend antes de iniciar sesion.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextField(
-              controller: controller,
-              keyboardType: TextInputType.url,
-              decoration: const InputDecoration(
-                hintText: 'https://mi-api.onrender.com',
-                prefixIcon: Icon(Icons.link),
-              ),
-              autofocus: true,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              var url = controller.text.trim();
-              if (url.isEmpty) return;
-              if (url.endsWith('/')) url = url.substring(0, url.length - 1);
-              await ref.read(secureStorageProvider).saveServerUrl(url);
-              ref.read(serverUrlProvider.notifier).update(url);
-              if (ctx.mounted) Navigator.pop(ctx);
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Servidor: $url')),
-                );
-              }
-            },
-            child: const Text('Guardar'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
     final colorScheme = Theme.of(context).colorScheme;
-    final serverUrl = ref.watch(serverUrlProvider);
-    final isDefaultUrl = serverUrl == AppConfig.baseUrl;
-
     ref.listen<AuthState>(authProvider, (prev, next) {
       if (next.error != null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -141,39 +78,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                     textAlign: TextAlign.center,
                   ),
-
-                  // Server warning if not configured
-                  if (isDefaultUrl) ...[
-                    const SizedBox(height: AppSpacing.md),
-                    Card(
-                      color: AppColors.warningBg(context),
-                      child: InkWell(
-                        onTap: _showServerConfig,
-                        borderRadius: BorderRadius.circular(16),
-                        child: Padding(
-                          padding: const EdgeInsets.all(AppSpacing.sm),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.dns_outlined,
-                                  color: AppColors.warning, size: 20),
-                              const SizedBox(width: AppSpacing.sm),
-                              Expanded(
-                                child: Text(
-                                  'Configura tu servidor primero',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
-                                      ?.copyWith(color: AppColors.warning),
-                                ),
-                              ),
-                              const Icon(Icons.chevron_right,
-                                  color: AppColors.warning, size: 18),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
 
                   const SizedBox(height: AppSpacing.xxl),
                   TextFormField(

@@ -130,10 +130,18 @@ class AuthNotifier extends Notifier<AuthState> {
         firstName: firstName,
         lastName: lastName,
       );
+      // Fetch teams — user may already belong to one via a pre-accepted invite.
+      final teams = await _repo.getTeams();
+      TeamModel? activeTeam;
+      if (teams.isNotEmpty) {
+        activeTeam = teams.first;
+        await _storage.saveActiveTeamId(activeTeam.id);
+      }
       state = state.copyWith(
         status: AuthStatus.authenticated,
         user: auth.user,
-        teams: const [],
+        teams: teams,
+        activeTeam: activeTeam,
         isLoading: false,
       );
     } catch (e) {
@@ -244,6 +252,21 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
+  /// Re-fetches teams from backend and updates state (e.g. after accepting an invite).
+  Future<void> refreshTeams() async {
+    final teams = await _repo.getTeams();
+    TeamModel? activeTeam;
+    if (teams.isNotEmpty) {
+      final savedTeamId = await _storage.getActiveTeamId();
+      activeTeam = teams.firstWhere(
+        (t) => t.id == savedTeamId,
+        orElse: () => teams.first,
+      );
+      await _storage.saveActiveTeamId(activeTeam.id);
+    }
+    state = state.copyWith(teams: teams, activeTeam: activeTeam);
+  }
+
   void switchTeam(TeamModel team) {
     _storage.saveActiveTeamId(team.id);
     state = state.copyWith(activeTeam: team);
@@ -273,3 +296,6 @@ class AuthNotifier extends Notifier<AuthState> {
 final authProvider = NotifierProvider<AuthNotifier, AuthState>(
   AuthNotifier.new,
 );
+
+/// Holds a pending invite token so it survives the login/register redirect.
+final pendingInviteTokenProvider = StateProvider<String?>((ref) => null);
