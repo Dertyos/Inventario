@@ -3,6 +3,7 @@ export enum Permission {
   SALES_CREATE = 'sales.create',
   SALES_CANCEL = 'sales.cancel',
   SALES_VIEW_ALL = 'sales.view_all',
+  SALES_OVERRIDE_PRICE = 'sales.override_price',
 
   // INVENTARIO
   INVENTORY_VIEW = 'inventory.view',
@@ -34,6 +35,7 @@ export const DEFAULT_PERMISSIONS: Record<string, string[]> = {
     Permission.SALES_CREATE,
     Permission.SALES_CANCEL,
     Permission.SALES_VIEW_ALL,
+    Permission.SALES_OVERRIDE_PRICE,
     Permission.INVENTORY_VIEW,
     Permission.INVENTORY_CREATE_PRODUCT,
     Permission.INVENTORY_MOVEMENTS,

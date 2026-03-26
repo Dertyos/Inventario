@@ -58,6 +58,12 @@ List<PermissionGroup> allPermissionGroups(List<String> enabledPermissions) {
           description: 'Si no, solo ve las propias',
           enabled: enabledPermissions.contains('sales.view_all'),
         ),
+        PermissionItem(
+          key: 'sales.override_price',
+          label: 'Modificar precios en venta',
+          description: 'Permite cambiar el precio de un producto solo para esa venta',
+          enabled: enabledPermissions.contains('sales.override_price'),
+        ),
       ],
     ),
     PermissionGroup(
