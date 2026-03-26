@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/notifications/notification_service.dart';
+import '../../../../core/offline/pending_sales_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/home_widget_updater.dart';
 import '../../../../shared/providers/auth_provider.dart';
+import '../../../../shared/widgets/offline_banner.dart';
 import '../../data/dashboard_repository.dart';
 import '../../../../shared/widgets/stat_card.dart';
 import '../../../../shared/widgets/mini_line_chart.dart';
@@ -62,7 +64,11 @@ class DashboardScreen extends ConsumerWidget {
           ],
         ),
       ),
-      body: RefreshIndicator(
+      body: Column(
+        children: [
+          const OfflineBanner(),
+          Expanded(
+            child: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(dashboardProvider(teamId));
         },
@@ -86,6 +92,7 @@ class DashboardScreen extends ConsumerWidget {
             // Check low stock alerts once per session
             NotificationService().checkLowStockAlerts(data.lowStockProducts);
             final summaryAsync = ref.watch(analyticsSummaryProvider(teamId));
+            final pendingCount = ref.watch(pendingSalesCountProvider).valueOrNull ?? 0;
             return ListView(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md + 4, vertical: AppSpacing.sm),
             children: [
@@ -252,6 +259,9 @@ class DashboardScreen extends ConsumerWidget {
           );
           },
         ),
+      ),
+          ),
+        ],
       ),
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
