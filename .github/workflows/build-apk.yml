@@ -44,10 +44,15 @@ jobs:
         run: flutter pub get
 
       - name: Build APK
+        env:
+          GOOGLE_SERVER_CLIENT_ID: ${{ secrets.GOOGLE_SERVER_CLIENT_ID }}
         run: |
           DART_DEFINES=""
           if [ -n "${{ github.event.inputs.api_base_url }}" ]; then
-            DART_DEFINES="--dart-define=API_BASE_URL=${{ github.event.inputs.api_base_url }}"
+            DART_DEFINES="$DART_DEFINES --dart-define=API_BASE_URL=${{ github.event.inputs.api_base_url }}"
+          fi
+          if [ -n "$GOOGLE_SERVER_CLIENT_ID" ]; then
+            DART_DEFINES="$DART_DEFINES --dart-define=GOOGLE_SERVER_CLIENT_ID=$GOOGLE_SERVER_CLIENT_ID"
           fi
           flutter build apk --release --split-per-abi $DART_DEFINES
 
