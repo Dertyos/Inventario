@@ -328,7 +328,7 @@ class SettingsScreen extends ConsumerWidget {
 
               // Save and update
               await ref.read(secureStorageProvider).saveServerUrl(url);
-              ref.read(serverUrlProvider.notifier).state = url;
+              ref.read(serverUrlProvider.notifier).update(url);
 
               if (ctx.mounted) Navigator.pop(ctx);
 

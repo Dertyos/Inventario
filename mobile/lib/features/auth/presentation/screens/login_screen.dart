@@ -77,7 +77,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               if (url.isEmpty) return;
               if (url.endsWith('/')) url = url.substring(0, url.length - 1);
               await ref.read(secureStorageProvider).saveServerUrl(url);
-              ref.read(serverUrlProvider.notifier).state = url;
+              ref.read(serverUrlProvider.notifier).update(url);
               if (ctx.mounted) Navigator.pop(ctx);
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(

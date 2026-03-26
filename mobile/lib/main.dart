@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:quick_actions/quick_actions.dart';
@@ -19,13 +20,11 @@ String? _pendingRoute;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Lock to portrait for consistent UX
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
 
-  // Set status bar style
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -33,28 +32,18 @@ void main() async {
     ),
   );
 
-  // Initialize Spanish locale for date formatting
   await initializeDateFormatting('es');
-
-  // Initialize local notifications
   await NotificationService().initialize();
 
   // Load saved server URL
   final storage = SecureStorage();
   final savedUrl = await loadServerUrl(storage);
 
-  // Register home widget callback for tap events
+  // Register home widget callback
   HomeWidget.setAppGroupId('group.com.inventario.inventario_mobile');
   HomeWidget.registerInteractivityCallback(homeWidgetBackgroundCallback);
 
-  runApp(
-    ProviderScope(
-      overrides: [
-        serverUrlProvider.overrideWith((ref) => savedUrl),
-      ],
-      child: const InventarioApp(),
-    ),
-  );
+  runApp(ProviderScope(child: _AppBootstrap(savedUrl: savedUrl)));
 }
 
 /// Called when user taps an interactive element on the home widget.
@@ -62,6 +51,23 @@ void main() async {
 Future<void> homeWidgetBackgroundCallback(Uri? uri) async {
   if (uri != null) {
     _pendingRoute = uri.path.isNotEmpty ? uri.path : uri.host;
+  }
+}
+
+/// Sets server URL before rendering the real app.
+class _AppBootstrap extends ConsumerWidget {
+  final String savedUrl;
+  const _AppBootstrap({required this.savedUrl});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Set saved URL on first build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (savedUrl != AppConfig.baseUrl) {
+        ref.read(serverUrlProvider.notifier).update(savedUrl);
+      }
+    });
+    return const InventarioApp();
   }
 }
 
@@ -130,10 +136,10 @@ class _InventarioAppState extends ConsumerState<InventarioApp> {
 
   void _navigateTo(String route) {
     Future.delayed(const Duration(milliseconds: 300), () {
-      final context = globalNavigatorKey.currentContext;
-      if (context != null) {
+      final ctx = globalNavigatorKey.currentContext;
+      if (ctx != null) {
         try {
-          GoRouter.of(context).push(route);
+          GoRouter.of(ctx).push(route);
         } catch (_) {
           _pendingRoute = route;
         }
