@@ -16,6 +16,13 @@ Sistema de gestion de inventarios para el mercado colombiano con asistente IA in
 - Lotes con FEFO (First Expired, First Out)
 - Multi-tenant: equipos con roles (owner/admin/manager/staff)
 - **Asistente IA por voz y texto** que controla toda la app
+- Reportes y analytics (graficas de ventas, top productos, metodos de pago)
+- Export CSV (ventas, productos, inventario)
+- Auditoria (quien cambio que, cuando)
+- Permisos granulares (15 permisos en 5 categorias, configurables por rol)
+- Modo offline (ventas, productos, clientes se guardan local y sincronizan)
+- Cron jobs automaticos (recordatorios de pago 8am, lotes expirados 6am)
+- Redis cache (productos 30min, analytics 5min)
 
 ---
 
@@ -85,7 +92,11 @@ Inventario/
 │   │   ├── payments/     # Pagos
 │   │   ├── lots/         # Lotes de productos
 │   │   ├── reminders/    # Recordatorios de pago
-│   │   └── teams/        # Multi-tenant, roles, settings
+│   │   ├── notifications/# Centro de notificaciones
+│   │   ├── analytics/    # Metricas y reportes
+│   │   ├── export/       # Export CSV
+│   │   ├── audit/        # Log de cambios
+│   │   └── teams/        # Multi-tenant, roles, permisos
 │   ├── Dockerfile
 │   └── .env.example
 ├── mobile/               # Flutter app (Android + iOS)
@@ -258,6 +269,57 @@ git push origin v1.2.0
 ### IA
 - `POST /teams/:id/ai/parse-command` - Parsear comando en lenguaje natural
 - `POST /teams/:id/ai/parse-transaction` - Parsear transaccion (legacy)
+
+### Analytics & Reportes
+- `GET /teams/:id/analytics/summary` - Dashboard analytics
+- `GET /teams/:id/analytics/sales` - Ventas por periodo
+- `GET /teams/:id/analytics/inventory` - Metricas de inventario
+
+### Export CSV
+- `GET /teams/:id/export/sales` - Exportar ventas CSV
+- `GET /teams/:id/export/products` - Exportar productos CSV
+- `GET /teams/:id/export/inventory` - Exportar inventario CSV
+
+### Auditoria
+- `GET /teams/:id/audit` - Logs de auditoria
+
+### Permisos
+- `GET /teams/:id/permissions/:role` - Obtener permisos de un rol
+- `PATCH /teams/:id/permissions/:role` - Actualizar permisos de un rol
+
+---
+
+## Permisos granulares
+
+El sistema tiene 15 permisos agrupados en 5 categorias, configurables por rol:
+
+| Categoria | Permisos |
+|---|---|
+| Ventas | `sales.create`, `sales.view`, `sales.delete` |
+| Inventario | `inventory.create`, `inventory.view`, `inventory.edit` |
+| Clientes | `customers.create`, `customers.view`, `customers.edit` |
+| Reportes | `reports.view`, `reports.export` |
+| Admin | `admin.team`, `admin.roles`, `admin.audit`, `admin.settings` |
+
+**Roles por defecto:**
+- **Owner**: todos los permisos (no editable)
+- **Admin**: todos excepto `admin.team`
+- **Manager**: ventas, inventario, clientes, `reports.view`
+- **Staff**: `sales.create`, `sales.view`, `inventory.view`, `customers.view`
+
+El owner puede personalizar los permisos de cada rol desde **Settings > Permisos**. Los endpoints protegidos usan `@RequirePermission()` para validar acceso.
+
+---
+
+## Modo offline
+
+La app funciona sin conexion a internet:
+
+- **Ver productos**: catalogo cacheado localmente
+- **Crear ventas**: se guardan en cola local
+- **Crear clientes**: se guardan en cola local
+
+Al reconectar, la app sincroniza automaticamente los datos pendientes con el backend. Un banner en la parte superior indica el estado de conexion.
 
 ---
 

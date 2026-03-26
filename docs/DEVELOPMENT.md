@@ -111,6 +111,7 @@ El archivo `backend/.env.example` documenta todas las variables necesarias:
 | `DIAN_INTEGRATION_MODE` | `provider` (Alegra REST) o `direct` (SOAP)  |
 | `DIAN_PROVIDER_API_URL` | URL del proveedor de facturación             |
 | `DIAN_PROVIDER_API_KEY` | API key del proveedor                        |
+| `ANTHROPIC_API_KEY`     | API key de Anthropic para IA (opcional)       |
 | `SENTRY_DSN`            | DSN de Sentry para error tracking            |
 | `FEATURE_FLAG_*`        | Configuración de PostHog/Flagsmith           |
 
@@ -213,6 +214,22 @@ cd mobile && flutter pub get
 1. Verificar que las variables en `backend/.env` sean correctas, especialmente `DATABASE_URL`
 2. Confirmar que los servicios de Docker estén levantados: `docker compose ps`
 3. Si cambiaste credenciales, reiniciar: `docker compose down && docker compose up -d`
+
+### Redis no inicia o no conecta
+
+```bash
+# Verificar que el puerto 6379 no esté ocupado
+lsof -i :6379
+
+# Reiniciar Redis
+docker compose restart redis
+
+# Verificar conexión
+docker compose exec redis redis-cli ping
+# Debe responder: PONG
+```
+
+Si el backend inicia sin Redis, las features de cache funcionarán sin cache (queries directo a PostgreSQL). Los cron jobs y analytics pueden mostrar errores en logs pero no bloquean el arranque.
 
 ### Emulador Android no detectado
 

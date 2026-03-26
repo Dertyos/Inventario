@@ -99,6 +99,64 @@ El sistema permite registrar ventas y compras mediante comandos de voz, usando I
 - **Flujo**: Voz → texto (on-device) → API backend → Claude Haiku parsea → datos estructurados (producto, cantidad, precio) → se crea la transacción.
 - **Privacidad**: El audio nunca sale del dispositivo. Solo el texto transcrito se envía al API, y de ahí a Anthropic para parsing.
 
+## Módulos del Backend
+
+| Módulo | Descripción |
+|---|---|
+| Auth | JWT + Google + Apple Sign-In |
+| Teams | Multi-tenant, roles, permisos granulares |
+| Products | CRUD, categorías, stock |
+| Sales | Ventas transaccionales, créditos |
+| Purchases | Órdenes de compra |
+| Inventory | Movimientos de stock |
+| Customers | Clientes CRUD |
+| Suppliers | Proveedores CRUD |
+| Credits | Cuentas por cobrar, cuotas |
+| Lots | Lotes con FEFO |
+| Payments | Pagos asociados a ventas |
+| Reminders | Recordatorios de pago + cron |
+| Notifications | Centro de notificaciones |
+| Analytics | Métricas, reportes, gráficas |
+| Export | CSV de ventas, productos, inventario |
+| Audit | Log de cambios (quién, qué, cuándo) |
+| AI | Claude Haiku - copiloto con 9 acciones |
+
+## Cache (Redis)
+
+Redis se usa como capa de cache para reducir carga en PostgreSQL:
+
+| Clave | TTL | Invalidación |
+|---|---|---|
+| Productos del equipo | 30 min | Al crear/editar/eliminar producto |
+| Analytics summary | 5 min | Al crear venta o movimiento de inventario |
+| Analytics sales | 5 min | Al crear venta |
+| Analytics inventory | 5 min | Al crear movimiento |
+
+La invalidación es automática: cada write en los módulos correspondientes limpia las claves de cache afectadas.
+
+## Modo Offline
+
+La app Flutter implementa un patrón de cola de sincronización:
+
+1. Las operaciones (crear venta, crear cliente) se guardan en almacenamiento local (SharedPreferences/SQLite)
+2. Un listener de conectividad detecta cuando se recupera la conexión
+3. La cola se procesa en orden FIFO, enviando cada operación al backend
+4. Si una operación falla, se reintenta en el siguiente ciclo
+5. Un banner en la UI muestra el estado: online, offline, o sincronizando
+
+Datos que se cachean para lectura offline: productos, categorías, clientes.
+
+## Permisos (RBAC)
+
+El sistema combina roles fijos con permisos granulares configurables:
+
+- Cada equipo tiene una tabla `team_permissions` con 15 permisos por rol
+- El owner puede modificar los permisos de admin, manager y staff
+- Los endpoints protegidos usan el decorator `@RequirePermission('permiso')` que valida contra los permisos del rol del usuario en el equipo
+- Los permisos del owner son inmutables (siempre tiene todos)
+
+Categorías: ventas (3), inventario (3), clientes (3), reportes (2), admin (4).
+
 ## Decisiones de Escalamiento
 
 | Fase   | Estrategia                                     |

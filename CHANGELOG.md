@@ -43,6 +43,15 @@ Versionado según [Semantic Versioning](https://semver.org/lang/es/).
 - **Pantalla de Lotes de Productos**: Lista de lotes con estado (activo/por vencer/expirado/agotado), creación con fecha de vencimiento
 - **Pantalla de Proveedores**: CRUD completo con búsqueda (nombre, NIT, teléfono)
 - **Navegación**: Todos los nuevos módulos accesibles desde la pestaña "Más"
+- **Reportes y analytics**: Endpoints de resumen, ventas por periodo, inventario. Gráficas con fl_chart (sparklines, line chart, bar chart)
+- **Export CSV**: Exportar ventas, productos e inventario como CSV
+- **Auditoría**: Tabla `audit_logs` que registra cada mutación (quién, qué, cuándo, cambios). Endpoint `GET /teams/:id/audit`
+- **Permisos granulares**: 15 permisos en 5 categorías (ventas, inventario, clientes, reportes, admin). Pantalla de configuración por rol. `@RequirePermission` en endpoints
+- **Modo offline**: Ventas, productos y clientes se cachean y crean offline. Auto-sync al reconectar. Banner de estado de conexión
+- **Cron jobs**: Recordatorios de pago automáticos (8am diario), lotes expirados (6am diario) con `@nestjs/schedule`
+- **Redis cache**: Cache de productos (30min) y analytics (5min) con invalidación automática en writes
+- **Paginación**: Todos los endpoints de lista soportan `?page=1&limit=20`
+- **WhatsApp cobros**: Botón en cuotas de crédito para enviar recordatorio por WhatsApp
 
 ### Cambiado
 - Pantalla "Registrar con voz" renombrada a "Asistente IA" con icono actualizado
