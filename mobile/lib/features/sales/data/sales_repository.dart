@@ -59,11 +59,33 @@ class SalesRepository {
     }
   }
 
+  Future<SaleModel> updateSale(
+    String teamId,
+    String saleId,
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      final response =
+          await _dio.patch('/teams/$teamId/sales/$saleId', data: data);
+      return SaleModel.fromJson(response.data);
+    } on DioException catch (e) {
+      throw ApiException.fromDioError(e);
+    }
+  }
+
   Future<SaleModel> cancelSale(String teamId, String saleId) async {
     try {
       final response =
           await _dio.patch('/teams/$teamId/sales/$saleId/cancel');
       return SaleModel.fromJson(response.data);
+    } on DioException catch (e) {
+      throw ApiException.fromDioError(e);
+    }
+  }
+
+  Future<void> deleteSale(String teamId, String saleId) async {
+    try {
+      await _dio.delete('/teams/$teamId/sales/$saleId');
     } on DioException catch (e) {
       throw ApiException.fromDioError(e);
     }

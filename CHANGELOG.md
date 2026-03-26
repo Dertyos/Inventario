@@ -4,6 +4,20 @@ Todos los cambios notables del proyecto se documentan aquí.
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 Versionado según [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.2.2] - 2026-03-26
+
+### Agregado
+- **CRUD completo de ventas**: Editar y eliminar ventas con control de permisos
+  - `PATCH /teams/:teamId/sales/:id` — editar notas, cliente, datos de credito (requiere `sales.edit`)
+  - `DELETE /teams/:teamId/sales/:id` — eliminar ventas canceladas (requiere `sales.delete`, solo owner/admin)
+  - Nuevos permisos: `sales.edit` (asignado por defecto a manager+) y `sales.delete` (solo owner/admin)
+  - `UpdateSaleDto` con validacion para campos editables (no se modifican items/stock)
+  - Solo ventas canceladas pueden eliminarse (seguridad de integridad de inventario)
+- **Card expandible en lista de ventas**: Tap en una venta despliega detalle con productos, metodo de pago, notas y acciones
+- **Pantalla de edicion de ventas**: Permite modificar cliente, notas, y datos de credito (cuotas, interes, frecuencia, fecha)
+- **Permisos granulares en UI**: Botones de editar/cancelar/eliminar solo visibles segun permisos del usuario
+- **Audit logging automatico**: Ediciones y eliminaciones se registran via el interceptor global existente (usuario, accion, cambios)
+
 ## [1.2.0] - 2026-03-25
 
 ### Agregado

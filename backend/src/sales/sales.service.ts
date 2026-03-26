@@ -13,6 +13,7 @@ import {
   MovementType,
 } from '../inventory/entities/inventory-movement.entity';
 import { CreateSaleDto } from './dto/create-sale.dto';
+import { UpdateSaleDto } from './dto/update-sale.dto';
 import { PaymentMethod } from './entities/sale.entity';
 import { CreditsService } from '../credits/credits.service';
 
@@ -299,6 +300,58 @@ export class SalesService {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  async update(
+    teamId: string,
+    id: string,
+    updateSaleDto: UpdateSaleDto,
+  ): Promise<Sale> {
+    const sale = await this.findOne(teamId, id);
+
+    if (sale.status === SaleStatus.CANCELLED) {
+      throw new BadRequestException('Cannot edit a cancelled sale');
+    }
+
+    if (updateSaleDto.customerId !== undefined) {
+      sale.customerId = updateSaleDto.customerId;
+    }
+    if (updateSaleDto.paymentMethod !== undefined) {
+      sale.paymentMethod = updateSaleDto.paymentMethod;
+    }
+    if (updateSaleDto.creditInstallments !== undefined) {
+      sale.creditInstallments = updateSaleDto.creditInstallments;
+    }
+    if (updateSaleDto.creditPaidAmount !== undefined) {
+      sale.creditPaidAmount = updateSaleDto.creditPaidAmount;
+    }
+    if (updateSaleDto.creditInterestRate !== undefined) {
+      sale.creditInterestRate = updateSaleDto.creditInterestRate;
+    }
+    if (updateSaleDto.creditFrequency !== undefined) {
+      sale.creditFrequency = updateSaleDto.creditFrequency;
+    }
+    if (updateSaleDto.creditNextPayment !== undefined) {
+      sale.creditNextPayment = new Date(updateSaleDto.creditNextPayment);
+    }
+    if (updateSaleDto.notes !== undefined) {
+      sale.notes = updateSaleDto.notes;
+    }
+
+    await this.salesRepository.save(sale);
+    return this.findOne(teamId, id);
+  }
+
+  async remove(teamId: string, id: string, userId: string): Promise<void> {
+    const sale = await this.findOne(teamId, id);
+
+    if (sale.status !== SaleStatus.CANCELLED) {
+      throw new BadRequestException(
+        'Only cancelled sales can be deleted. Cancel the sale first.',
+      );
+    }
+
+    await this.salesRepository.remove(sale);
   }
 
   private async generateSaleNumber(
