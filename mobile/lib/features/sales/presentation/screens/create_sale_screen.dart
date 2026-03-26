@@ -33,7 +33,7 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
   late DateTime _creditNextPayment = DateTime.now().add(const Duration(days: 30));
 
   double get _total =>
-      _cart.fold(0, (sum, item) => sum + (item.product.price * item.quantity));
+      _cart.fold(0, (sum, item) => sum + item.subtotal);
 
   String get _resolvedPaymentMethod {
     if (_isCredit) return 'credit';
@@ -87,6 +87,97 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
       _cart[index].quantity += delta;
       if (_cart[index].quantity <= 0) _cart.removeAt(index);
     });
+  }
+
+  void _editPrice(int index) {
+    final item = _cart[index];
+    final unitPriceController =
+        TextEditingController(text: item.unitPrice.toStringAsFixed(0));
+    final totalController =
+        TextEditingController(text: item.subtotal.toStringAsFixed(0));
+    bool updatingFromUnit = false;
+    bool updatingFromTotal = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return AlertDialog(
+              title: Text(item.product.name),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Precio original: ${NumberFormat.currency(locale: 'es_CO', symbol: '\$', decimalDigits: 0).format(item.product.price)}',
+                    style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: unitPriceController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Precio unitario',
+                      prefixIcon: Icon(Icons.attach_money),
+                      isDense: true,
+                    ),
+                    onChanged: (v) {
+                      if (updatingFromTotal) return;
+                      updatingFromUnit = true;
+                      final unit = double.tryParse(v) ?? 0;
+                      totalController.text =
+                          (unit * item.quantity).toStringAsFixed(0);
+                      updatingFromUnit = false;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: totalController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: 'Total (${item.quantity} uds)',
+                      prefixIcon: const Icon(Icons.functions),
+                      isDense: true,
+                    ),
+                    onChanged: (v) {
+                      if (updatingFromUnit) return;
+                      updatingFromTotal = true;
+                      final total = double.tryParse(v) ?? 0;
+                      unitPriceController.text =
+                          (total / item.quantity).toStringAsFixed(0);
+                      updatingFromTotal = false;
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    setState(() => item.overrideUnitPrice = null);
+                    Navigator.pop(ctx);
+                  },
+                  child: const Text('Restaurar'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final newUnit =
+                        double.tryParse(unitPriceController.text) ?? item.product.price;
+                    setState(() {
+                      item.overrideUnitPrice =
+                          newUnit == item.product.price ? null : newUnit;
+                    });
+                    Navigator.pop(ctx);
+                  },
+                  child: const Text('Aplicar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   void _showCustomerPicker(
@@ -222,7 +313,7 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
             .map((c) => {
                   'productId': c.product.id,
                   'quantity': c.quantity,
-                  'unitPrice': c.product.price,
+                  'unitPrice': c.unitPrice,
                 })
             .toList(),
         'paymentMethod': _resolvedPaymentMethod,
@@ -478,6 +569,8 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
                       itemCount: _cart.length,
                       itemBuilder: (context, index) {
                         final item = _cart[index];
+                        final canOverridePrice = ref.watch(authProvider).hasPermission('sales.override_price');
+                        final hasOverride = item.overrideUnitPrice != null;
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 4),
                           child: Row(
@@ -505,12 +598,20 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
                                     : null,
                                 visualDensity: VisualDensity.compact,
                               ),
-                              SizedBox(
-                                width: 80,
-                                child: Text(
-                                  cop.format(item.product.price * item.quantity),
-                                  textAlign: TextAlign.right,
-                                  style: Theme.of(context).textTheme.bodyMedium,
+                              GestureDetector(
+                                onTap: canOverridePrice ? () => _editPrice(index) : null,
+                                child: SizedBox(
+                                  width: 80,
+                                  child: Text(
+                                    cop.format(item.subtotal),
+                                    textAlign: TextAlign.right,
+                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                      color: hasOverride ? colorScheme.primary : null,
+                                      decoration: canOverridePrice ? TextDecoration.underline : null,
+                                      decorationColor: hasOverride ? colorScheme.primary : colorScheme.onSurfaceVariant,
+                                      decorationStyle: TextDecorationStyle.dotted,
+                                    ),
+                                  ),
                                 ),
                               ),
                               IconButton(
@@ -803,6 +904,11 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
 class _CartItem {
   final ProductModel product;
   int quantity;
+  double? overrideUnitPrice;
 
-  _CartItem({required this.product, int quantity = 1}) : quantity = quantity;
+  _CartItem({required this.product, int quantity = 1, this.overrideUnitPrice})
+      : quantity = quantity;
+
+  double get unitPrice => overrideUnitPrice ?? product.price;
+  double get subtotal => unitPrice * quantity;
 }
