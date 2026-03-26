@@ -14,6 +14,11 @@ import {
 } from '@nestjs/common';
 import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
+// cache-manager v7: the Cache type exposes get/set/del/clear/wrap.
+// Note: clear() replaced reset() in v6+ (pure rename, same behavior: flushes all entries).
+// v7 returns undefined (not null) on cache misses — not relevant here since
+// we only use clear() and decorator-based caching (@CacheInterceptor/@CacheTTL).
+// See: https://github.com/jaredwray/cacheable/tree/main/packages/cache-manager
 import { Cache } from 'cache-manager';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -32,6 +37,10 @@ import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 export class ProductsController {
   constructor(
     private readonly productsService: ProductsService,
+      // Global cache (Redis via @keyv/redis when REDIS_URL is set, in-memory Keyv otherwise).
+    // Configured in app.module.ts with default TTL of 5 min.
+    // WARNING: clear() flushes ALL cached keys (products + analytics),
+    // not just products. This is intentional to ensure data consistency.
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
@@ -43,7 +52,7 @@ export class ProductsController {
     @Body() createProductDto: CreateProductDto,
   ) {
     const result = await this.productsService.create(teamId, createProductDto);
-    await this.cacheManager.reset();
+    await this.cacheManager.clear();
     return result;
   }
 
@@ -88,7 +97,7 @@ export class ProductsController {
     @Body() updateProductDto: UpdateProductDto,
   ) {
     const result = await this.productsService.update(teamId, id, updateProductDto);
-    await this.cacheManager.reset();
+    await this.cacheManager.clear();
     return result;
   }
 
@@ -100,7 +109,7 @@ export class ProductsController {
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     const result = await this.productsService.remove(teamId, id);
-    await this.cacheManager.reset();
+    await this.cacheManager.clear();
     return result;
   }
 }
