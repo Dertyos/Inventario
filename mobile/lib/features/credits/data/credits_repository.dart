@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/providers/cache_for.dart';
 import '../../../shared/models/credit_model.dart';
 
 final creditsRepositoryProvider = Provider<CreditsRepository>((ref) {
@@ -10,12 +11,14 @@ final creditsRepositoryProvider = Provider<CreditsRepository>((ref) {
 
 final creditsProvider = FutureProvider.autoDispose
     .family<List<CreditAccountModel>, String>((ref, teamId) async {
+  ref.cacheFor(const Duration(minutes: 5));
   final repo = ref.read(creditsRepositoryProvider);
   return repo.getCredits(teamId);
 });
 
 final overdueCreditsProvider = FutureProvider.autoDispose
     .family<List<CreditInstallmentModel>, String>((ref, teamId) async {
+  ref.cacheFor(const Duration(minutes: 5));
   final repo = ref.read(creditsRepositoryProvider);
   return repo.getOverdue(teamId);
 });
@@ -23,6 +26,7 @@ final overdueCreditsProvider = FutureProvider.autoDispose
 final creditDetailProvider = FutureProvider.autoDispose
     .family<CreditAccountModel, ({String teamId, String creditId})>(
         (ref, params) async {
+  ref.cacheFor(const Duration(minutes: 5));
   final repo = ref.read(creditsRepositoryProvider);
   return repo.getCredit(params.teamId, params.creditId);
 });

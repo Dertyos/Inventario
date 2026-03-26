@@ -12,11 +12,13 @@ import '../../../../shared/widgets/offline_banner.dart';
 import '../../data/dashboard_repository.dart';
 import '../../../../shared/widgets/stat_card.dart';
 import '../../../../shared/widgets/mini_line_chart.dart';
+import '../../../../core/providers/cache_for.dart';
 import '../../../../shared/widgets/expandable_fab.dart';
 import '../../../reports/data/reports_repository.dart';
 
 final dashboardProvider =
     FutureProvider.autoDispose.family<DashboardData, String>((ref, teamId) async {
+  ref.cacheFor(const Duration(minutes: 5));
   final data = await ref.read(dashboardRepositoryProvider).getDashboardData(teamId);
   // Push metrics to home screen widget
   HomeWidgetUpdater.updateDashboard(
@@ -30,6 +32,7 @@ final dashboardProvider =
 
 final analyticsSummaryProvider =
     FutureProvider.autoDispose.family<AnalyticsSummary, String>((ref, teamId) {
+  ref.cacheFor(const Duration(minutes: 5));
   return ref.read(reportsRepositoryProvider).getSummary(teamId);
 });
 

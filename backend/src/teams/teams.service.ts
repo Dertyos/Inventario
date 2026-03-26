@@ -4,6 +4,8 @@ import {
   ConflictException,
   ForbiddenException,
   BadRequestException,
+  Logger,
+  OnApplicationBootstrap,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThan } from 'typeorm';
@@ -25,7 +27,9 @@ import {
 } from './permissions.constants';
 
 @Injectable()
-export class TeamsService {
+export class TeamsService implements OnApplicationBootstrap {
+  private readonly logger = new Logger(TeamsService.name);
+
   constructor(
     @InjectRepository(Team)
     private readonly teamsRepository: Repository<Team>,
@@ -40,6 +44,29 @@ export class TeamsService {
     private readonly usersService: UsersService,
     private readonly emailService: EmailService,
   ) {}
+
+  async onApplicationBootstrap() {
+    // Enable core features for all existing teams that still have them disabled
+    const result = await this.settingsRepository
+      .createQueryBuilder()
+      .update(TeamSettings)
+      .set({
+        enableSuppliers: true,
+        enableLots: true,
+        enableCredit: true,
+        enableReminders: true,
+        enableBarcode: true,
+      })
+      .where(
+        'enableSuppliers = false AND enableLots = false AND enableCredit = false',
+      )
+      .execute();
+    if (result.affected > 0) {
+      this.logger.log(
+        `Enabled core features for ${result.affected} team(s)`,
+      );
+    }
+  }
 
   async create(createTeamDto: CreateTeamDto, ownerId: string): Promise<Team> {
     const slug = this.generateSlug(createTeamDto.name);

@@ -23,22 +23,22 @@ export class TeamSettings {
 
   // ── Feature Toggles ──────────────────────────────
 
-  @Column({ default: false })
+  @Column({ default: true })
   enableLots: boolean;
 
-  @Column({ default: false })
+  @Column({ default: true })
   enableCredit: boolean;
 
-  @Column({ default: false })
+  @Column({ default: true })
   enableSuppliers: boolean;
 
-  @Column({ default: false })
+  @Column({ default: true })
   enableReminders: boolean;
 
   @Column({ default: false })
   enableTax: boolean;
 
-  @Column({ default: false })
+  @Column({ default: true })
   enableBarcode: boolean;
 
   // ── Defaults ──────────────────────────────────────

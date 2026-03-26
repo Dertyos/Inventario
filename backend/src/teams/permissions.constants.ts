@@ -47,5 +47,6 @@ export const DEFAULT_PERMISSIONS: Record<string, string[]> = {
     Permission.SALES_CREATE,
     Permission.INVENTORY_VIEW,
     Permission.CUSTOMERS_CREATE,
+    Permission.ADMIN_AI,
   ],
 };

@@ -10,15 +10,18 @@ import '../../../products/data/products_repository.dart';
 import '../../../products/presentation/screens/products_screen.dart';
 import '../../../suppliers/data/suppliers_repository.dart';
 import '../../../../shared/models/inventory_movement_model.dart';
+import '../../../../core/providers/cache_for.dart';
 import '../../data/inventory_repository.dart';
 
 final movementsProvider = FutureProvider.autoDispose
     .family<List<InventoryMovementModel>, String>((ref, teamId) {
+  ref.cacheFor(const Duration(minutes: 5));
   return ref.read(inventoryRepositoryProvider).getMovements(teamId);
 });
 
 final lowStockProvider =
     FutureProvider.autoDispose.family<List<ProductModel>, String>((ref, teamId) {
+  ref.cacheFor(const Duration(minutes: 5));
   return ref.read(productsRepositoryProvider).getLowStock(teamId);
 });
 

@@ -6,10 +6,12 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/models/sale_model.dart';
 import '../../../../shared/providers/auth_provider.dart';
 import '../../../../shared/widgets/empty_state.dart';
+import '../../../../core/providers/cache_for.dart';
 import '../../data/sales_repository.dart';
 
 final salesProvider =
     FutureProvider.autoDispose.family<List<SaleModel>, String>((ref, teamId) {
+  ref.cacheFor(const Duration(minutes: 5));
   return ref.read(salesRepositoryProvider).getSales(teamId);
 });
 

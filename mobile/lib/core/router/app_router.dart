@@ -45,17 +45,27 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isAuth = authState.isAuthenticated;
       final location = state.matchedLocation;
 
-      // Handle custom scheme deep links: inventario://invite/TOKEN
+      // Handle custom scheme deep links: inventario://...
       final uri = state.uri;
-      if (uri.scheme == 'inventario' && uri.host == 'invite') {
-        final token = uri.pathSegments.isNotEmpty
-            ? uri.pathSegments.first
-            : uri.path.replaceAll('/', '');
-        if (token.isNotEmpty) {
-          ref.read(pendingInviteTokenProvider.notifier).state = token;
-          return '/invite/$token';
+      if (uri.scheme == 'inventario') {
+        if (uri.host == 'invite') {
+          final token = uri.pathSegments.isNotEmpty
+              ? uri.pathSegments.first
+              : uri.path.replaceAll('/', '');
+          if (token.isNotEmpty) {
+            ref.read(pendingInviteTokenProvider.notifier).state = token;
+            return '/invite/$token';
+          }
         }
+        if (uri.host == 'voice-transaction') {
+          return '/voice-transaction';
+        }
+        // Unknown deep link – go to dashboard
+        return '/dashboard';
       }
+
+      // Redirect root "/" to dashboard
+      if (location == '/') return '/dashboard';
 
       final isAuthRoute =
           location == '/login' || location == '/register';

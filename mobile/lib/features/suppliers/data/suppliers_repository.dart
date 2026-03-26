@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/providers/cache_for.dart';
 import '../../../shared/models/supplier_model.dart';
 
 final suppliersRepositoryProvider = Provider<SuppliersRepository>((ref) {
@@ -10,6 +11,7 @@ final suppliersRepositoryProvider = Provider<SuppliersRepository>((ref) {
 
 final suppliersProvider = FutureProvider.autoDispose
     .family<List<SupplierModel>, String>((ref, teamId) {
+  ref.cacheFor(const Duration(minutes: 5));
   return ref.read(suppliersRepositoryProvider).getSuppliers(teamId);
 });
 

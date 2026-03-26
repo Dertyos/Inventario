@@ -7,6 +7,7 @@ import 'package:home_widget/home_widget.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:quick_actions/quick_actions.dart';
 import 'core/config/app_config.dart';
+import 'core/network/keep_alive_service.dart';
 import 'core/notifications/notification_service.dart';
 import 'core/offline/sync_service.dart';
 import 'core/router/app_router.dart';
@@ -89,6 +90,11 @@ class _InventarioAppState extends ConsumerState<InventarioApp> {
     _setupQuickActions();
     _setupHomeWidgetLaunch();
     _setupAutoSync();
+    _setupKeepAlive();
+  }
+
+  void _setupKeepAlive() {
+    ref.read(keepAliveServiceProvider).start();
   }
 
   void _setupAutoSync() {
