@@ -10,6 +10,10 @@ class AppConfig {
     'API_BASE_URL',
     defaultValue: 'https://inventario.dertyos.com',
   );
+  static const String googleServerClientId = String.fromEnvironment(
+    'GOOGLE_SERVER_CLIENT_ID',
+    defaultValue: '',
+  );
   static const Duration connectTimeout = Duration(seconds: 60);
   static const Duration receiveTimeout = Duration(seconds: 60);
 }
