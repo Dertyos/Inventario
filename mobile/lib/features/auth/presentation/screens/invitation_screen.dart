@@ -124,7 +124,7 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.check_circle_outline,
+              const Icon(Icons.check_circle_outline,
                   size: 72, color: AppColors.success),
               const SizedBox(height: AppSpacing.md),
               Text(

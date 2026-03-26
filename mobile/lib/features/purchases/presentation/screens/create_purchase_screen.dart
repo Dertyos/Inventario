@@ -668,12 +668,11 @@ class _CreatePurchaseScreenState extends ConsumerState<CreatePurchaseScreen> {
 
 class _CartItem {
   final ProductModel product;
-  int quantity;
+  int quantity = 1;
   double unitCost;
 
   _CartItem({
     required this.product,
-    this.quantity = 1,
     required this.unitCost,
   });
 }

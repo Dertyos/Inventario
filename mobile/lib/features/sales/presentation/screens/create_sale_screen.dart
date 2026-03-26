@@ -29,7 +29,6 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
   final _installmentsController = TextEditingController(text: '1');
   final _paidAmountController = TextEditingController();
   final _interestController = TextEditingController();
-  String _paymentMethod = 'cash';
   String _creditFrequency = 'monthly';
   late DateTime _creditNextPayment = DateTime.now().add(const Duration(days: 30));
 

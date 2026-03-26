@@ -4,7 +4,6 @@ import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/providers/cache_for.dart';
 import '../../../shared/models/product_lot_model.dart';
-import '../../../shared/providers/auth_provider.dart';
 
 final lotsRepositoryProvider = Provider<LotsRepository>((ref) {
   return LotsRepository(ref.read(dioProvider));

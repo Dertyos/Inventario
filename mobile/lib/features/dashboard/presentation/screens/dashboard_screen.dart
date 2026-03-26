@@ -146,7 +146,7 @@ class DashboardScreen extends ConsumerWidget {
                     title: 'Ventas hoy',
                     value: cop.format(data.todayRevenue),
                     icon: Icons.trending_up_rounded,
-                    color: colorScheme.primary,
+                    color: const Color(0xFFFF6B6B),
                     subtitle: pendingCount > 0
                         ? '${data.todaySalesCount} trans. · $pendingCount pendientes'
                         : '${data.todaySalesCount} transacciones',
@@ -176,7 +176,7 @@ class DashboardScreen extends ConsumerWidget {
                     title: 'Total ventas',
                     value: '${data.totalSales}',
                     icon: Icons.receipt_long_rounded,
-                    color: colorScheme.tertiary,
+                    color: const Color(0xFFFF6B6B),
                     onTap: () => context.go('/sales'),
                   ),
                 ],
