@@ -90,6 +90,10 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
+          COMMIT_MSG=$(git log -1 --pretty=%s)
+          COMMIT_HASH=$(git log -1 --pretty=%h)
+          BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          CAPTION=$(printf "📦 Inventario APK\n\n🔀 %s (%s)\n📝 %s" "$BRANCH" "$COMMIT_HASH" "$COMMIT_MSG")
           curl -F document=@"build/app/outputs/flutter-apk/app-arm64-v8a-release.apk" \
-               -F caption="Inventario APK - $(git log -1 --pretty=%s)" \
+               -F caption="$CAPTION" \
                "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument?chat_id=${TELEGRAM_CHAT_ID}"
