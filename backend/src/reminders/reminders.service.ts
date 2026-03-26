@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Cron } from '@nestjs/schedule';
 import {
   PaymentReminder,
   ReminderStatus,
@@ -12,9 +13,12 @@ import {
   CreditInstallment,
   InstallmentStatus,
 } from '../credits/entities/credit-installment.entity';
+import { TeamSettings } from '../teams/entities/team-settings.entity';
 
 @Injectable()
 export class RemindersService {
+  private readonly logger = new Logger(RemindersService.name);
+
   constructor(
     @InjectRepository(PaymentReminder)
     private readonly remindersRepository: Repository<PaymentReminder>,
@@ -22,6 +26,8 @@ export class RemindersService {
     private readonly notificationsRepository: Repository<Notification>,
     @InjectRepository(CreditInstallment)
     private readonly installmentsRepository: Repository<CreditInstallment>,
+    @InjectRepository(TeamSettings)
+    private readonly teamSettingsRepository: Repository<TeamSettings>,
   ) {}
 
   /**
@@ -190,6 +196,32 @@ export class RemindersService {
       .andWhere('(userId = :userId OR userId IS NULL)', { userId })
       .andWhere('isRead = false')
       .execute();
+  }
+
+  @Cron('0 8 * * *')
+  async handleRemindersCron(): Promise<void> {
+    this.logger.log('Running daily reminders cron job...');
+    try {
+      const settings = await this.teamSettingsRepository.find({
+        where: { enableReminders: true },
+      });
+
+      let totalCreated = 0;
+      for (const setting of settings) {
+        try {
+          const created = await this.generateReminders(setting.teamId);
+          totalCreated += created;
+        } catch (error) {
+          this.logger.error(
+            `Failed to generate reminders for team ${setting.teamId}: ${error.message}`,
+          );
+        }
+      }
+
+      this.logger.log(`Daily reminders cron completed. Created ${totalCreated} reminders.`);
+    } catch (error) {
+      this.logger.error(`Reminders cron job failed: ${error.message}`);
+    }
   }
 
   private buildReminderMessage(

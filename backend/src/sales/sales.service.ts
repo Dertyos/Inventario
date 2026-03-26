@@ -182,8 +182,10 @@ export class SalesService {
       status?: SaleStatus;
       startDate?: string;
       endDate?: string;
+      page?: number;
+      limit?: number;
     },
-  ): Promise<Sale[]> {
+  ): Promise<Sale[] | { data: Sale[]; total: number; page: number; limit: number }> {
     const query = this.salesRepository
       .createQueryBuilder('sale')
       .leftJoinAndSelect('sale.customer', 'customer')
@@ -214,7 +216,17 @@ export class SalesService {
       });
     }
 
-    return query.orderBy('sale.createdAt', 'DESC').getMany();
+    query.orderBy('sale.createdAt', 'DESC');
+
+    if (options?.page && options?.limit) {
+      const page = Math.max(1, options.page);
+      const limit = Math.max(1, options.limit);
+      query.skip((page - 1) * limit).take(limit);
+      const [data, total] = await query.getManyAndCount();
+      return { data, total, page, limit };
+    }
+
+    return query.getMany();
   }
 
   async findOne(teamId: string, id: string): Promise<Sale> {

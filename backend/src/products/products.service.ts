@@ -46,8 +46,10 @@ export class ProductsService {
       categoryId?: string;
       isActive?: boolean;
       search?: string;
+      page?: number;
+      limit?: number;
     },
-  ): Promise<Product[]> {
+  ): Promise<Product[] | { data: Product[]; total: number; page: number; limit: number }> {
     const query = this.productsRepository
       .createQueryBuilder('product')
       .leftJoinAndSelect('product.category', 'category')
@@ -72,7 +74,17 @@ export class ProductsService {
       );
     }
 
-    return query.orderBy('product.name', 'ASC').getMany();
+    query.orderBy('product.name', 'ASC');
+
+    if (options?.page && options?.limit) {
+      const page = Math.max(1, options.page);
+      const limit = Math.max(1, options.limit);
+      query.skip((page - 1) * limit).take(limit);
+      const [data, total] = await query.getManyAndCount();
+      return { data, total, page, limit };
+    }
+
+    return query.getMany();
   }
 
   async findOne(teamId: string, id: string): Promise<Product> {

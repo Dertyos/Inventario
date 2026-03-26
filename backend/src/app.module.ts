@@ -3,6 +3,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
@@ -21,10 +22,13 @@ import { PurchasesModule } from './purchases/purchases.module';
 import { RemindersModule } from './reminders/reminders.module';
 import { AiModule } from './ai/ai.module';
 import { EmailModule } from './email/email.module';
+import { AnalyticsModule } from './analytics/analytics.module';
+import { ExportModule } from './export/export.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([
       {
         name: 'short',
@@ -73,6 +77,8 @@ import { EmailModule } from './email/email.module';
     RemindersModule,
     AiModule,
     EmailModule,
+    AnalyticsModule,
+    ExportModule,
   ],
   controllers: [AppController],
   providers: [

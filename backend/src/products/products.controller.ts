@@ -40,11 +40,15 @@ export class ProductsController {
     @Param('teamId', ParseUUIDPipe) teamId: string,
     @Query('categoryId') categoryId?: string,
     @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
     return this.productsService.findAll(teamId, {
       categoryId,
       search,
       isActive: true,
+      page: page ? parseInt(page, 10) : undefined,
+      limit: limit ? parseInt(limit, 10) : undefined,
     });
   }
 

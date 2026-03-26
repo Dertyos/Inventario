@@ -86,8 +86,10 @@ export class InventoryService {
     options?: {
       productId?: string;
       type?: MovementType;
+      page?: number;
+      limit?: number;
     },
-  ): Promise<InventoryMovement[]> {
+  ): Promise<InventoryMovement[] | { data: InventoryMovement[]; total: number; page: number; limit: number }> {
     const query = this.movementsRepository
       .createQueryBuilder('movement')
       .leftJoinAndSelect('movement.product', 'product')
@@ -105,7 +107,17 @@ export class InventoryService {
       query.andWhere('movement.type = :type', { type: options.type });
     }
 
-    return query.orderBy('movement.createdAt', 'DESC').getMany();
+    query.orderBy('movement.createdAt', 'DESC');
+
+    if (options?.page && options?.limit) {
+      const page = Math.max(1, options.page);
+      const limit = Math.max(1, options.limit);
+      query.skip((page - 1) * limit).take(limit);
+      const [data, total] = await query.getManyAndCount();
+      return { data, total, page, limit };
+    }
+
+    return query.getMany();
   }
 
   async findOne(teamId: string, id: string): Promise<InventoryMovement> {

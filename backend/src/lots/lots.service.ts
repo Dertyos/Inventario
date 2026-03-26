@@ -2,17 +2,24 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan, In } from 'typeorm';
+import { Cron } from '@nestjs/schedule';
 import { ProductLot, LotStatus } from './entities/product-lot.entity';
 import { CreateLotDto } from './dto/create-lot.dto';
+import { Team } from '../teams/entities/team.entity';
 
 @Injectable()
 export class LotsService {
+  private readonly logger = new Logger(LotsService.name);
+
   constructor(
     @InjectRepository(ProductLot)
     private readonly lotsRepository: Repository<ProductLot>,
+    @InjectRepository(Team)
+    private readonly teamsRepository: Repository<Team>,
   ) {}
 
   async create(
@@ -140,5 +147,31 @@ export class LotsService {
       .andWhere('expirationDate < :today', { today })
       .execute();
     return result.affected || 0;
+  }
+
+  @Cron('0 6 * * *')
+  async handleExpiredLotsCron(): Promise<void> {
+    this.logger.log('Running daily expired lots cron job...');
+    try {
+      const teams = await this.teamsRepository.find({
+        where: { isActive: true },
+      });
+
+      let totalMarked = 0;
+      for (const team of teams) {
+        try {
+          const marked = await this.markExpiredLots(team.id);
+          totalMarked += marked;
+        } catch (error) {
+          this.logger.error(
+            `Failed to mark expired lots for team ${team.id}: ${error.message}`,
+          );
+        }
+      }
+
+      this.logger.log(`Expired lots cron completed. Marked ${totalMarked} lots as expired.`);
+    } catch (error) {
+      this.logger.error(`Expired lots cron job failed: ${error.message}`);
+    }
   }
 }

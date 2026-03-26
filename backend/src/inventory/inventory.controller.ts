@@ -41,8 +41,15 @@ export class InventoryController {
     @Param('teamId', ParseUUIDPipe) teamId: string,
     @Query('productId') productId?: string,
     @Query('type') type?: MovementType,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
-    return this.inventoryService.findAll(teamId, { productId, type });
+    return this.inventoryService.findAll(teamId, {
+      productId,
+      type,
+      page: page ? parseInt(page, 10) : undefined,
+      limit: limit ? parseInt(limit, 10) : undefined,
+    });
   }
 
   @Get('movements/:id')

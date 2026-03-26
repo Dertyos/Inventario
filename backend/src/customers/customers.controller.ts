@@ -39,8 +39,14 @@ export class CustomersController {
   findAll(
     @Param('teamId', ParseUUIDPipe) teamId: string,
     @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
-    return this.customersService.findAll(teamId, { search });
+    return this.customersService.findAll(teamId, {
+      search,
+      page: page ? parseInt(page, 10) : undefined,
+      limit: limit ? parseInt(limit, 10) : undefined,
+    });
   }
 
   @Get(':id')
