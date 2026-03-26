@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Param,
   Body,
   Query,
@@ -12,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { SalesService } from './sales.service';
 import { CreateSaleDto } from './dto/create-sale.dto';
+import { UpdateSaleDto } from './dto/update-sale.dto';
 import { SaleStatus } from './entities/sale.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TeamRolesGuard } from '../teams/guards/team-roles.guard';
@@ -63,6 +65,28 @@ export class SalesController {
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     return this.salesService.findOne(teamId, id);
+  }
+
+  @Patch(':id')
+  @TeamRoles(TeamRole.OWNER, TeamRole.ADMIN, TeamRole.MANAGER)
+  @RequirePermission('sales.edit')
+  update(
+    @Param('teamId', ParseUUIDPipe) teamId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateSaleDto: UpdateSaleDto,
+  ) {
+    return this.salesService.update(teamId, id, updateSaleDto);
+  }
+
+  @Delete(':id')
+  @TeamRoles(TeamRole.OWNER, TeamRole.ADMIN)
+  @RequirePermission('sales.delete')
+  remove(
+    @Param('teamId', ParseUUIDPipe) teamId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req,
+  ) {
+    return this.salesService.remove(teamId, id, req.user.id);
   }
 
   @Patch(':id/cancel')

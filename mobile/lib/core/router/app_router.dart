@@ -10,6 +10,7 @@ import '../../features/products/presentation/screens/products_screen.dart';
 import '../../features/products/presentation/screens/product_form_screen.dart';
 import '../../features/sales/presentation/screens/sales_screen.dart';
 import '../../features/sales/presentation/screens/create_sale_screen.dart';
+import '../../features/sales/presentation/screens/edit_sale_screen.dart';
 import '../../features/inventory/presentation/screens/inventory_screen.dart';
 import '../../features/customers/presentation/screens/customers_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
@@ -158,6 +159,13 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: 'new',
                 parentNavigatorKey: _rootNavigatorKey,
                 builder: (context, state) => const CreateSaleScreen(),
+              ),
+              GoRoute(
+                path: ':id/edit',
+                parentNavigatorKey: _rootNavigatorKey,
+                builder: (context, state) => EditSaleScreen(
+                  saleId: state.pathParameters['id']!,
+                ),
               ),
             ],
           ),

@@ -1,6 +1,8 @@
 export enum Permission {
   // VENTAS
   SALES_CREATE = 'sales.create',
+  SALES_EDIT = 'sales.edit',
+  SALES_DELETE = 'sales.delete',
   SALES_CANCEL = 'sales.cancel',
   SALES_VIEW_ALL = 'sales.view_all',
   SALES_OVERRIDE_PRICE = 'sales.override_price',
@@ -33,6 +35,7 @@ export const DEFAULT_PERMISSIONS: Record<string, string[]> = {
   admin: ['*'],
   manager: [
     Permission.SALES_CREATE,
+    Permission.SALES_EDIT,
     Permission.SALES_CANCEL,
     Permission.SALES_VIEW_ALL,
     Permission.SALES_OVERRIDE_PRICE,

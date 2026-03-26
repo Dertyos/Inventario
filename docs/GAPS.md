@@ -66,7 +66,7 @@ Documento generado a partir de auditoría exhaustiva comparando documentación v
 |------------|------|---------|---------|-------|--------|
 | Teams/Multi-tenant | DATABASE.md | Entidad + Guards | Screens | Sí | Completo |
 | Products/Categories | DATABASE.md | CRUD + trackLots | CRUD + Form | Sí | Completo |
-| Sales | DATABASE.md | Transaccional | Crear + Historial | Sí | Completo |
+| Sales | DATABASE.md | CRUD Transaccional | CRUD + Historial + Detalle | Sí | Completo |
 | Credit Accounts | DATABASE.md | Auto-generación | Lista + Detalle + Pago | Sí | Completo |
 | Inventory | DATABASE.md | Stock tracking | Movimientos + Stock bajo | Sí | Completo |
 | Customers | DATABASE.md | CRUD | CRUD + Búsqueda | Sí | Completo |

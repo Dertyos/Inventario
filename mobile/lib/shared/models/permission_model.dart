@@ -48,6 +48,18 @@ List<PermissionGroup> allPermissionGroups(List<String> enabledPermissions) {
           enabled: enabledPermissions.contains('sales.create'),
         ),
         PermissionItem(
+          key: 'sales.edit',
+          label: 'Editar ventas',
+          description: 'Permite modificar notas, cliente y datos de crédito',
+          enabled: enabledPermissions.contains('sales.edit'),
+        ),
+        PermissionItem(
+          key: 'sales.delete',
+          label: 'Eliminar ventas',
+          description: 'Solo ventas canceladas pueden eliminarse',
+          enabled: enabledPermissions.contains('sales.delete'),
+        ),
+        PermissionItem(
           key: 'sales.cancel',
           label: 'Cancelar ventas',
           enabled: enabledPermissions.contains('sales.cancel'),
