@@ -3,6 +3,7 @@ class TeamModel {
   final String name;
   final String currency;
   final String timezone;
+  final String? userRole;
   final DateTime createdAt;
 
   const TeamModel({
@@ -10,6 +11,7 @@ class TeamModel {
     required this.name,
     this.currency = 'COP',
     this.timezone = 'America/Bogota',
+    this.userRole,
     required this.createdAt,
   });
 
@@ -18,6 +20,7 @@ class TeamModel {
         name: json['name'] as String,
         currency: json['currency'] as String? ?? 'COP',
         timezone: json['timezone'] as String? ?? 'America/Bogota',
+        userRole: json['userRole'] as String?,
         createdAt: DateTime.parse(json['createdAt'] as String),
       );
 }

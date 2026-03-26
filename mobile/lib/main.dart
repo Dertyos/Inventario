@@ -1,3 +1,4 @@
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +8,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:quick_actions/quick_actions.dart';
 import 'core/config/app_config.dart';
 import 'core/notifications/notification_service.dart';
+import 'core/offline/sync_service.dart';
 import 'core/router/app_router.dart';
 import 'core/storage/secure_storage.dart';
 import 'core/theme/app_theme.dart';
@@ -86,6 +88,16 @@ class _InventarioAppState extends ConsumerState<InventarioApp> {
     super.initState();
     _setupQuickActions();
     _setupHomeWidgetLaunch();
+    _setupAutoSync();
+  }
+
+  void _setupAutoSync() {
+    Connectivity().onConnectivityChanged.listen((results) {
+      if (!results.contains(ConnectivityResult.none)) {
+        // Volvio la conexion - sincronizar ventas pendientes
+        ref.read(syncServiceProvider).syncAll();
+      }
+    });
   }
 
   void _setupQuickActions() {

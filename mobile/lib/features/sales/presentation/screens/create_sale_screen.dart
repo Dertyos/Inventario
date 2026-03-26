@@ -228,9 +228,18 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
       }
     } catch (e) {
       if (mounted) {
+        final message = e.toString();
+        final isOffline = message.contains('guardada localmente');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(
+            content: Text(isOffline ? message : 'Error: $message'),
+            backgroundColor: isOffline ? Colors.orange : null,
+          ),
         );
+        if (isOffline) {
+          context.pop();
+          return;
+        }
       }
     }
     if (mounted) setState(() => _isSaving = false);

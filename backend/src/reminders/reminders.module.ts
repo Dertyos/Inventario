@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { PaymentReminder } from './entities/payment-reminder.entity';
 import { Notification } from './entities/notification.entity';
 import { CreditInstallment } from '../credits/entities/credit-installment.entity';
+import { TeamSettings } from '../teams/entities/team-settings.entity';
 import { RemindersService } from './reminders.service';
 import { RemindersController } from './reminders.controller';
 import { TeamsModule } from '../teams/teams.module';
@@ -13,6 +14,7 @@ import { TeamsModule } from '../teams/teams.module';
       PaymentReminder,
       Notification,
       CreditInstallment,
+      TeamSettings,
     ]),
     TeamsModule,
   ],

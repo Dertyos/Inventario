@@ -225,7 +225,9 @@ class SettingsScreen extends ConsumerWidget {
               child: InkWell(
                 borderRadius: BorderRadius.circular(12),
                 onTap: () => _showTeamSwitcher(context, ref),
-                onLongPress: () => _showEditTeamNameDialog(context, ref),
+                onLongPress: auth.isAdmin
+                    ? () => _showEditTeamNameDialog(context, ref)
+                    : null,
                 child: Padding(
                   padding: const EdgeInsets.all(AppSpacing.md),
                   child: Row(
@@ -270,18 +272,20 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: AppSpacing.lg),
 
           // Menu items
-          _SettingsTile(
-            icon: Icons.group_outlined,
-            title: 'Equipo y miembros',
-            subtitle: 'Gestiona los miembros de tu equipo',
-            onTap: () => context.push('/team-members'),
-          ),
-          _SettingsTile(
-            icon: Icons.settings_outlined,
-            title: 'Configuración del equipo',
-            subtitle: 'Nombre, moneda y más',
-            onTap: () => context.push('/team-settings'),
-          ),
+          if (auth.isAdmin)
+            _SettingsTile(
+              icon: Icons.group_outlined,
+              title: 'Equipo y miembros',
+              subtitle: 'Gestiona los miembros de tu equipo',
+              onTap: () => context.push('/team-members'),
+            ),
+          if (auth.isAdmin)
+            _SettingsTile(
+              icon: Icons.settings_outlined,
+              title: 'Configuración del equipo',
+              subtitle: 'Nombre, moneda y más',
+              onTap: () => context.push('/team-settings'),
+            ),
           _SettingsTile(
             icon: Icons.people_outlined,
             title: 'Clientes',
@@ -321,6 +325,12 @@ class SettingsScreen extends ConsumerWidget {
             title: 'Recordatorios de pago',
             subtitle: 'Genera y gestiona cobros',
             onTap: () => context.push('/reminders'),
+          ),
+          _SettingsTile(
+            icon: Icons.bar_chart_rounded,
+            title: 'Reportes',
+            subtitle: 'Ventas, productos y exportar',
+            onTap: () => context.push('/reports'),
           ),
           _SettingsTile(
             icon: Icons.mic,

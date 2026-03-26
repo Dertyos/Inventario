@@ -40,8 +40,8 @@ export class CustomersService {
 
   async findAll(
     teamId: string,
-    options?: { search?: string },
-  ): Promise<Customer[]> {
+    options?: { search?: string; page?: number; limit?: number },
+  ): Promise<Customer[] | { data: Customer[]; total: number; page: number; limit: number }> {
     const query = this.customersRepository
       .createQueryBuilder('customer')
       .where('customer.teamId = :teamId', { teamId });
@@ -53,7 +53,17 @@ export class CustomersService {
       );
     }
 
-    return query.orderBy('customer.name', 'ASC').getMany();
+    query.orderBy('customer.name', 'ASC');
+
+    if (options?.page && options?.limit) {
+      const page = Math.max(1, options.page);
+      const limit = Math.max(1, options.limit);
+      query.skip((page - 1) * limit).take(limit);
+      const [data, total] = await query.getManyAndCount();
+      return { data, total, page, limit };
+    }
+
+    return query.getMany();
   }
 
   async findOne(teamId: string, id: string): Promise<Customer> {

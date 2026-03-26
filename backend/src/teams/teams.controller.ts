@@ -35,8 +35,20 @@ export class TeamsController {
   }
 
   @Get()
-  findMyTeams(@Request() req) {
-    return this.teamsService.findByUser(req.user.id);
+  async findMyTeams(@Request() req) {
+    const teams = await this.teamsService.findByUser(req.user.id);
+    return teams.map((team) => ({
+      id: team.id,
+      name: team.name,
+      slug: team.slug,
+      currency: team.currency,
+      timezone: team.timezone,
+      isActive: team.isActive,
+      userRole: team.userRole,
+      settings: team.settings,
+      createdAt: team.createdAt,
+      updatedAt: team.updatedAt,
+    }));
   }
 
   @Get(':teamId')

@@ -75,12 +75,15 @@ export class TeamsService {
     return team;
   }
 
-  async findByUser(userId: string): Promise<Team[]> {
+  async findByUser(userId: string): Promise<Array<Team & { userRole: string }>> {
     const memberships = await this.membersRepository.find({
       where: { userId, isActive: true },
       relations: ['team', 'team.settings'],
     });
-    return memberships.map((m) => m.team);
+    return memberships.map((m) => ({
+      ...m.team,
+      userRole: m.role,
+    }));
   }
 
   async update(id: string, updateTeamDto: UpdateTeamDto): Promise<Team> {

@@ -1,8 +1,11 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
+import { CacheModule } from '@nestjs/cache-manager';
+import { redisStore } from 'cache-manager-redis-yet';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
@@ -21,10 +24,15 @@ import { PurchasesModule } from './purchases/purchases.module';
 import { RemindersModule } from './reminders/reminders.module';
 import { AiModule } from './ai/ai.module';
 import { EmailModule } from './email/email.module';
+import { AnalyticsModule } from './analytics/analytics.module';
+import { ExportModule } from './export/export.module';
+import { AuditModule } from './audit/audit.module';
+import { TeamAuditInterceptor } from './common/interceptors/team-audit.interceptor';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([
       {
         name: 'short',
@@ -42,6 +50,18 @@ import { EmailModule } from './email/email.module';
         limit: 200,
       },
     ]),
+    CacheModule.registerAsync({
+      isGlobal: true,
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (config: ConfigService) => {
+        const redisUrl = config.get<string>('REDIS_URL');
+        if (!redisUrl) return { ttl: 300 * 1000 }; // In-memory fallback
+        return {
+          store: await redisStore({ url: redisUrl, ttl: 300 * 1000 }),
+        };
+      },
+    }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -73,6 +93,9 @@ import { EmailModule } from './email/email.module';
     RemindersModule,
     AiModule,
     EmailModule,
+    AnalyticsModule,
+    ExportModule,
+    AuditModule,
   ],
   controllers: [AppController],
   providers: [
@@ -80,6 +103,10 @@ import { EmailModule } from './email/email.module';
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TeamAuditInterceptor,
     },
   ],
 })

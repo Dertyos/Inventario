@@ -3,11 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/notifications/notification_service.dart';
+import '../../../../core/offline/pending_sales_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/home_widget_updater.dart';
 import '../../../../shared/providers/auth_provider.dart';
+import '../../../../shared/widgets/offline_banner.dart';
 import '../../data/dashboard_repository.dart';
 import '../../../../shared/widgets/stat_card.dart';
+import '../../../../shared/widgets/mini_line_chart.dart';
+import '../../../reports/data/reports_repository.dart';
 
 final dashboardProvider =
     FutureProvider.autoDispose.family<DashboardData, String>((ref, teamId) async {
@@ -20,6 +24,11 @@ final dashboardProvider =
     lowStockCount: data.lowStockProducts.length,
   );
   return data;
+});
+
+final analyticsSummaryProvider =
+    FutureProvider.autoDispose.family<AnalyticsSummary, String>((ref, teamId) {
+  return ref.read(reportsRepositoryProvider).getSummary(teamId);
 });
 
 class DashboardScreen extends ConsumerWidget {
@@ -55,7 +64,11 @@ class DashboardScreen extends ConsumerWidget {
           ],
         ),
       ),
-      body: RefreshIndicator(
+      body: Column(
+        children: [
+          const OfflineBanner(),
+          Expanded(
+            child: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(dashboardProvider(teamId));
         },
@@ -78,9 +91,15 @@ class DashboardScreen extends ConsumerWidget {
           data: (data) {
             // Check low stock alerts once per session
             NotificationService().checkLowStockAlerts(data.lowStockProducts);
+            final summaryAsync = ref.watch(analyticsSummaryProvider(teamId));
+            final pendingCount = ref.watch(pendingSalesCountProvider).valueOrNull ?? 0;
             return ListView(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md + 4, vertical: AppSpacing.sm),
             children: [
+              // Hero metric card (graceful degradation)
+              if (summaryAsync.valueOrNull != null)
+                _buildHeroMetric(context, summaryAsync.valueOrNull!, cop, colorScheme),
+
               // Stats grid
               GridView.count(
                 crossAxisCount: 2,
@@ -95,7 +114,9 @@ class DashboardScreen extends ConsumerWidget {
                     value: cop.format(data.todayRevenue),
                     icon: Icons.trending_up_rounded,
                     color: colorScheme.primary,
-                    subtitle: '${data.todaySalesCount} transacciones',
+                    subtitle: pendingCount > 0
+                        ? '${data.todaySalesCount} trans. · $pendingCount pendientes'
+                        : '${data.todaySalesCount} transacciones',
                     onTap: () => context.go('/sales'),
                   ),
                   StatCard(
@@ -241,6 +262,9 @@ class DashboardScreen extends ConsumerWidget {
           },
         ),
       ),
+          ),
+        ],
+      ),
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -268,6 +292,61 @@ class DashboardScreen extends ConsumerWidget {
             label: const Text('Nueva venta'),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildHeroMetric(
+    BuildContext context,
+    AnalyticsSummary summary,
+    NumberFormat cop,
+    ColorScheme colorScheme,
+  ) {
+    final textTheme = Theme.of(context).textTheme;
+    final isPositive = summary.changePercent >= 0;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(
+            color: colorScheme.primary.withValues(alpha: 0.15),
+          ),
+        ),
+        color: colorScheme.primary.withValues(alpha: 0.04),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md + 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                cop.format(summary.todayRevenue),
+                style: textTheme.headlineLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -1,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                '${summary.todayTransactions} transacciones'
+                '${summary.changePercent != 0 ? ' \u00b7 ${isPositive ? '+' : ''}${summary.changePercent.toStringAsFixed(1)}% vs ayer' : ''}',
+                style: textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+              if (summary.last7DaysRevenue.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.sm),
+                MiniLineChart(
+                  data: summary.last7DaysRevenue,
+                  color: colorScheme.primary,
+                  height: 60,
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -29,6 +29,13 @@ class AuthState {
   bool get isAuthenticated => status == AuthStatus.authenticated;
   String get teamId => activeTeam?.id ?? '';
 
+  // Role-based access
+  String? get userRole => activeTeam?.userRole;
+  bool get isOwner => userRole == 'owner';
+  bool get isAdmin => userRole == 'admin' || isOwner;
+  bool get isManager => userRole == 'manager' || isAdmin;
+  // staff can do basic operations
+
   AuthState copyWith({
     AuthStatus? status,
     UserModel? user,
