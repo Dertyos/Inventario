@@ -5,7 +5,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { CacheModule } from '@nestjs/cache-manager';
-import { redisStore } from 'cache-manager-redis-yet';
+import { Keyv } from 'keyv';
+import KeyvRedis from '@keyv/redis';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
@@ -50,21 +51,22 @@ import { TeamAuditInterceptor } from './common/interceptors/team-audit.intercept
         limit: 200,
       },
     ]),
-    // Global cache using cache-manager v6 + @nestjs/cache-manager v3.
-    // - With REDIS_URL: uses cache-manager-redis-yet (Redis 7 via docker-compose).
-    // - Without REDIS_URL: falls back to in-memory cache (dev/test).
-    // Default TTL: 5 min. Endpoints can override via @CacheTTL().
+    // Global cache using cache-manager v7 + @nestjs/cache-manager v3.
+    // - With REDIS_URL: uses @keyv/redis (Redis 7 via docker-compose).
+    // - Without REDIS_URL: falls back to in-memory Keyv store (dev/test).
+    // Default TTL: 5 min (300_000 ms). Endpoints can override via @CacheTTL().
     // Products controller calls cacheManager.clear() on mutations
     // to invalidate all cached entries (products list + analytics).
     CacheModule.registerAsync({
       isGlobal: true,
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: async (config: ConfigService) => {
+      useFactory: (config: ConfigService) => {
         const redisUrl = config.get<string>('REDIS_URL');
-        if (!redisUrl) return { ttl: 300 * 1000 };
+        const ttl = 300_000;
+        if (!redisUrl) return { stores: [new Keyv({ ttl })] };
         return {
-          store: await redisStore({ url: redisUrl, ttl: 300 * 1000 }),
+          stores: [new Keyv({ store: new KeyvRedis(redisUrl), ttl })],
         };
       },
     }),
