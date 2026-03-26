@@ -2,6 +2,9 @@ name: Build & Release APK
 
 on:
   push:
+    branches: [main]
+    paths:
+      - 'mobile/**'
     tags:
       - 'v*'
   workflow_dispatch:
@@ -12,7 +15,7 @@ on:
         default: ''
 
 env:
-  FLUTTER_VERSION: '3.29.x'
+  FLUTTER_VERSION: '3.41.x'
   WORKING_DIR: ./mobile
 
 jobs:
@@ -46,18 +49,28 @@ jobs:
           if [ -n "${{ github.event.inputs.api_base_url }}" ]; then
             DART_DEFINES="--dart-define=API_BASE_URL=${{ github.event.inputs.api_base_url }}"
           fi
-          flutter build apk --release $DART_DEFINES
+          flutter build apk --release --split-per-abi $DART_DEFINES
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: inventario-apk
-          path: mobile/build/app/outputs/flutter-apk/app-release.apk
+          path: mobile/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
           retention-days: 90
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: mobile/build/app/outputs/flutter-apk/app-release.apk
+          files: mobile/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
           generate_release_notes: true
+
+      - name: Send APK via Telegram
+        if: success() && env.TELEGRAM_BOT_TOKEN != ''
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          curl -F document=@"build/app/outputs/flutter-apk/app-arm64-v8a-release.apk" \
+               -F caption="Inventario APK - $(git log -1 --pretty=%s)" \
+               "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument?chat_id=${TELEGRAM_CHAT_ID}"

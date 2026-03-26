@@ -199,3 +199,31 @@ docker compose up -d postgres
 flutter doctor    # Diagnóstico completo
 flutter devices   # Listar dispositivos disponibles
 ```
+
+### `flutter pub get` falla con errores de dependencias
+
+```bash
+# Eliminar el lockfile y reintentar
+rm mobile/pubspec.lock
+cd mobile && flutter pub get
+```
+
+### Backend no conecta (errores de conexión genéricos)
+
+1. Verificar que las variables en `backend/.env` sean correctas, especialmente `DATABASE_URL`
+2. Confirmar que los servicios de Docker estén levantados: `docker compose ps`
+3. Si cambiaste credenciales, reiniciar: `docker compose down && docker compose up -d`
+
+### Emulador Android no detectado
+
+```bash
+# Verificar que ADB reconoce el dispositivo/emulador
+adb devices
+
+# Si no aparece nada:
+# 1. Reiniciar el servidor ADB
+adb kill-server && adb start-server
+
+# 2. Verificar que el emulador esté corriendo o el dispositivo tenga USB debugging habilitado
+flutter doctor    # Revisar la sección Android
+```

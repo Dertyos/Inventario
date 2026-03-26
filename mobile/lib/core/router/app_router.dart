@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/auth/presentation/screens/create_team_screen.dart';
+import '../../features/auth/presentation/screens/invitation_screen.dart';
 import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
 import '../../features/products/presentation/screens/products_screen.dart';
 import '../../features/products/presentation/screens/product_form_screen.dart';
@@ -12,8 +13,20 @@ import '../../features/sales/presentation/screens/create_sale_screen.dart';
 import '../../features/inventory/presentation/screens/inventory_screen.dart';
 import '../../features/customers/presentation/screens/customers_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
+import '../../features/settings/presentation/screens/team_settings_screen.dart';
+import '../../features/settings/presentation/screens/team_members_screen.dart';
 import '../../features/ai_chat/presentation/screens/ai_chat_screen.dart'
     show VoiceTransactionScreen;
+import '../../features/scanner/presentation/screens/barcode_scanner_screen.dart';
+import '../../features/credits/presentation/screens/credits_screen.dart';
+import '../../features/credits/presentation/screens/credit_detail_screen.dart';
+import '../../features/purchases/presentation/screens/purchases_screen.dart';
+import '../../features/purchases/presentation/screens/create_purchase_screen.dart';
+import '../../features/notifications/presentation/screens/notifications_screen.dart';
+import '../../features/lots/presentation/screens/lots_screen.dart';
+import '../../features/lots/presentation/screens/create_lot_screen.dart';
+import '../../features/suppliers/presentation/screens/suppliers_screen.dart';
+import '../../features/reminders/presentation/screens/reminders_screen.dart';
 import '../../shared/providers/auth_provider.dart';
 import '../../shared/widgets/app_shell.dart';
 
@@ -31,8 +44,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isAuthRoute = state.matchedLocation == '/login' ||
           state.matchedLocation == '/register';
       final isCreateTeam = state.matchedLocation == '/create-team';
+      final isInvite = state.matchedLocation.startsWith('/invite/');
 
       if (authState.status == AuthStatus.initial) return null;
+
+      // Allow invite route for both authenticated and unauthenticated users
+      if (isInvite) return null;
 
       if (!isAuth && !isAuthRoute) return '/login';
       if (isAuth && isAuthRoute) return '/dashboard';
@@ -54,6 +71,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/create-team',
         builder: (context, state) => const CreateTeamScreen(),
       ),
+      GoRoute(
+        path: '/invite/:token',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => InvitationScreen(
+          token: state.pathParameters['token']!,
+        ),
+      ),
       ShellRoute(
         navigatorKey: _shellNavigatorKey,
         builder: (context, state, child) => AppShell(child: child),
@@ -73,7 +97,9 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'new',
                 parentNavigatorKey: _rootNavigatorKey,
-                builder: (context, state) => const ProductFormScreen(),
+                builder: (context, state) => ProductFormScreen(
+                  initialBarcode: state.extra as String?,
+                ),
               ),
               GoRoute(
                 path: ':id/edit',
@@ -118,9 +144,77 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
       GoRoute(
+        path: '/team-settings',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const TeamSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/team-members',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const TeamMembersScreen(),
+      ),
+      GoRoute(
         path: '/voice-transaction',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const VoiceTransactionScreen(),
+      ),
+      GoRoute(
+        path: '/scanner',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const BarcodeScannerScreen(),
+      ),
+      GoRoute(
+        path: '/credits',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const CreditsScreen(),
+        routes: [
+          GoRoute(
+            path: ':id',
+            parentNavigatorKey: _rootNavigatorKey,
+            builder: (context, state) => CreditDetailScreen(
+              creditId: state.pathParameters['id']!,
+            ),
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/purchases',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const PurchasesScreen(),
+        routes: [
+          GoRoute(
+            path: 'new',
+            parentNavigatorKey: _rootNavigatorKey,
+            builder: (context, state) => const CreatePurchaseScreen(),
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/notifications',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const NotificationsScreen(),
+      ),
+      GoRoute(
+        path: '/lots',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const LotsScreen(),
+        routes: [
+          GoRoute(
+            path: 'new',
+            parentNavigatorKey: _rootNavigatorKey,
+            builder: (context, state) => const CreateLotScreen(),
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/suppliers',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const SuppliersScreen(),
+      ),
+      GoRoute(
+        path: '/reminders',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const RemindersScreen(),
       ),
     ],
   );

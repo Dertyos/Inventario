@@ -47,4 +47,20 @@ export class CreatePaymentDto {
   @IsString()
   @IsOptional()
   notes?: string;
+
+  @ApiPropertyOptional({
+    example: '550e8400-e29b-41d4-a716-446655440000',
+    description: 'UUID de la cuenta de crédito asociada',
+  })
+  @IsUUID()
+  @IsOptional()
+  creditAccountId?: string;
+
+  @ApiPropertyOptional({
+    example: '550e8400-e29b-41d4-a716-446655440000',
+    description: 'UUID de la cuota asociada',
+  })
+  @IsUUID()
+  @IsOptional()
+  installmentId?: string;
 }

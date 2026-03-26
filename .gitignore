@@ -49,3 +49,4 @@ infrastructure/terraform/**/*.tfvars
 *.key
 *.p12
 *.pfx
+.claude/

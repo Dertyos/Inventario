@@ -83,6 +83,49 @@ class AuthRepository {
     }
   }
 
+  Future<TeamModel> updateTeam(String teamId, Map<String, dynamic> data) async {
+    try {
+      final response = await _dio.patch('/teams/$teamId', data: data);
+      return TeamModel.fromJson(response.data);
+    } on DioException catch (e) {
+      throw ApiException.fromDioError(e);
+    }
+  }
+
+  Future<AuthResponse> appleSignIn(
+    String identityToken, {
+    String? firstName,
+    String? lastName,
+  }) async {
+    try {
+      final data = <String, dynamic>{
+        'identityToken': identityToken,
+      };
+      if (firstName != null) data['firstName'] = firstName;
+      if (lastName != null) data['lastName'] = lastName;
+
+      final response = await _dio.post('/auth/apple', data: data);
+      final auth = AuthResponse.fromJson(response.data);
+      await _storage.saveToken(auth.accessToken);
+      return auth;
+    } on DioException catch (e) {
+      throw ApiException.fromDioError(e);
+    }
+  }
+
+  Future<AuthResponse> googleSignIn(String idToken) async {
+    try {
+      final response = await _dio.post('/auth/google', data: {
+        'idToken': idToken,
+      });
+      final auth = AuthResponse.fromJson(response.data);
+      await _storage.saveToken(auth.accessToken);
+      return auth;
+    } on DioException catch (e) {
+      throw ApiException.fromDioError(e);
+    }
+  }
+
   Future<void> logout() async {
     await _storage.clearAll();
   }

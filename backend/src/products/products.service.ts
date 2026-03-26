@@ -20,6 +20,12 @@ export class ProductsService {
     teamId: string,
     createProductDto: CreateProductDto,
   ): Promise<Product> {
+    // Auto-generate SKU if not provided
+    if (!createProductDto.sku) {
+      const count = await this.productsRepository.count({ where: { teamId } });
+      createProductDto.sku = `PROD-${String(count + 1).padStart(4, '0')}`;
+    }
+
     const existing = await this.productsRepository.findOne({
       where: { teamId, sku: createProductDto.sku },
     });

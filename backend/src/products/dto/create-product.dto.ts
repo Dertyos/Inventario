@@ -9,9 +9,10 @@ import {
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateProductDto {
-  @ApiProperty({ example: 'BEB-001', description: 'Código SKU del producto' })
+  @ApiPropertyOptional({ example: 'BEB-001', description: 'Código SKU del producto' })
   @IsString()
-  sku: string;
+  @IsOptional()
+  sku?: string;
 
   @ApiPropertyOptional({
     example: '7702004003287',
@@ -77,10 +78,11 @@ export class CreateProductDto {
   @IsOptional()
   trackLots?: boolean;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: '550e8400-e29b-41d4-a716-446655440000',
     description: 'UUID de la categoría',
   })
   @IsUUID()
-  categoryId: string;
+  @IsOptional()
+  categoryId?: string;
 }

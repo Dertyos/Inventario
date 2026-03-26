@@ -92,6 +92,7 @@ export class InventoryService {
       .createQueryBuilder('movement')
       .leftJoinAndSelect('movement.product', 'product')
       .leftJoinAndSelect('movement.user', 'user')
+      .leftJoinAndSelect('movement.supplier', 'supplier')
       .where('movement.teamId = :teamId', { teamId });
 
     if (options?.productId) {
@@ -110,7 +111,7 @@ export class InventoryService {
   async findOne(teamId: string, id: string): Promise<InventoryMovement> {
     const movement = await this.movementsRepository.findOne({
       where: { id, teamId },
-      relations: ['product', 'user'],
+      relations: ['product', 'user', 'supplier'],
     });
     if (!movement) {
       throw new BadRequestException(`Movement #${id} not found`);

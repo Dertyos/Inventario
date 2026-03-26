@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -229,6 +230,52 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           )
                         : const Text('Iniciar sesion'),
                   ),
+                  const SizedBox(height: AppSpacing.md),
+                  Row(
+                    children: [
+                      const Expanded(child: Divider()),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.sm),
+                        child: Text(
+                          'o',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ),
+                      const Expanded(child: Divider()),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  OutlinedButton.icon(
+                    onPressed: auth.isLoading
+                        ? null
+                        : () => ref.read(authProvider.notifier).signInWithGoogle(),
+                    icon: const Icon(Icons.g_mobiledata, size: 24),
+                    label: const Text('Continuar con Google'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: colorScheme.onSurface,
+                      side: BorderSide(color: colorScheme.outline),
+                      backgroundColor: colorScheme.surface,
+                    ),
+                  ),
+                  // Apple Sign-In — hidden until Apple Developer account is configured
+                  // if (Platform.isIOS) ...[
+                  //   const SizedBox(height: AppSpacing.sm),
+                  //   ElevatedButton.icon(
+                  //     onPressed: auth.isLoading
+                  //         ? null
+                  //         : () => ref.read(authProvider.notifier).signInWithApple(),
+                  //     icon: const Icon(Icons.apple, size: 24),
+                  //     label: const Text('Continuar con Apple'),
+                  //     style: ElevatedButton.styleFrom(
+                  //       foregroundColor: Colors.white,
+                  //       backgroundColor: Colors.black,
+                  //       side: BorderSide.none,
+                  //     ),
+                  //   ),
+                  // ],
                   const SizedBox(height: AppSpacing.md),
                   TextButton(
                     onPressed: () => context.go('/register'),

@@ -14,14 +14,17 @@ import { PayInstallmentDto } from './dto/pay-installment.dto';
 import { CreditStatus } from './entities/credit-account.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TeamRolesGuard } from '../teams/guards/team-roles.guard';
+import { FeatureGuard } from '../common/guards/feature.guard';
 import { TeamRoles } from '../teams/decorators/team-roles.decorator';
+import { RequireFeature } from '../common/decorators/require-feature.decorator';
 import { TeamRole } from '../teams/entities/team-member.entity';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
 @ApiTags('credits')
 @ApiBearerAuth()
 @Controller('teams/:teamId/credits')
-@UseGuards(JwtAuthGuard, TeamRolesGuard)
+@UseGuards(JwtAuthGuard, TeamRolesGuard, FeatureGuard)
+@RequireFeature('enableCredit')
 export class CreditsController {
   constructor(private readonly creditsService: CreditsService) {}
 

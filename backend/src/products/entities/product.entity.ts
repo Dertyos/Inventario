@@ -56,10 +56,10 @@ export class Product {
   @Column({ default: false })
   trackLots: boolean;
 
-  @Column()
+  @Column({ nullable: true })
   categoryId: string;
 
-  @ManyToOne(() => Category, (category) => category.products)
+  @ManyToOne(() => Category, (category) => category.products, { nullable: true })
   @JoinColumn({ name: 'categoryId' })
   category: Category;
 

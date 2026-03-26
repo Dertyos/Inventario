@@ -5,6 +5,7 @@ import 'package:home_widget/home_widget.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:quick_actions/quick_actions.dart';
 import 'core/config/app_config.dart';
+import 'core/notifications/notification_service.dart';
 import 'core/router/app_router.dart';
 import 'core/storage/secure_storage.dart';
 import 'core/theme/app_theme.dart';
@@ -35,6 +36,9 @@ void main() async {
   // Initialize Spanish locale for date formatting
   await initializeDateFormatting('es');
 
+  // Initialize local notifications
+  await NotificationService().initialize();
+
   // Load saved server URL
   final storage = SecureStorage();
   final savedUrl = await loadServerUrl(storage);
@@ -56,8 +60,6 @@ void main() async {
 /// Called when user taps an interactive element on the home widget.
 @pragma('vm:entry-point')
 Future<void> homeWidgetBackgroundCallback(Uri? uri) async {
-  // Widget taps come as URIs like: inventario://sales/new
-  // We store the route and pick it up when the app opens.
   if (uri != null) {
     _pendingRoute = uri.path.isNotEmpty ? uri.path : uri.host;
   }
@@ -112,14 +114,12 @@ class _InventarioAppState extends ConsumerState<InventarioApp> {
   }
 
   void _setupHomeWidgetLaunch() {
-    // Check if app was launched from widget
     HomeWidget.initiallyLaunchedFromHomeWidget().then((uri) {
       if (uri != null) {
         _pendingRoute = uri.path.isNotEmpty ? uri.path : uri.host;
       }
     });
 
-    // Listen for widget taps while app is running
     HomeWidget.widgetClicked.listen((uri) {
       if (uri != null) {
         final route = uri.path.isNotEmpty ? uri.path : uri.host;
@@ -129,14 +129,12 @@ class _InventarioAppState extends ConsumerState<InventarioApp> {
   }
 
   void _navigateTo(String route) {
-    // Small delay to let router initialize if app is cold-starting
     Future.delayed(const Duration(milliseconds: 300), () {
       final context = globalNavigatorKey.currentContext;
       if (context != null) {
         try {
           GoRouter.of(context).push(route);
         } catch (_) {
-          // Router not ready yet, store for later
           _pendingRoute = route;
         }
       } else {
@@ -157,7 +155,6 @@ class _InventarioAppState extends ConsumerState<InventarioApp> {
       themeMode: ThemeMode.system,
       routerConfig: router,
       builder: (context, child) {
-        // Handle pending route after router is ready
         if (_pendingRoute != null) {
           final route = _pendingRoute!;
           _pendingRoute = null;

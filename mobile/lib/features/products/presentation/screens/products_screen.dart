@@ -44,9 +44,9 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
         title: const Text('Productos'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.qr_code_scanner_rounded),
-            onPressed: () {},
+            icon: const Icon(Icons.qr_code_scanner),
             tooltip: 'Escanear código',
+            onPressed: () => context.push('/scanner'),
           ),
         ],
       ),

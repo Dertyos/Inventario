@@ -20,7 +20,29 @@ Versionado según [Semantic Versioning](https://semver.org/lang/es/).
 - **Ejecucion directa**: Cada accion se ejecuta via API al confirmar (sin navegar a otra pantalla)
 - **URL del servidor configurable**: En login y settings, para conectar a backend en Render/Railway/etc
 - **Build workflow mejorado**: Input opcional `api_base_url` para compilar APK con URL pre-configurada
-- **README.md completo**: Documentacion del proyecto con todas las funcionalidades
+- **App shortcuts**: Accesos directos desde pantalla de inicio (Nueva venta, Asistente IA, Nuevo producto)
+- **Home widget**: Widget de pantalla de inicio para acceso rápido a funciones principales
+- **Selección de cliente en ventas**: Selector opcional de cliente al crear una venta (el backend ya lo soportaba, faltaba el UI)
+- **Proveedor en movimientos de inventario**: Selector de proveedor para entradas de stock con opción de crear uno nuevo inline (nombre + teléfono)
+  - Nuevo campo `supplierId` en entidad `InventoryMovement`
+  - `SupplierModel` y `SuppliersRepository` en Flutter
+  - UI estilo selector de categorías con botón "Nuevo proveedor"
+- **Ventas a crédito**: Reemplazado método de pago "Tarjeta" por "Crédito" con soporte completo:
+  - Número de cuotas
+  - Porcentaje de interés (opcional, vacío = sin interés)
+  - Frecuencia de pago: mensual, semanal o diaria
+  - Fecha de próxima cuota con date picker (default según frecuencia)
+  - Abono inicial (opcional)
+  - Nuevos campos en entidad `Sale`: `creditInstallments`, `creditPaidAmount`, `creditInterestRate`, `creditFrequency`, `creditNextPayment`
+  - Historial muestra badge de saldo pendiente, frecuencia y fecha próxima cuota
+  - Al crear venta a crédito con cliente, se crea automáticamente `credit_account` con cuotas pre-generadas
+- **Pantalla de Créditos**: Lista de cuentas de crédito con filtros (activos/pagados/vencidos), detalle con cuotas individuales, pago de cuotas con monto y método
+- **Pantalla de Compras**: Lista de órdenes de compra, creación con selección de proveedor y productos, recibir/cancelar órdenes
+- **Pantalla de Notificaciones**: Centro de notificaciones con iconos por tipo, agrupación por fecha, marcar como leído
+- **Pantalla de Recordatorios de Pago**: Lista de recordatorios, generación automática, estados (pendiente/enviado/fallido)
+- **Pantalla de Lotes de Productos**: Lista de lotes con estado (activo/por vencer/expirado/agotado), creación con fecha de vencimiento
+- **Pantalla de Proveedores**: CRUD completo con búsqueda (nombre, NIT, teléfono)
+- **Navegación**: Todos los nuevos módulos accesibles desde la pestaña "Más"
 
 ### Cambiado
 - Pantalla "Registrar con voz" renombrada a "Asistente IA" con icono actualizado
@@ -29,8 +51,9 @@ Versionado según [Semantic Versioning](https://semver.org/lang/es/).
 - `flutter_lints` downgraded a ^5.0.0 (compatibilidad con Dart 3.7.x)
 
 ### Corregido
+- **Detección de productos en inventario**: El diálogo de nuevo movimiento no detectaba productos existentes (usaba `ref.read` en vez de `await ref.read(.future)` para un provider `autoDispose`)
+- **Ventas mostrando $0**: El modelo Flutter leía `json['totalAmount']` pero el backend envía el campo como `total`
 - Build CI fallaba por `flutter_lints 6.0.0` requiriendo Dart ^3.8.0
-- Google Sign-In crash (`PlatformException sign_in_failed 10`) removido
 - `pubspec.lock` regenerado para compatibilidad
 
 ## [1.1.0] - 2026-03-25

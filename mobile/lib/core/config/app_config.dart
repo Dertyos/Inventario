@@ -7,23 +7,20 @@ class AppConfig {
 
   static const String appName = 'Inventario';
   static const String appVersion = '1.1.0';
-
-  /// Default API URL. Override at build time with --dart-define=API_BASE_URL=...
-  /// or change at runtime via Settings > Servidor.
-  static const String defaultBaseUrl = String.fromEnvironment(
+  static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:3000',
+    defaultValue: 'https://inventario.dertyos.com',
   );
-
-  static const Duration connectTimeout = Duration(seconds: 15);
-  static const Duration receiveTimeout = Duration(seconds: 15);
+  static const String defaultBaseUrl = baseUrl;
+  static const Duration connectTimeout = Duration(seconds: 60);
+  static const Duration receiveTimeout = Duration(seconds: 60);
 }
 
 /// Holds the current server URL. Initialized from storage, updated from settings.
-final serverUrlProvider = StateProvider<String>((ref) => AppConfig.defaultBaseUrl);
+final serverUrlProvider = StateProvider<String>((ref) => AppConfig.baseUrl);
 
 /// Loads the saved server URL from storage on app start.
 Future<String> loadServerUrl(SecureStorage storage) async {
   final saved = await storage.getServerUrl();
-  return saved ?? AppConfig.defaultBaseUrl;
+  return saved ?? AppConfig.baseUrl;
 }

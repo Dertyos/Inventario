@@ -1,3 +1,5 @@
+import 'product_model.dart';
+
 class InventoryMovementModel {
   final String id;
   final String type;
@@ -5,6 +7,8 @@ class InventoryMovementModel {
   final String? reason;
   final String productId;
   final String? productName;
+  final String? supplierId;
+  final String? supplierName;
   final DateTime createdAt;
 
   const InventoryMovementModel({
@@ -14,6 +18,8 @@ class InventoryMovementModel {
     this.reason,
     required this.productId,
     this.productName,
+    this.supplierId,
+    this.supplierName,
     required this.createdAt,
   });
 
@@ -21,12 +27,14 @@ class InventoryMovementModel {
       InventoryMovementModel(
         id: json['id'] as String,
         type: json['type'] as String,
-        quantity: json['quantity'] as int,
+        quantity: JsonParse.toInt(json['quantity']) ?? 0,
         reason: json['reason'] as String?,
         productId: json['productId'] as String? ??
             json['product']?['id'] as String? ??
             '',
         productName: json['product']?['name'] as String?,
+        supplierId: json['supplierId'] as String?,
+        supplierName: json['supplier']?['name'] as String?,
         createdAt: DateTime.parse(json['createdAt'] as String),
       );
 

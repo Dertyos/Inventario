@@ -53,6 +53,8 @@
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Esta app necesita acceso a la cámara para escanear códigos de barras y QR.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Esta app usa reconocimiento de voz para registrar ventas y compras.</string>
 	<key>NSMicrophoneUsageDescription</key>

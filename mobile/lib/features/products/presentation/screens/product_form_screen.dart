@@ -2,14 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/models/product_model.dart';
 import '../../../../shared/providers/auth_provider.dart';
 import '../../data/products_repository.dart';
 import 'products_screen.dart';
 
 class ProductFormScreen extends ConsumerStatefulWidget {
   final String? productId;
+  final String? initialBarcode;
 
-  const ProductFormScreen({super.key, this.productId});
+  const ProductFormScreen({super.key, this.productId, this.initialBarcode});
 
   @override
   ConsumerState<ProductFormScreen> createState() => _ProductFormScreenState();
@@ -33,7 +35,11 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   @override
   void initState() {
     super.initState();
-    if (isEditing) _loadProduct();
+    if (isEditing) {
+      _loadProduct();
+    } else if (widget.initialBarcode != null) {
+      _barcodeController.text = widget.initialBarcode!;
+    }
   }
 
   Future<void> _loadProduct() async {
@@ -68,7 +74,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     final teamId = ref.read(authProvider).teamId;
     final data = {
       'name': _nameController.text.trim(),
-      'sku': _skuController.text.trim(),
+      if (_skuController.text.trim().isNotEmpty)
+        'sku': _skuController.text.trim(),
       if (_barcodeController.text.isNotEmpty)
         'barcode': _barcodeController.text.trim(),
       if (_descriptionController.text.isNotEmpty)
@@ -77,7 +84,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       if (_costController.text.isNotEmpty)
         'cost': double.parse(_costController.text),
       'minStock': int.parse(_minStockController.text),
-      'categoryId': _selectedCategoryId,
+      if (_selectedCategoryId != null)
+        'categoryId': _selectedCategoryId,
     };
 
     try {
@@ -151,6 +159,107 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     }
   }
 
+  void _showCategoryPicker(List<CategoryModel> cats) {
+    if (cats.isEmpty) {
+      _showCreateCategoryDialog();
+      return;
+    }
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Text(
+                'Selecciona una categoría',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+            if (_selectedCategoryId != null)
+              ListTile(
+                leading: const Icon(Icons.close),
+                title: const Text('Sin categoría'),
+                onTap: () {
+                  setState(() => _selectedCategoryId = null);
+                  Navigator.pop(ctx);
+                },
+              ),
+            ...cats.map((c) => ListTile(
+                  leading: Icon(
+                    c.id == _selectedCategoryId
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_unchecked,
+                    color: c.id == _selectedCategoryId
+                        ? Theme.of(context).colorScheme.primary
+                        : null,
+                  ),
+                  title: Text(c.name),
+                  onTap: () {
+                    setState(() => _selectedCategoryId = c.id);
+                    Navigator.pop(ctx);
+                  },
+                )),
+            const SizedBox(height: AppSpacing.md),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showCreateCategoryDialog() async {
+    final nameController = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Nueva categoría'),
+        content: TextField(
+          controller: nameController,
+          autofocus: true,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: const InputDecoration(
+            labelText: 'Nombre de la categoría',
+            hintText: 'Ej: Bebidas, Snacks, Lácteos...',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, nameController.text.trim()),
+            child: const Text('Crear'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && result.isNotEmpty && mounted) {
+      try {
+        final teamId = ref.read(authProvider).teamId;
+        final category = await ref
+            .read(productsRepositoryProvider)
+            .createCategory(teamId, {'name': result});
+        ref.invalidate(categoriesProvider(teamId));
+        setState(() => _selectedCategoryId = category.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Categoría "$result" creada')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e')),
+          );
+        }
+      }
+    }
+    nameController.dispose();
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -203,49 +312,63 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                   v == null || v.trim().isEmpty ? 'Requerido' : null,
             ),
             const SizedBox(height: AppSpacing.md),
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _skuController,
-                    textCapitalization: TextCapitalization.characters,
-                    decoration: const InputDecoration(
-                      labelText: 'SKU *',
-                      prefixIcon: Icon(Icons.tag),
-                    ),
-                    validator: (v) =>
-                        v == null || v.trim().isEmpty ? 'Requerido' : null,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: TextFormField(
-                    controller: _barcodeController,
-                    decoration: const InputDecoration(
-                      labelText: 'Código de barras',
-                      prefixIcon: Icon(Icons.qr_code),
-                    ),
-                  ),
-                ),
-              ],
+            TextFormField(
+              controller: _skuController,
+              textCapitalization: TextCapitalization.characters,
+              decoration: const InputDecoration(
+                labelText: 'SKU',
+                prefixIcon: Icon(Icons.tag),
+                hintText: 'Se genera automáticamente',
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextFormField(
+              controller: _barcodeController,
+              decoration: const InputDecoration(
+                labelText: 'Código de barras',
+                prefixIcon: Icon(Icons.qr_code),
+              ),
             ),
             const SizedBox(height: AppSpacing.md),
             categories.whenOrNull(
-                  data: (cats) => DropdownButtonFormField<String>(
-                    value: _selectedCategoryId,
-                    decoration: const InputDecoration(
-                      labelText: 'Categoría *',
-                      prefixIcon: Icon(Icons.category_outlined),
-                    ),
-                    items: cats
-                        .map((c) => DropdownMenuItem(
-                              value: c.id,
-                              child: Text(c.name),
-                            ))
-                        .toList(),
-                    onChanged: (v) => setState(() => _selectedCategoryId = v),
-                    validator: (v) => v == null ? 'Selecciona una categoría' : null,
-                  ),
+                  data: (cats) {
+                    final selectedName = cats
+                        .where((c) => c.id == _selectedCategoryId)
+                        .map((c) => c.name)
+                        .firstOrNull;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        GestureDetector(
+                          onTap: () => _showCategoryPicker(cats),
+                          child: InputDecorator(
+                            decoration: const InputDecoration(
+                              labelText: 'Categoría',
+                              prefixIcon: Icon(Icons.category_outlined),
+                              suffixIcon: Icon(Icons.arrow_drop_down),
+                            ),
+                            child: Text(
+                              selectedName ?? 'Sin categoría',
+                              style: selectedName != null
+                                  ? null
+                                  : TextStyle(color: Theme.of(context).hintColor),
+                            ),
+                          ),
+                        ),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton.icon(
+                            onPressed: () => _showCreateCategoryDialog(),
+                            icon: const Icon(Icons.add, size: 18),
+                            label: Text(cats.isEmpty ? 'Crear categoría' : 'Nueva categoría'),
+                            style: TextButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ) ??
                 const LinearProgressIndicator(),
             const SizedBox(height: AppSpacing.md),

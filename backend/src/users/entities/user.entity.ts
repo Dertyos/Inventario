@@ -18,7 +18,7 @@ export class User {
   @Column({ unique: true })
   email: string;
 
-  @Column()
+  @Column({ nullable: true })
   @Exclude()
   password: string;
 
@@ -30,6 +30,29 @@ export class User {
 
   @Column({ nullable: true })
   phone: string;
+
+  @Column({ default: false })
+  emailVerified: boolean;
+
+  @Column({ nullable: true })
+  @Exclude()
+  verificationCode: string;
+
+  @Column({ type: 'timestamp', nullable: true })
+  verificationCodeExpiry: Date;
+
+  @Column({ default: 0 })
+  verificationAttempts: number;
+
+  @Column({ nullable: true })
+  @Exclude()
+  resetCode: string;
+
+  @Column({ type: 'timestamp', nullable: true })
+  resetCodeExpiry: Date;
+
+  @Column({ default: 0 })
+  resetAttempts: number;
 
   @Column({ default: true })
   isActive: boolean;

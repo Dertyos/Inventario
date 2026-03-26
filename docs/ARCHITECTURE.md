@@ -90,6 +90,15 @@ La configuración se controla con `DIAN_INTEGRATION_MODE` en las variables de en
 - **PostHog**: Feature flags y analytics (`FEATURE_FLAG_PROVIDER`)
 - **CloudWatch**: Logs de contenedores ECS
 
+### IA / Transacciones por Voz
+
+El sistema permite registrar ventas y compras mediante comandos de voz, usando IA para interpretar lenguaje natural.
+
+- **Backend**: Módulo NestJS (`ai-transactions`) que integra el SDK de Anthropic (Claude Haiku) para parsear texto libre en datos estructurados de venta o compra.
+- **Mobile**: Paquete `speech_to_text` para reconocimiento de voz on-device (sin enviar audio a servidores externos).
+- **Flujo**: Voz → texto (on-device) → API backend → Claude Haiku parsea → datos estructurados (producto, cantidad, precio) → se crea la transacción.
+- **Privacidad**: El audio nunca sale del dispositivo. Solo el texto transcrito se envía al API, y de ahí a Anthropic para parsing.
+
 ## Decisiones de Escalamiento
 
 | Fase   | Estrategia                                     |

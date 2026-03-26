@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/notifications/notification_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/home_widget_updater.dart';
 import '../../../../shared/providers/auth_provider.dart';
@@ -34,12 +35,15 @@ class DashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        toolbarHeight: 64,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               '¡Hola, ${auth.user?.firstName ?? ''}!',
-              style: Theme.of(context).textTheme.titleMedium,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
             ),
             if (auth.activeTeam != null)
               Text(
@@ -50,12 +54,6 @@ class DashboardScreen extends ConsumerWidget {
               ),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {},
-          ),
-        ],
       ),
       body: RefreshIndicator(
         onRefresh: () async {
@@ -77,17 +75,20 @@ class DashboardScreen extends ConsumerWidget {
               ],
             ),
           ),
-          data: (data) => ListView(
-            padding: const EdgeInsets.all(AppSpacing.md),
+          data: (data) {
+            // Check low stock alerts once per session
+            NotificationService().checkLowStockAlerts(data.lowStockProducts);
+            return ListView(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md + 4, vertical: AppSpacing.sm),
             children: [
               // Stats grid
               GridView.count(
                 crossAxisCount: 2,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                mainAxisSpacing: AppSpacing.sm,
-                crossAxisSpacing: AppSpacing.sm,
-                childAspectRatio: 1.5,
+                mainAxisSpacing: AppSpacing.md,
+                crossAxisSpacing: AppSpacing.md,
+                childAspectRatio: 1.1,
                 children: [
                   StatCard(
                     title: 'Ventas hoy',
@@ -162,8 +163,15 @@ class DashboardScreen extends ConsumerWidget {
                           ),
                           title: Text(p.name),
                           subtitle: Text('Stock: ${p.stock} / Mín: ${p.minStock}'),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: () => context.go('/products/${p.id}/edit'),
+                          trailing: FilledButton.tonal(
+                            onPressed: () => context.go('/inventory'),
+                            style: FilledButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                            ),
+                            child: const Text('+ Stock'),
+                          ),
+                          onTap: () => context.go('/inventory'),
                         ),
                       ),
                     ),
@@ -229,13 +237,22 @@ class DashboardScreen extends ConsumerWidget {
 
               const SizedBox(height: AppSpacing.xxl),
             ],
-          ),
+          );
+          },
         ),
       ),
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
+          FloatingActionButton.small(
+            heroTag: 'scanner',
+            onPressed: () => context.push('/scanner'),
+            backgroundColor: colorScheme.tertiaryContainer,
+            foregroundColor: colorScheme.onTertiaryContainer,
+            child: const Icon(Icons.qr_code_scanner),
+          ),
+          const SizedBox(height: AppSpacing.sm),
           FloatingActionButton.small(
             heroTag: 'voice',
             onPressed: () => context.push('/voice-transaction'),

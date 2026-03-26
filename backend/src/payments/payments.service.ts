@@ -33,6 +33,8 @@ export class PaymentsService {
       .createQueryBuilder('payment')
       .leftJoinAndSelect('payment.sale', 'sale')
       .leftJoinAndSelect('payment.receivedByUser', 'user')
+      .leftJoinAndSelect('payment.creditAccount', 'creditAccount')
+      .leftJoinAndSelect('payment.installment', 'installment')
       .where('payment.teamId = :teamId', { teamId });
 
     if (options?.saleId) {

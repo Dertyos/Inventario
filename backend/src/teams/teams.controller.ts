@@ -15,6 +15,7 @@ import { CreateTeamDto } from './dto/create-team.dto';
 import { UpdateTeamDto } from './dto/update-team.dto';
 import { AddMemberDto } from './dto/add-member.dto';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
+import { CreateInviteDto } from './dto/create-invite.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TeamRolesGuard } from './guards/team-roles.guard';
 import { TeamRoles } from './decorators/team-roles.decorator';
@@ -93,6 +94,39 @@ export class TeamsController {
     @Body('role') role: TeamRole,
   ) {
     return this.teamsService.updateMemberRole(teamId, memberId, role);
+  }
+
+  // ── Invitations ─────────────────────────────────
+
+  @Post(':teamId/invitations')
+  @UseGuards(TeamRolesGuard)
+  @TeamRoles(TeamRole.OWNER, TeamRole.ADMIN)
+  createInvitation(
+    @Param('teamId', ParseUUIDPipe) teamId: string,
+    @Body() createInviteDto: CreateInviteDto,
+    @Request() req,
+  ) {
+    return this.teamsService.createInvitation(
+      teamId,
+      createInviteDto.email,
+      req.user.id,
+    );
+  }
+
+  @Get(':teamId/invitations')
+  @UseGuards(TeamRolesGuard)
+  getInvitations(@Param('teamId', ParseUUIDPipe) teamId: string) {
+    return this.teamsService.getInvitations(teamId);
+  }
+
+  @Delete(':teamId/invitations/:invitationId')
+  @UseGuards(TeamRolesGuard)
+  @TeamRoles(TeamRole.OWNER, TeamRole.ADMIN)
+  revokeInvitation(
+    @Param('teamId', ParseUUIDPipe) teamId: string,
+    @Param('invitationId', ParseUUIDPipe) invitationId: string,
+  ) {
+    return this.teamsService.revokeInvitation(teamId, invitationId);
   }
 
   // ── Settings ──────────────────────────────────

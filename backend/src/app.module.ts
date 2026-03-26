@@ -20,6 +20,7 @@ import { SuppliersModule } from './suppliers/suppliers.module';
 import { PurchasesModule } from './purchases/purchases.module';
 import { RemindersModule } from './reminders/reminders.module';
 import { AiModule } from './ai/ai.module';
+import { EmailModule } from './email/email.module';
 
 @Module({
   imports: [
@@ -71,6 +72,7 @@ import { AiModule } from './ai/ai.module';
     PurchasesModule,
     RemindersModule,
     AiModule,
+    EmailModule,
   ],
   controllers: [AppController],
   providers: [

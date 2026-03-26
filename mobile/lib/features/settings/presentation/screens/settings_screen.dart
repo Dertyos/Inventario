@@ -6,6 +6,41 @@ import '../../../../core/network/api_client.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/providers/auth_provider.dart';
 
+void _showEditTeamNameDialog(BuildContext context, WidgetRef ref) {
+  final auth = ref.read(authProvider);
+  final controller = TextEditingController(text: auth.activeTeam?.name ?? '');
+  showDialog(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Nombre de la tienda'),
+      content: TextField(
+        controller: controller,
+        autofocus: true,
+        textCapitalization: TextCapitalization.sentences,
+        decoration: const InputDecoration(
+          labelText: 'Nombre',
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: () {
+            final name = controller.text.trim();
+            if (name.isNotEmpty && auth.activeTeam != null) {
+              ref.read(authProvider.notifier).updateTeamName(auth.activeTeam!.id, name);
+            }
+            Navigator.pop(ctx);
+          },
+          child: const Text('Guardar'),
+        ),
+      ],
+    ),
+  );
+}
+
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -63,57 +98,62 @@ class SettingsScreen extends ConsumerWidget {
           // Team card
           if (auth.activeTeam != null)
             Card(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: colorScheme.secondaryContainer,
-                        borderRadius: BorderRadius.circular(10),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () => _showEditTeamNameDialog(context, ref),
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: colorScheme.secondaryContainer,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.store_rounded,
+                          color: colorScheme.onSecondaryContainer,
+                        ),
                       ),
-                      child: Icon(
-                        Icons.store_rounded,
-                        color: colorScheme.onSecondaryContainer,
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              auth.activeTeam!.name,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            Text(
+                              '${auth.activeTeam!.currency} · Toca para editar',
+                              style:
+                                  Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: colorScheme.onSurfaceVariant,
+                                      ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            auth.activeTeam!.name,
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          Text(
-                            '${auth.activeTeam!.currency} · ${auth.activeTeam!.timezone}',
-                            style:
-                                Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: colorScheme.onSurfaceVariant,
-                                    ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (auth.teams.length > 1)
-                      PopupMenuButton<String>(
-                        icon: const Icon(Icons.swap_horiz),
-                        onSelected: (teamId) {
-                          final team =
-                              auth.teams.firstWhere((t) => t.id == teamId);
-                          ref.read(authProvider.notifier).switchTeam(team);
-                        },
-                        itemBuilder: (context) => auth.teams
-                            .map((t) => PopupMenuItem(
-                                  value: t.id,
-                                  child: Text(t.name),
-                                ))
-                            .toList(),
-                      ),
-                  ],
+                      Icon(Icons.edit_outlined, color: colorScheme.onSurfaceVariant, size: 20),
+                      if (auth.teams.length > 1)
+                        PopupMenuButton<String>(
+                          icon: const Icon(Icons.swap_horiz),
+                          onSelected: (teamId) {
+                            final team =
+                                auth.teams.firstWhere((t) => t.id == teamId);
+                            ref.read(authProvider.notifier).switchTeam(team);
+                          },
+                          itemBuilder: (context) => auth.teams
+                              .map((t) => PopupMenuItem(
+                                    value: t.id,
+                                    child: Text(t.name),
+                                  ))
+                              .toList(),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -121,9 +161,56 @@ class SettingsScreen extends ConsumerWidget {
 
           // Menu items
           _SettingsTile(
+            icon: Icons.group_outlined,
+            title: 'Equipo y miembros',
+            subtitle: 'Gestiona los miembros de tu equipo',
+            onTap: () => context.push('/team-members'),
+          ),
+          _SettingsTile(
+            icon: Icons.settings_outlined,
+            title: 'Configuración del equipo',
+            subtitle: 'Nombre, moneda y más',
+            onTap: () => context.push('/team-settings'),
+          ),
+          _SettingsTile(
             icon: Icons.people_outlined,
             title: 'Clientes',
             onTap: () => context.go('/customers'),
+          ),
+          _SettingsTile(
+            icon: Icons.local_shipping_outlined,
+            title: 'Proveedores',
+            subtitle: 'Gestiona tus proveedores',
+            onTap: () => context.push('/suppliers'),
+          ),
+          _SettingsTile(
+            icon: Icons.credit_score_outlined,
+            title: 'Créditos',
+            subtitle: 'Cuentas por cobrar y cuotas',
+            onTap: () => context.push('/credits'),
+          ),
+          _SettingsTile(
+            icon: Icons.shopping_cart_outlined,
+            title: 'Compras',
+            subtitle: 'Órdenes de compra a proveedores',
+            onTap: () => context.push('/purchases'),
+          ),
+          _SettingsTile(
+            icon: Icons.inventory_outlined,
+            title: 'Lotes',
+            subtitle: 'Lotes y fechas de vencimiento',
+            onTap: () => context.push('/lots'),
+          ),
+          _SettingsTile(
+            icon: Icons.notifications_outlined,
+            title: 'Notificaciones',
+            onTap: () => context.push('/notifications'),
+          ),
+          _SettingsTile(
+            icon: Icons.schedule_outlined,
+            title: 'Recordatorios de pago',
+            subtitle: 'Genera y gestiona cobros',
+            onTap: () => context.push('/reminders'),
           ),
           _SettingsTile(
             icon: Icons.mic,
