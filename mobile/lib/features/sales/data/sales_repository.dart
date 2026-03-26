@@ -2,16 +2,21 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/offline/pending_sales_service.dart';
 import '../../../shared/models/sale_model.dart';
 
 final salesRepositoryProvider = Provider<SalesRepository>((ref) {
-  return SalesRepository(ref.read(dioProvider));
+  return SalesRepository(
+    ref.read(dioProvider),
+    ref.read(pendingSalesServiceProvider),
+  );
 });
 
 class SalesRepository {
   final Dio _dio;
+  final PendingSalesService _pendingSales;
 
-  SalesRepository(this._dio);
+  SalesRepository(this._dio, this._pendingSales);
 
   Future<List<SaleModel>> getSales(
     String teamId, {
@@ -43,6 +48,13 @@ class SalesRepository {
       final response = await _dio.post('/teams/$teamId/sales', data: data);
       return SaleModel.fromJson(response.data);
     } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionError ||
+          e.type == DioExceptionType.connectionTimeout) {
+        // Guardar offline
+        await _pendingSales.savePendingSale(teamId, data);
+        throw ApiException(
+            'Venta guardada localmente. Se sincronizara cuando haya conexion.');
+      }
       throw ApiException.fromDioError(e);
     }
   }

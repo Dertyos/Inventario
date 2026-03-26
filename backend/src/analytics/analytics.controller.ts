@@ -4,8 +4,10 @@ import {
   Param,
   Query,
   UseGuards,
+  UseInterceptors,
   ParseUUIDPipe,
 } from '@nestjs/common';
+import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import { AnalyticsService } from './analytics.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TeamRolesGuard } from '../teams/guards/team-roles.guard';
@@ -18,6 +20,8 @@ import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 
+  @UseInterceptors(CacheInterceptor)
+  @CacheTTL(300000) // 5 minutes
   @Get('summary')
   getSummary(@Param('teamId', ParseUUIDPipe) teamId: string) {
     return this.analyticsService.getSummary(teamId);

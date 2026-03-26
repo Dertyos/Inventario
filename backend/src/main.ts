@@ -3,8 +3,6 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
-import { TeamAuditInterceptor } from './common/interceptors/team-audit.interceptor';
-
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
@@ -18,9 +16,6 @@ async function bootstrap() {
       transform: true,
     }),
   );
-
-  // Tenant audit interceptor (logs mutations, blocks teamId override)
-  app.useGlobalInterceptors(new TeamAuditInterceptor());
 
   // CORS: configurable via environment variable
   const allowedOrigins = process.env.CORS_ORIGINS

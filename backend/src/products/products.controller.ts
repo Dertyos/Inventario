@@ -8,8 +8,13 @@ import {
   Body,
   Query,
   UseGuards,
+  UseInterceptors,
+  Inject,
   ParseUUIDPipe,
 } from '@nestjs/common';
+import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -24,17 +29,24 @@ import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 @Controller('teams/:teamId/products')
 @UseGuards(JwtAuthGuard, TeamRolesGuard)
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(
+    private readonly productsService: ProductsService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+  ) {}
 
   @Post()
   @TeamRoles(TeamRole.OWNER, TeamRole.ADMIN, TeamRole.MANAGER)
-  create(
+  async create(
     @Param('teamId', ParseUUIDPipe) teamId: string,
     @Body() createProductDto: CreateProductDto,
   ) {
-    return this.productsService.create(teamId, createProductDto);
+    const result = await this.productsService.create(teamId, createProductDto);
+    await this.cacheManager.reset();
+    return result;
   }
 
+  @UseInterceptors(CacheInterceptor)
+  @CacheTTL(1800000) // 30 minutes
   @Get()
   findAll(
     @Param('teamId', ParseUUIDPipe) teamId: string,
@@ -68,20 +80,24 @@ export class ProductsController {
 
   @Patch(':id')
   @TeamRoles(TeamRole.OWNER, TeamRole.ADMIN, TeamRole.MANAGER)
-  update(
+  async update(
     @Param('teamId', ParseUUIDPipe) teamId: string,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateProductDto: UpdateProductDto,
   ) {
-    return this.productsService.update(teamId, id, updateProductDto);
+    const result = await this.productsService.update(teamId, id, updateProductDto);
+    await this.cacheManager.reset();
+    return result;
   }
 
   @Delete(':id')
   @TeamRoles(TeamRole.OWNER, TeamRole.ADMIN)
-  remove(
+  async remove(
     @Param('teamId', ParseUUIDPipe) teamId: string,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.productsService.remove(teamId, id);
+    const result = await this.productsService.remove(teamId, id);
+    await this.cacheManager.reset();
+    return result;
   }
 }

@@ -100,7 +100,9 @@ class SettingsScreen extends ConsumerWidget {
             Card(
               child: InkWell(
                 borderRadius: BorderRadius.circular(12),
-                onTap: () => _showEditTeamNameDialog(context, ref),
+                onTap: auth.isAdmin
+                    ? () => _showEditTeamNameDialog(context, ref)
+                    : null,
                 child: Padding(
                   padding: const EdgeInsets.all(AppSpacing.md),
                   child: Row(
@@ -127,7 +129,9 @@ class SettingsScreen extends ConsumerWidget {
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
                             Text(
-                              '${auth.activeTeam!.currency} · Toca para editar',
+                              auth.isAdmin
+                                  ? '${auth.activeTeam!.currency} · Toca para editar'
+                                  : auth.activeTeam!.currency,
                               style:
                                   Theme.of(context).textTheme.bodySmall?.copyWith(
                                         color: colorScheme.onSurfaceVariant,
@@ -136,7 +140,8 @@ class SettingsScreen extends ConsumerWidget {
                           ],
                         ),
                       ),
-                      Icon(Icons.edit_outlined, color: colorScheme.onSurfaceVariant, size: 20),
+                      if (auth.isAdmin)
+                        Icon(Icons.edit_outlined, color: colorScheme.onSurfaceVariant, size: 20),
                       if (auth.teams.length > 1)
                         PopupMenuButton<String>(
                           icon: const Icon(Icons.swap_horiz),
@@ -160,18 +165,20 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: AppSpacing.lg),
 
           // Menu items
-          _SettingsTile(
-            icon: Icons.group_outlined,
-            title: 'Equipo y miembros',
-            subtitle: 'Gestiona los miembros de tu equipo',
-            onTap: () => context.push('/team-members'),
-          ),
-          _SettingsTile(
-            icon: Icons.settings_outlined,
-            title: 'Configuración del equipo',
-            subtitle: 'Nombre, moneda y más',
-            onTap: () => context.push('/team-settings'),
-          ),
+          if (auth.isAdmin)
+            _SettingsTile(
+              icon: Icons.group_outlined,
+              title: 'Equipo y miembros',
+              subtitle: 'Gestiona los miembros de tu equipo',
+              onTap: () => context.push('/team-members'),
+            ),
+          if (auth.isAdmin)
+            _SettingsTile(
+              icon: Icons.settings_outlined,
+              title: 'Configuración del equipo',
+              subtitle: 'Nombre, moneda y más',
+              onTap: () => context.push('/team-settings'),
+            ),
           _SettingsTile(
             icon: Icons.people_outlined,
             title: 'Clientes',
