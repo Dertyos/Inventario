@@ -4,18 +4,54 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/providers/auth_provider.dart';
 import '../../data/reports_repository.dart';
 
-final _selectedPeriodProvider = StateProvider.autoDispose<String>((ref) => '30d');
+// --- Providers ---
+
+enum ReportPeriod { week, month, thisMonth }
+
+final _selectedPeriodProvider = StateProvider<ReportPeriod>((ref) {
+  return ReportPeriod.month;
+});
+
+String _periodQueryValue(ReportPeriod period) {
+  switch (period) {
+    case ReportPeriod.week:
+      return '7d';
+    case ReportPeriod.month:
+      return '30d';
+    case ReportPeriod.thisMonth:
+      return 'this_month';
+  }
+}
+
+({String start, String end}) _periodDates(ReportPeriod period) {
+  final now = DateTime.now();
+  final fmt = DateFormat('yyyy-MM-dd');
+  final end = fmt.format(now);
+  switch (period) {
+    case ReportPeriod.week:
+      return (start: fmt.format(now.subtract(const Duration(days: 7))), end: end);
+    case ReportPeriod.month:
+      return (start: fmt.format(now.subtract(const Duration(days: 30))), end: end);
+    case ReportPeriod.thisMonth:
+      return (start: fmt.format(DateTime(now.year, now.month, 1)), end: end);
+  }
+}
 
 final salesAnalyticsProvider = FutureProvider.autoDispose
-    .family<SalesAnalytics, ({String teamId, String period})>((ref, params) {
-  return ref
-      .read(reportsRepositoryProvider)
-      .getSalesAnalytics(params.teamId, period: params.period);
+    .family<SalesAnalytics, ({String teamId, ReportPeriod period})>(
+        (ref, params) {
+  return ref.read(reportsRepositoryProvider).getSalesAnalytics(
+        params.teamId,
+        period: _periodQueryValue(params.period),
+      );
 });
+
+// --- Screen ---
 
 class SalesReportScreen extends ConsumerWidget {
   const SalesReportScreen({super.key});
@@ -29,7 +65,6 @@ class SalesReportScreen extends ConsumerWidget {
         ref.watch(salesAnalyticsProvider((teamId: teamId, period: period)));
     final cop = NumberFormat.currency(
         locale: 'es_CO', symbol: '\$', decimalDigits: 0);
-    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
@@ -37,14 +72,19 @@ class SalesReportScreen extends ConsumerWidget {
         actions: [
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
-            onSelected: (value) =>
-                _handleMenuAction(context, ref, value, teamId, period),
+            onSelected: (value) {
+              if (value == 'csv') {
+                _exportCsv(context, ref, teamId, period);
+              } else if (value == 'whatsapp') {
+                _shareWhatsApp(context, ref, analyticsAsync, period, cop);
+              }
+            },
             itemBuilder: (context) => [
               const PopupMenuItem(
                 value: 'csv',
                 child: Row(
                   children: [
-                    Icon(Icons.download_outlined, size: 20),
+                    Icon(Icons.file_download_outlined, size: 20),
                     SizedBox(width: AppSpacing.sm),
                     Text('Exportar CSV'),
                   ],
@@ -54,7 +94,7 @@ class SalesReportScreen extends ConsumerWidget {
                 value: 'whatsapp',
                 child: Row(
                   children: [
-                    Icon(Icons.share_outlined, size: 20),
+                    Icon(Icons.chat_outlined, size: 20),
                     SizedBox(width: AppSpacing.sm),
                     Text('Compartir por WhatsApp'),
                   ],
@@ -74,105 +114,58 @@ class SalesReportScreen extends ConsumerWidget {
               children: [
                 _PeriodChip(
                   label: '7 dias',
-                  value: '7d',
-                  selected: period == '7d',
-                  onTap: () =>
-                      ref.read(_selectedPeriodProvider.notifier).state = '7d',
+                  selected: period == ReportPeriod.week,
+                  onTap: () => ref.read(_selectedPeriodProvider.notifier).state =
+                      ReportPeriod.week,
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 _PeriodChip(
                   label: '30 dias',
-                  value: '30d',
-                  selected: period == '30d',
-                  onTap: () =>
-                      ref.read(_selectedPeriodProvider.notifier).state = '30d',
+                  selected: period == ReportPeriod.month,
+                  onTap: () => ref.read(_selectedPeriodProvider.notifier).state =
+                      ReportPeriod.month,
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 _PeriodChip(
                   label: 'Este mes',
-                  value: 'month',
-                  selected: period == 'month',
-                  onTap: () => ref
-                      .read(_selectedPeriodProvider.notifier)
-                      .state = 'month',
+                  selected: period == ReportPeriod.thisMonth,
+                  onTap: () => ref.read(_selectedPeriodProvider.notifier).state =
+                      ReportPeriod.thisMonth,
                 ),
               ],
             ),
           ),
           // Content
           Expanded(
-            child: analyticsAsync.when(
-              loading: () =>
-                  const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
+            child: RefreshIndicator(
+              onRefresh: () async {
+                ref.invalidate(salesAnalyticsProvider(
+                    (teamId: teamId, period: period)));
+              },
+              child: analyticsAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => ListView(
                   children: [
-                    const Icon(Icons.error_outline, size: 48),
-                    const SizedBox(height: AppSpacing.sm),
-                    Text('Error: $e'),
-                    TextButton(
-                      onPressed: () => ref.invalidate(salesAnalyticsProvider(
-                          (teamId: teamId, period: period))),
-                      child: const Text('Reintentar'),
+                    SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+                    Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.error_outline, size: 48),
+                          const SizedBox(height: AppSpacing.sm),
+                          Text('Error: $e'),
+                          TextButton(
+                            onPressed: () => ref.invalidate(
+                                salesAnalyticsProvider(
+                                    (teamId: teamId, period: period))),
+                            child: const Text('Reintentar'),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-              ),
-              data: (data) => RefreshIndicator(
-                onRefresh: () async {
-                  ref.invalidate(salesAnalyticsProvider(
-                      (teamId: teamId, period: period)));
-                },
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md + 4,
-                      vertical: AppSpacing.sm),
-                  children: [
-                    // Hero card
-                    _HeroRevenueCard(data: data, cop: cop),
-                    const SizedBox(height: AppSpacing.lg),
-
-                    // Revenue line chart
-                    if (data.dailyRevenue.isNotEmpty) ...[
-                      Text(
-                        'Ventas por dia',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      _RevenueLineChart(
-                        dailyRevenue: data.dailyRevenue,
-                        color: colorScheme.primary,
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-                    ],
-
-                    // Top products
-                    if (data.topProducts.isNotEmpty) ...[
-                      Text(
-                        'Top productos',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      _TopProductsChart(
-                        products: data.topProducts.take(5).toList(),
-                        cop: cop,
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-                    ],
-
-                    // Payment methods
-                    if (data.paymentMethods.isNotEmpty) ...[
-                      Text(
-                        'Metodos de pago',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      _PaymentMethodsBar(methods: data.paymentMethods),
-                      const SizedBox(height: AppSpacing.xxl),
-                    ],
-                  ],
-                ),
+                data: (data) => _ReportBody(data: data, cop: cop),
               ),
             ),
           ),
@@ -181,78 +174,75 @@ class SalesReportScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _handleMenuAction(
-    BuildContext context,
-    WidgetRef ref,
-    String action,
-    String teamId,
-    String period,
-  ) async {
-    if (action == 'csv') {
-      try {
-        final csv = await ref
-            .read(reportsRepositoryProvider)
-            .exportSalesCsv(teamId);
-        await SharePlus.instance.share(ShareParams(text: csv, title: 'Reporte de ventas'));
-      } catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error al exportar: $e')),
+  Future<void> _exportCsv(BuildContext context, WidgetRef ref, String teamId,
+      ReportPeriod period) async {
+    try {
+      final dates = _periodDates(period);
+      final csv = await ref.read(reportsRepositoryProvider).exportSalesCsv(
+            teamId,
+            startDate: dates.start,
+            endDate: dates.end,
           );
-        }
-      }
-    } else if (action == 'whatsapp') {
-      final analytics = ref
-          .read(salesAnalyticsProvider((teamId: teamId, period: period)))
-          .valueOrNull;
-      if (analytics == null) return;
-
-      final cop = NumberFormat.currency(
-          locale: 'es_CO', symbol: '\$', decimalDigits: 0);
-      final now = DateTime.now();
-      final days = period == '7d' ? 7 : 30;
-      final startDate = DateFormat('dd/MM/yyyy')
-          .format(now.subtract(Duration(days: days)));
-      final endDate = DateFormat('dd/MM/yyyy').format(now);
-
-      final topProduct = analytics.topProducts.isNotEmpty
-          ? analytics.topProducts.first
-          : null;
-
-      final message = StringBuffer()
-        ..writeln('\u{1F4CA} *Inventario - Reporte*')
-        ..writeln(
-            '\u{1F4C5} Periodo: $startDate - $endDate')
-        ..writeln()
-        ..writeln(
-            '\u{1F4B0} Total ventas: ${cop.format(analytics.totalRevenue)}')
-        ..writeln(
-            '\u{1F4E6} Transacciones: ${analytics.totalTransactions}');
-      if (topProduct != null) {
-        message.writeln(
-            '\u{1F3C6} Top producto: ${topProduct.name} (${cop.format(topProduct.revenue)})');
-      }
-      message.writeln()
-        ..writeln('Generado por Inventario App');
-
-      final encoded = Uri.encodeComponent(message.toString());
-      final url = Uri.parse('https://wa.me/?text=$encoded');
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
+      await SharePlus.instance.share(ShareParams(text: csv, title: 'Ventas.csv'));
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al exportar: $e')),
+        );
       }
     }
   }
+
+  void _shareWhatsApp(
+    BuildContext context,
+    WidgetRef ref,
+    AsyncValue<SalesAnalytics> analyticsAsync,
+    ReportPeriod period,
+    NumberFormat cop,
+  ) {
+    final data = analyticsAsync.valueOrNull;
+    if (data == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cargando datos...')),
+      );
+      return;
+    }
+
+    final dates = _periodDates(period);
+    final topProduct =
+        data.topProducts.isNotEmpty ? data.topProducts.first : null;
+
+    final message = StringBuffer()
+      ..writeln('\u{1F4CA} *Inventario - Reporte*')
+      ..writeln('\u{1F4C5} Periodo: ${dates.start} - ${dates.end}')
+      ..writeln()
+      ..writeln('\u{1F4B0} Total ventas: ${cop.format(data.totalRevenue)}')
+      ..writeln('\u{1F4E6} Transacciones: ${data.totalTransactions}');
+
+    if (topProduct != null) {
+      message.writeln(
+          '\u{1F3C6} Top producto: ${topProduct.name} (${cop.format(topProduct.revenue)})');
+    }
+
+    message
+      ..writeln()
+      ..writeln('Generado por Inventario App');
+
+    final encoded = Uri.encodeComponent(message.toString());
+    final url = Uri.parse('https://wa.me/?text=$encoded');
+    launchUrl(url, mode: LaunchMode.externalApplication);
+  }
 }
+
+// --- Period Chip ---
 
 class _PeriodChip extends StatelessWidget {
   final String label;
-  final String value;
   final bool selected;
   final VoidCallback onTap;
 
   const _PeriodChip({
     required this.label,
-    required this.value,
     required this.selected,
     required this.onTap,
   });
@@ -264,8 +254,7 @@ class _PeriodChip extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: AppAnimations.fast,
-        padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: selected
               ? colorScheme.primary
@@ -274,7 +263,7 @@ class _PeriodChip extends StatelessWidget {
         ),
         child: Text(
           label,
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
                 color: selected
                     ? colorScheme.onPrimary
                     : colorScheme.onSurfaceVariant,
@@ -285,89 +274,165 @@ class _PeriodChip extends StatelessWidget {
   }
 }
 
-class _HeroRevenueCard extends StatelessWidget {
+// --- Report Body ---
+
+class _ReportBody extends StatelessWidget {
   final SalesAnalytics data;
   final NumberFormat cop;
 
-  const _HeroRevenueCard({required this.data, required this.cop});
+  const _ReportBody({required this.data, required this.cop});
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final isPositive = data.percentChange >= 0;
+    final textTheme = Theme.of(context).textTheme;
+    final changePercent = data.changePercent;
+    final isPositive = changePercent >= 0;
 
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(
-          color: colorScheme.primary.withValues(alpha: 0.15),
-          width: 1,
-        ),
-      ),
-      color: colorScheme.primary.withValues(alpha: 0.04),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md + 4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Total ventas',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+    return ListView(
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md + 4, vertical: AppSpacing.sm),
+      children: [
+        // Hero card
+        Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(
+              color: colorScheme.primary.withValues(alpha: 0.15),
+            ),
+          ),
+          color: colorScheme.primary.withValues(alpha: 0.04),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Total ventas',
+                  style: textTheme.bodyMedium?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              cop.format(data.totalRevenue),
-              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.5,
-                  ),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Row(
-              children: [
-                Icon(
-                  isPositive
-                      ? Icons.trending_up_rounded
-                      : Icons.trending_down_rounded,
-                  size: 18,
-                  color: isPositive ? AppColors.success : AppColors.danger,
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(height: AppSpacing.xs),
                 Text(
-                  '${isPositive ? '+' : ''}${data.percentChange.toStringAsFixed(1)}%',
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  cop.format(data.totalRevenue),
+                  style: textTheme.headlineLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -1,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Row(
+                  children: [
+                    Icon(
+                      isPositive
+                          ? Icons.trending_up_rounded
+                          : Icons.trending_down_rounded,
+                      size: 16,
+                      color: isPositive ? AppColors.success : AppColors.danger,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${isPositive ? '+' : ''}${changePercent.toStringAsFixed(1)}% vs periodo anterior',
+                      style: textTheme.bodySmall?.copyWith(
                         color:
                             isPositive ? AppColors.success : AppColors.danger,
                         fontWeight: FontWeight.w600,
                       ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Text(
-                  '${data.totalTransactions} transacciones',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Text(
+                      '${data.totalTransactions} transacciones',
+                      style: textTheme.bodySmall?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                       ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
+          ),
         ),
-      ),
+
+        const SizedBox(height: AppSpacing.lg),
+
+        // Revenue line chart
+        if (data.dailyRevenue.isNotEmpty) ...[
+          Text('Ventas por dia', style: textTheme.titleMedium),
+          const SizedBox(height: AppSpacing.sm),
+          SizedBox(
+            height: 200,
+            child: _RevenueLineChart(
+              dailyRevenue: data.dailyRevenue,
+              color: colorScheme.primary,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+        ],
+
+        // Top products
+        if (data.topProducts.isNotEmpty) ...[
+          Text('Top productos', style: textTheme.titleMedium),
+          const SizedBox(height: AppSpacing.sm),
+          SizedBox(
+            height: 220,
+            child: _TopProductsChart(
+              products: data.topProducts.take(5).toList(),
+              cop: cop,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+        ],
+
+        // Payment methods
+        if (data.paymentMethods.isNotEmpty) ...[
+          Text('Metodos de pago', style: textTheme.titleMedium),
+          const SizedBox(height: AppSpacing.sm),
+          _PaymentMethodsBar(methods: data.paymentMethods, cop: cop),
+          const SizedBox(height: AppSpacing.sm),
+          // Legend
+          Wrap(
+            spacing: AppSpacing.md,
+            runSpacing: AppSpacing.xs,
+            children: data.paymentMethods.asMap().entries.map((entry) {
+              final color = _paymentMethodColors[entry.key %
+                  _paymentMethodColors.length];
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${entry.value.method} (${cop.format(entry.value.amount)})',
+                    style: textTheme.bodySmall,
+                  ),
+                ],
+              );
+            }).toList(),
+          ),
+        ],
+
+        const SizedBox(height: AppSpacing.xxl),
+      ],
     );
   }
 }
+
+// --- Revenue Line Chart ---
 
 class _RevenueLineChart extends StatelessWidget {
   final List<DailyRevenue> dailyRevenue;
   final Color color;
 
-  const _RevenueLineChart({
-    required this.dailyRevenue,
-    required this.color,
-  });
+  const _RevenueLineChart({required this.dailyRevenue, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -376,119 +441,103 @@ class _RevenueLineChart extends StatelessWidget {
       return FlSpot(e.key.toDouble(), e.value.revenue);
     }).toList();
 
-    final maxY = spots.map((s) => s.y).reduce((a, b) => a > b ? a : b);
-    final minY = spots.map((s) => s.y).reduce((a, b) => a < b ? a : b);
-    final padding = (maxY - minY) * 0.15;
+    final revenues = dailyRevenue.map((e) => e.revenue).toList();
+    final maxY = revenues.reduce((a, b) => a > b ? a : b);
 
-    return SizedBox(
-      height: 200,
-      child: LineChart(
-        LineChartData(
-          gridData: const FlGridData(show: false),
-          borderData: FlBorderData(show: false),
-          titlesData: FlTitlesData(
-            topTitles:
-                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles:
-                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            leftTitles:
-                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 24,
-                interval: _bottomInterval,
-                getTitlesWidget: (value, meta) {
-                  final index = value.toInt();
-                  if (index < 0 || index >= dailyRevenue.length) {
-                    return const SizedBox.shrink();
-                  }
-                  final date = DateTime.tryParse(dailyRevenue[index].date);
-                  if (date == null) return const SizedBox.shrink();
-
-                  final labels = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
-                  final label = dailyRevenue.length <= 7
-                      ? labels[date.weekday % 7]
-                      : DateFormat('dd').format(date);
-
-                  return SideTitleWidget(
-                    meta: meta,
-                    child: Text(
-                      label,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-          minY: minY > 0 ? (minY - padding).clamp(0, double.infinity) : minY - padding,
-          maxY: maxY + padding,
-          lineTouchData: LineTouchData(
-            touchTooltipData: LineTouchTooltipData(
-              getTooltipItems: (touchedSpots) {
-                return touchedSpots.map((spot) {
-                  final cop = NumberFormat.currency(
-                      locale: 'es_CO', symbol: '\$', decimalDigits: 0);
-                  return LineTooltipItem(
-                    cop.format(spot.y),
-                    TextStyle(
-                      color: colorScheme.onPrimary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
-                    ),
-                  );
-                }).toList();
+    return LineChart(
+      LineChartData(
+        gridData: const FlGridData(show: false),
+        borderData: FlBorderData(show: false),
+        minY: 0,
+        maxY: maxY * 1.15,
+        titlesData: FlTitlesData(
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          leftTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 24,
+              interval: _bottomInterval(),
+              getTitlesWidget: (value, meta) {
+                final idx = value.toInt();
+                if (idx < 0 || idx >= dailyRevenue.length) {
+                  return const SizedBox.shrink();
+                }
+                final date = DateTime.tryParse(dailyRevenue[idx].date);
+                if (date == null) return const SizedBox.shrink();
+                final labels = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+                final label = dailyRevenue.length <= 7
+                    ? labels[(date.weekday - 1) % 7]
+                    : '${date.day}';
+                return Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    label,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                );
               },
             ),
-            handleBuiltInTouches: true,
           ),
-          lineBarsData: [
-            LineChartBarData(
-              spots: spots,
-              isCurved: true,
-              curveSmoothness: 0.3,
-              color: color,
-              barWidth: 2.5,
-              isStrokeCapRound: true,
-              dotData: FlDotData(
-                show: false,
-                getDotPainter: (spot, percent, barData, index) {
-                  return FlDotCirclePainter(
-                    radius: 4,
-                    color: color,
-                    strokeWidth: 2,
-                    strokeColor: Colors.white,
-                  );
-                },
-              ),
-              belowBarData: BarAreaData(
-                show: true,
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    color.withValues(alpha: 0.2),
-                    color.withValues(alpha: 0.0),
-                  ],
-                ),
+        ),
+        lineTouchData: LineTouchData(
+          touchTooltipData: LineTouchTooltipData(
+            getTooltipItems: (spots) {
+              return spots.map((spot) {
+                final cop = NumberFormat.currency(
+                    locale: 'es_CO', symbol: '\$', decimalDigits: 0);
+                return LineTooltipItem(
+                  cop.format(spot.y),
+                  TextStyle(
+                    color: colorScheme.onPrimary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                );
+              }).toList();
+            },
+          ),
+          handleBuiltInTouches: true,
+        ),
+        lineBarsData: [
+          LineChartBarData(
+            spots: spots,
+            isCurved: true,
+            curveSmoothness: 0.3,
+            color: color,
+            barWidth: 2.5,
+            isStrokeCapRound: true,
+            dotData: const FlDotData(show: false),
+            belowBarData: BarAreaData(
+              show: true,
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  color.withValues(alpha: 0.2),
+                  color.withValues(alpha: 0.0),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  double get _bottomInterval {
-    final count = dailyRevenue.length;
-    if (count <= 7) return 1;
-    if (count <= 15) return 2;
-    return (count / 6).ceilToDouble();
+  double _bottomInterval() {
+    if (dailyRevenue.length <= 7) return 1;
+    if (dailyRevenue.length <= 15) return 2;
+    return (dailyRevenue.length / 7).ceilToDouble();
   }
 }
+
+// --- Top Products Bar Chart ---
 
 class _TopProductsChart extends StatelessWidget {
   final List<TopProduct> products;
@@ -498,185 +547,140 @@ class _TopProductsChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (products.isEmpty) return const SizedBox.shrink();
-
     final colorScheme = Theme.of(context).colorScheme;
-    final maxRevenue =
-        products.map((p) => p.revenue).reduce((a, b) => a > b ? a : b);
+    final textTheme = Theme.of(context).textTheme;
+    final maxRevenue = products
+        .map((e) => e.revenue)
+        .reduce((a, b) => a > b ? a : b);
 
-    final colors = [
-      colorScheme.primary,
-      colorScheme.secondary,
-      colorScheme.tertiary,
-      AppColors.info,
-      AppColors.success,
-    ];
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          children: products.asMap().entries.map((entry) {
-            final i = entry.key;
-            final product = entry.value;
-            final fraction =
-                maxRevenue > 0 ? product.revenue / maxRevenue : 0.0;
-            final barColor = colors[i % colors.length];
-
-            return Padding(
-              padding: EdgeInsets.only(
-                  bottom: i < products.length - 1 ? AppSpacing.md : 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          product.name,
-                          style: Theme.of(context).textTheme.bodyMedium,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Text(
-                        cop.format(product.revenue),
-                        style:
-                            Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: fraction,
-                      minHeight: 8,
-                      backgroundColor:
-                          colorScheme.surfaceContainerHighest,
-                      color: barColor,
+    return BarChart(
+      BarChartData(
+        alignment: BarChartAlignment.spaceAround,
+        maxY: maxRevenue * 1.2,
+        barTouchData: BarTouchData(
+          touchTooltipData: BarTouchTooltipData(
+            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+              return BarTooltipItem(
+                '${products[group.x.toInt()].name}\n${cop.format(rod.toY)}',
+                TextStyle(
+                  color: colorScheme.onPrimary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+              );
+            },
+          ),
+        ),
+        titlesData: FlTitlesData(
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          leftTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 40,
+              getTitlesWidget: (value, meta) {
+                final idx = value.toInt();
+                if (idx < 0 || idx >= products.length) {
+                  return const SizedBox.shrink();
+                }
+                final name = products[idx].name;
+                return Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    name.length > 8 ? '${name.substring(0, 8)}...' : name,
+                    style: textTheme.labelSmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
                     ),
+                    textAlign: TextAlign.center,
                   ),
-                ],
+                );
+              },
+            ),
+          ),
+        ),
+        gridData: const FlGridData(show: false),
+        borderData: FlBorderData(show: false),
+        barGroups: products.asMap().entries.map((entry) {
+          final barColor = _barColors[entry.key % _barColors.length];
+          return BarChartGroupData(
+            x: entry.key,
+            barRods: [
+              BarChartRodData(
+                toY: entry.value.revenue,
+                color: barColor,
+                width: 28,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(6),
+                ),
+              ),
+            ],
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+const _barColors = [
+  AppColors.info,
+  AppColors.success,
+  AppColors.warning,
+  Color(0xFF9B59B6),
+  Color(0xFF1ABC9C),
+];
+
+// --- Payment Methods Segmented Bar ---
+
+const _paymentMethodColors = [
+  AppColors.info,
+  AppColors.success,
+  AppColors.warning,
+  Color(0xFF9B59B6),
+  Color(0xFF1ABC9C),
+];
+
+class _PaymentMethodsBar extends StatelessWidget {
+  final List<PaymentMethodBreakdown> methods;
+  final NumberFormat cop;
+
+  const _PaymentMethodsBar({required this.methods, required this.cop});
+
+  @override
+  Widget build(BuildContext context) {
+    final total = methods.fold<double>(0, (sum, m) => sum + m.amount);
+    if (total == 0) return const SizedBox.shrink();
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: SizedBox(
+        height: 28,
+        child: Row(
+          children: methods.asMap().entries.map((entry) {
+            final fraction = entry.value.amount / total;
+            final color = _paymentMethodColors[
+                entry.key % _paymentMethodColors.length];
+            return Expanded(
+              flex: (fraction * 1000).round().clamp(1, 1000),
+              child: Container(
+                color: color,
+                alignment: Alignment.center,
+                child: fraction > 0.12
+                    ? Text(
+                        '${(fraction * 100).toStringAsFixed(0)}%',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                      )
+                    : null,
               ),
             );
           }).toList(),
         ),
       ),
     );
-  }
-}
-
-class _PaymentMethodsBar extends StatelessWidget {
-  final List<PaymentMethodBreakdown> methods;
-
-  const _PaymentMethodsBar({required this.methods});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final cop = NumberFormat.currency(
-        locale: 'es_CO', symbol: '\$', decimalDigits: 0);
-
-    final colors = [
-      colorScheme.primary,
-      colorScheme.secondary,
-      colorScheme.tertiary,
-      AppColors.info,
-      AppColors.warning,
-    ];
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          children: [
-            // Segmented bar
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: SizedBox(
-                height: 12,
-                child: Row(
-                  children: methods.asMap().entries.map((entry) {
-                    final i = entry.key;
-                    final m = entry.value;
-                    return Expanded(
-                      flex: (m.percentage * 100).round().clamp(1, 100),
-                      child: Container(
-                        color: colors[i % colors.length],
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            // Legend
-            ...methods.asMap().entries.map((entry) {
-              final i = entry.key;
-              final m = entry.value;
-              return Padding(
-                padding: EdgeInsets.only(
-                    bottom: i < methods.length - 1 ? AppSpacing.sm : 0),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: colors[i % colors.length],
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Text(
-                        _methodLabel(m.method),
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ),
-                    Text(
-                      '${(m.percentage * 100).toStringAsFixed(0)}%',
-                      style:
-                          Theme.of(context).textTheme.labelMedium?.copyWith(
-                                color: colorScheme.onSurfaceVariant,
-                              ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Text(
-                      cop.format(m.amount),
-                      style:
-                          Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _methodLabel(String method) {
-    switch (method.toLowerCase()) {
-      case 'cash':
-        return 'Efectivo';
-      case 'card':
-        return 'Tarjeta';
-      case 'transfer':
-        return 'Transferencia';
-      case 'nequi':
-        return 'Nequi';
-      case 'daviplata':
-        return 'Daviplata';
-      default:
-        return method;
-    }
   }
 }

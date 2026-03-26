@@ -8,6 +8,8 @@ import '../../../../core/widgets/home_widget_updater.dart';
 import '../../../../shared/providers/auth_provider.dart';
 import '../../data/dashboard_repository.dart';
 import '../../../../shared/widgets/stat_card.dart';
+import '../../../../shared/widgets/mini_line_chart.dart';
+import '../../../reports/data/reports_repository.dart';
 
 final dashboardProvider =
     FutureProvider.autoDispose.family<DashboardData, String>((ref, teamId) async {
@@ -20,6 +22,11 @@ final dashboardProvider =
     lowStockCount: data.lowStockProducts.length,
   );
   return data;
+});
+
+final analyticsSummaryProvider =
+    FutureProvider.autoDispose.family<AnalyticsSummary, String>((ref, teamId) {
+  return ref.read(reportsRepositoryProvider).getSummary(teamId);
 });
 
 class DashboardScreen extends ConsumerWidget {
@@ -78,9 +85,14 @@ class DashboardScreen extends ConsumerWidget {
           data: (data) {
             // Check low stock alerts once per session
             NotificationService().checkLowStockAlerts(data.lowStockProducts);
+            final summaryAsync = ref.watch(analyticsSummaryProvider(teamId));
             return ListView(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md + 4, vertical: AppSpacing.sm),
             children: [
+              // Hero metric card (graceful degradation)
+              if (summaryAsync.valueOrNull != null)
+                _buildHeroMetric(context, summaryAsync.valueOrNull!, cop, colorScheme),
+
               // Stats grid
               GridView.count(
                 crossAxisCount: 2,

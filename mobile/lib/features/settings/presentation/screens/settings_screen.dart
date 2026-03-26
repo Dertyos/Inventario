@@ -213,6 +213,12 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => context.push('/reminders'),
           ),
           _SettingsTile(
+            icon: Icons.bar_chart_rounded,
+            title: 'Reportes',
+            subtitle: 'Ventas, productos y exportar',
+            onTap: () => context.push('/reports'),
+          ),
+          _SettingsTile(
             icon: Icons.mic,
             title: 'Registrar con voz',
             subtitle: 'Ventas y compras en lenguaje natural',

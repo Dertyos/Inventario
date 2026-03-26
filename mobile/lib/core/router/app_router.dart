@@ -27,6 +27,7 @@ import '../../features/lots/presentation/screens/lots_screen.dart';
 import '../../features/lots/presentation/screens/create_lot_screen.dart';
 import '../../features/suppliers/presentation/screens/suppliers_screen.dart';
 import '../../features/reminders/presentation/screens/reminders_screen.dart';
+import '../../features/reports/presentation/screens/sales_report_screen.dart';
 import '../../shared/providers/auth_provider.dart';
 import '../../shared/widgets/app_shell.dart';
 
@@ -215,6 +216,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/reminders',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const RemindersScreen(),
+      ),
+      GoRoute(
+        path: '/reports',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const SalesReportScreen(),
       ),
     ],
   );
