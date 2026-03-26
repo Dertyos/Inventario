@@ -12,12 +12,17 @@ import { Team } from './entities/team.entity';
 import { TeamMember, TeamRole } from './entities/team-member.entity';
 import { TeamSettings } from './entities/team-settings.entity';
 import { TeamInvite, InviteStatus } from './entities/team-invite.entity';
+import { RolePermissions } from './entities/role-permissions.entity';
 import { UsersService } from '../users/users.service';
 import { EmailService } from '../email/email.service';
 import { CreateTeamDto } from './dto/create-team.dto';
 import { UpdateTeamDto } from './dto/update-team.dto';
 import { AddMemberDto } from './dto/add-member.dto';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
+import {
+  DEFAULT_PERMISSIONS,
+  ALL_PERMISSIONS,
+} from './permissions.constants';
 
 @Injectable()
 export class TeamsService {
@@ -30,6 +35,8 @@ export class TeamsService {
     private readonly settingsRepository: Repository<TeamSettings>,
     @InjectRepository(TeamInvite)
     private readonly invitesRepository: Repository<TeamInvite>,
+    @InjectRepository(RolePermissions)
+    private readonly rolePermissionsRepository: Repository<RolePermissions>,
     private readonly usersService: UsersService,
     private readonly emailService: EmailService,
   ) {}
@@ -60,6 +67,19 @@ export class TeamsService {
       joinedAt: new Date(),
     });
     await this.membersRepository.save(member);
+
+    // Seed default permissions for manager and staff
+    const managerPerms = this.rolePermissionsRepository.create({
+      teamId: savedTeam.id,
+      role: TeamRole.MANAGER,
+      permissions: DEFAULT_PERMISSIONS[TeamRole.MANAGER],
+    });
+    const staffPerms = this.rolePermissionsRepository.create({
+      teamId: savedTeam.id,
+      role: TeamRole.STAFF,
+      permissions: DEFAULT_PERMISSIONS[TeamRole.STAFF],
+    });
+    await this.rolePermissionsRepository.save([managerPerms, staffPerms]);
 
     return this.findOne(savedTeam.id);
   }
@@ -351,6 +371,110 @@ export class TeamsService {
     await this.invitesRepository.save(invite);
 
     return savedMember;
+  }
+
+  // ── Role Permissions ─────────────────────────────
+
+  async getRolePermissions(
+    teamId: string,
+    role: TeamRole,
+  ): Promise<string[]> {
+    // OWNER and ADMIN always have all permissions
+    if (role === TeamRole.OWNER || role === TeamRole.ADMIN) {
+      return ALL_PERMISSIONS;
+    }
+
+    const entry = await this.rolePermissionsRepository.findOne({
+      where: { teamId, role },
+    });
+
+    if (!entry) {
+      return DEFAULT_PERMISSIONS[role] || [];
+    }
+
+    return entry.permissions;
+  }
+
+  async updateRolePermissions(
+    teamId: string,
+    role: TeamRole,
+    permissions: string[],
+  ): Promise<RolePermissions> {
+    if (role === TeamRole.OWNER || role === TeamRole.ADMIN) {
+      throw new ForbiddenException(
+        'Cannot customize permissions for owner or admin roles',
+      );
+    }
+
+    // Validate that all provided permissions are valid
+    const invalidPermissions = permissions.filter(
+      (p) => !ALL_PERMISSIONS.includes(p as any),
+    );
+    if (invalidPermissions.length > 0) {
+      throw new BadRequestException(
+        `Invalid permissions: ${invalidPermissions.join(', ')}`,
+      );
+    }
+
+    let entry = await this.rolePermissionsRepository.findOne({
+      where: { teamId, role },
+    });
+
+    if (entry) {
+      entry.permissions = permissions;
+    } else {
+      entry = this.rolePermissionsRepository.create({
+        teamId,
+        role,
+        permissions,
+      });
+    }
+
+    return this.rolePermissionsRepository.save(entry);
+  }
+
+  async hasPermission(
+    teamId: string,
+    role: TeamRole,
+    permission: string,
+  ): Promise<boolean> {
+    // OWNER and ADMIN always have all permissions
+    if (role === TeamRole.OWNER || role === TeamRole.ADMIN) {
+      return true;
+    }
+
+    const permissions = await this.getRolePermissions(teamId, role);
+
+    if (permissions.includes('*')) {
+      return true;
+    }
+
+    return permissions.includes(permission);
+  }
+
+  async getAllPermissions(
+    teamId: string,
+  ): Promise<Record<string, string[]>> {
+    const entries = await this.rolePermissionsRepository.find({
+      where: { teamId },
+    });
+
+    const result: Record<string, string[]> = {
+      [TeamRole.OWNER]: ALL_PERMISSIONS,
+      [TeamRole.ADMIN]: ALL_PERMISSIONS,
+      [TeamRole.MANAGER]: DEFAULT_PERMISSIONS[TeamRole.MANAGER],
+      [TeamRole.STAFF]: DEFAULT_PERMISSIONS[TeamRole.STAFF],
+    };
+
+    for (const entry of entries) {
+      result[entry.role] = entry.permissions;
+    }
+
+    // Owner and admin are always all permissions regardless of DB
+    result[TeamRole.OWNER] = ALL_PERMISSIONS;
+    result[TeamRole.ADMIN] = ALL_PERMISSIONS;
+
+    return result;
   }
 
   private generateSlug(name: string): string {

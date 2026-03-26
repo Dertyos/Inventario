@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/models/team_member_model.dart';
 import '../../../../shared/providers/auth_provider.dart';
@@ -249,6 +250,7 @@ class _TeamMembersScreenState extends ConsumerState<TeamMembersScreen> {
               itemCount: items.length,
               itemBuilder: (context, index) {
                 final member = items[index];
+                final auth = ref.read(authProvider);
                 return _MemberCard(
                   member: member,
                   onChangeRole: member.role != 'owner'
@@ -257,6 +259,13 @@ class _TeamMembersScreenState extends ConsumerState<TeamMembersScreen> {
                   onRemove: member.role != 'owner'
                       ? () => _removeMember(member)
                       : null,
+                  onConfigurePermissions:
+                      auth.isOwner &&
+                              (member.role == 'manager' ||
+                                  member.role == 'staff')
+                          ? () => context
+                              .push('/role-permissions/${member.role}')
+                          : null,
                 );
               },
             ),
@@ -276,11 +285,13 @@ class _MemberCard extends StatelessWidget {
   final TeamMemberModel member;
   final VoidCallback? onChangeRole;
   final VoidCallback? onRemove;
+  final VoidCallback? onConfigurePermissions;
 
   const _MemberCard({
     required this.member,
     this.onChangeRole,
     this.onRemove,
+    this.onConfigurePermissions,
   });
 
   Color _roleBadgeColor(BuildContext context, String role) {
@@ -375,7 +386,7 @@ class _MemberCard extends StatelessWidget {
                 ],
               ),
             ),
-            if (onChangeRole != null || onRemove != null)
+            if (onChangeRole != null || onRemove != null || onConfigurePermissions != null)
               PopupMenuButton<String>(
                 icon: Icon(
                   Icons.more_vert,
@@ -384,6 +395,7 @@ class _MemberCard extends StatelessWidget {
                 onSelected: (value) {
                   if (value == 'role') onChangeRole?.call();
                   if (value == 'remove') onRemove?.call();
+                  if (value == 'permissions') onConfigurePermissions?.call();
                 },
                 itemBuilder: (context) => [
                   if (onChangeRole != null)
@@ -392,6 +404,16 @@ class _MemberCard extends StatelessWidget {
                       child: ListTile(
                         leading: Icon(Icons.admin_panel_settings_outlined),
                         title: Text('Cambiar rol'),
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                  if (onConfigurePermissions != null)
+                    const PopupMenuItem(
+                      value: 'permissions',
+                      child: ListTile(
+                        leading: Icon(Icons.security_outlined),
+                        title: Text('Configurar permisos'),
                         dense: true,
                         contentPadding: EdgeInsets.zero,
                       ),

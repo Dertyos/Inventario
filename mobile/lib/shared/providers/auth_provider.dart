@@ -15,6 +15,7 @@ class AuthState {
   final UserModel? user;
   final TeamModel? activeTeam;
   final List<TeamModel> teams;
+  final List<String> permissions;
   final bool isLoading;
   final String? error;
 
@@ -23,6 +24,7 @@ class AuthState {
     this.user,
     this.activeTeam,
     this.teams = const [],
+    this.permissions = const [],
     this.isLoading = false,
     this.error,
   });
@@ -37,11 +39,17 @@ class AuthState {
   bool get isManager => userRole == 'manager' || isAdmin;
   // staff can do basic operations
 
+  /// Check if the user has a specific permission.
+  /// Owner and Admin always have all permissions.
+  bool hasPermission(String key) =>
+      isOwner || isAdmin || permissions.contains(key);
+
   AuthState copyWith({
     AuthStatus? status,
     UserModel? user,
     TeamModel? activeTeam,
     List<TeamModel>? teams,
+    List<String>? permissions,
     bool? isLoading,
     String? error,
   }) =>
@@ -50,6 +58,7 @@ class AuthState {
         user: user ?? this.user,
         activeTeam: activeTeam ?? this.activeTeam,
         teams: teams ?? this.teams,
+        permissions: permissions ?? this.permissions,
         isLoading: isLoading ?? this.isLoading,
         error: error,
       );

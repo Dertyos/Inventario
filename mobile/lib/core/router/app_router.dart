@@ -15,6 +15,7 @@ import '../../features/customers/presentation/screens/customers_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/settings/presentation/screens/team_settings_screen.dart';
 import '../../features/settings/presentation/screens/team_members_screen.dart';
+import '../../features/settings/presentation/screens/role_permissions_screen.dart';
 import '../../features/ai_chat/presentation/screens/ai_chat_screen.dart'
     show VoiceTransactionScreen;
 import '../../features/scanner/presentation/screens/barcode_scanner_screen.dart';
@@ -179,6 +180,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/team-members',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const TeamMembersScreen(),
+      ),
+      GoRoute(
+        path: '/role-permissions/:role',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => RolePermissionsScreen(
+          role: state.pathParameters['role']!,
+        ),
       ),
       GoRoute(
         path: '/voice-transaction',

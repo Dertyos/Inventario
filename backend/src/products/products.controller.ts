@@ -21,6 +21,7 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TeamRolesGuard } from '../teams/guards/team-roles.guard';
 import { TeamRoles } from '../teams/decorators/team-roles.decorator';
+import { RequirePermission } from '../teams/decorators/require-permission.decorator';
 import { TeamRole } from '../teams/entities/team-member.entity';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
@@ -36,6 +37,7 @@ export class ProductsController {
 
   @Post()
   @TeamRoles(TeamRole.OWNER, TeamRole.ADMIN, TeamRole.MANAGER)
+  @RequirePermission('inventory.create_product')
   async create(
     @Param('teamId', ParseUUIDPipe) teamId: string,
     @Body() createProductDto: CreateProductDto,
@@ -92,6 +94,7 @@ export class ProductsController {
 
   @Delete(':id')
   @TeamRoles(TeamRole.OWNER, TeamRole.ADMIN)
+  @RequirePermission('inventory.delete_product')
   async remove(
     @Param('teamId', ParseUUIDPipe) teamId: string,
     @Param('id', ParseUUIDPipe) id: string,

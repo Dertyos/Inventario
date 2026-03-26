@@ -15,6 +15,7 @@ import { CreateTeamDto } from './dto/create-team.dto';
 import { UpdateTeamDto } from './dto/update-team.dto';
 import { AddMemberDto } from './dto/add-member.dto';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
+import { UpdateRolePermissionsDto } from './dto/update-role-permissions.dto';
 import { CreateInviteDto } from './dto/create-invite.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TeamRolesGuard } from './guards/team-roles.guard';
@@ -139,6 +140,36 @@ export class TeamsController {
     @Param('invitationId', ParseUUIDPipe) invitationId: string,
   ) {
     return this.teamsService.revokeInvitation(teamId, invitationId);
+  }
+
+  // ── Permissions ─────────────────────────────────
+
+  @Get(':teamId/permissions')
+  @UseGuards(TeamRolesGuard)
+  @TeamRoles(TeamRole.OWNER)
+  getAllPermissions(@Param('teamId', ParseUUIDPipe) teamId: string) {
+    return this.teamsService.getAllPermissions(teamId);
+  }
+
+  @Get(':teamId/permissions/:role')
+  @UseGuards(TeamRolesGuard)
+  @TeamRoles(TeamRole.OWNER)
+  getRolePermissions(
+    @Param('teamId', ParseUUIDPipe) teamId: string,
+    @Param('role') role: TeamRole,
+  ) {
+    return this.teamsService.getRolePermissions(teamId, role);
+  }
+
+  @Patch(':teamId/permissions/:role')
+  @UseGuards(TeamRolesGuard)
+  @TeamRoles(TeamRole.OWNER)
+  updateRolePermissions(
+    @Param('teamId', ParseUUIDPipe) teamId: string,
+    @Param('role') role: TeamRole,
+    @Body() dto: UpdateRolePermissionsDto,
+  ) {
+    return this.teamsService.updateRolePermissions(teamId, role, dto.permissions);
   }
 
   // ── Settings ──────────────────────────────────
