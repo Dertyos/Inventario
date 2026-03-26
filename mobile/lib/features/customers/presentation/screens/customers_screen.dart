@@ -7,10 +7,12 @@ import '../../../../shared/widgets/app_list_tile.dart';
 import '../../../../shared/widgets/app_modal.dart';
 import '../../../../shared/widgets/app_search_field.dart';
 import '../../../../shared/widgets/empty_state.dart';
+import '../../../../core/providers/cache_for.dart';
 import '../../data/customers_repository.dart';
 
 final customersProvider = FutureProvider.autoDispose
     .family<List<CustomerModel>, String>((ref, teamId) {
+  ref.cacheFor(const Duration(minutes: 5));
   return ref.read(customersRepositoryProvider).getCustomers(teamId);
 });
 

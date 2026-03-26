@@ -8,15 +8,18 @@ import '../../../../shared/providers/auth_provider.dart';
 import '../../../../shared/widgets/app_search_field.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/status_badge.dart';
+import '../../../../core/providers/cache_for.dart';
 import '../../data/products_repository.dart';
 
 final productsProvider =
     FutureProvider.autoDispose.family<List<ProductModel>, String>((ref, teamId) {
+  ref.cacheFor(const Duration(minutes: 5));
   return ref.read(productsRepositoryProvider).getProducts(teamId);
 });
 
 final categoriesProvider =
     FutureProvider.autoDispose.family<List<CategoryModel>, String>((ref, teamId) {
+  ref.cacheFor(const Duration(minutes: 5));
   return ref.read(productsRepositoryProvider).getCategories(teamId);
 });
 

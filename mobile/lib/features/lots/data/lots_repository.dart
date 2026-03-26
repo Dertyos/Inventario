@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/providers/cache_for.dart';
 import '../../../shared/models/product_lot_model.dart';
 import '../../../shared/providers/auth_provider.dart';
 
@@ -11,11 +12,13 @@ final lotsRepositoryProvider = Provider<LotsRepository>((ref) {
 
 final lotsProvider = FutureProvider.autoDispose
     .family<List<ProductLotModel>, String>((ref, teamId) {
+  ref.cacheFor(const Duration(minutes: 5));
   return ref.read(lotsRepositoryProvider).getLots(teamId);
 });
 
 final expiringLotsProvider = FutureProvider.autoDispose
     .family<List<ProductLotModel>, String>((ref, teamId) {
+  ref.cacheFor(const Duration(minutes: 5));
   return ref.read(lotsRepositoryProvider).getExpiringLots(teamId);
 });
 

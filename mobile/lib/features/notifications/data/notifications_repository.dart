@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/providers/cache_for.dart';
 import '../../../shared/models/notification_model.dart';
 
 final notificationsRepositoryProvider =
@@ -13,6 +14,7 @@ final notificationsRepositoryProvider =
 /// record to filter.  The family key is `(teamId, unreadOnly)`.
 final notificationsProvider = FutureProvider.autoDispose
     .family<List<NotificationModel>, (String, bool)>((ref, arg) async {
+  ref.cacheFor(const Duration(minutes: 2));
   final repo = ref.read(notificationsRepositoryProvider);
   return repo.getNotifications(arg.$1, unreadOnly: arg.$2);
 });
@@ -20,6 +22,7 @@ final notificationsProvider = FutureProvider.autoDispose
 /// Unread notification count for the active team (badge).
 final unreadCountProvider =
     FutureProvider.autoDispose.family<int, String>((ref, teamId) async {
+  ref.cacheFor(const Duration(minutes: 2));
   final repo = ref.read(notificationsRepositoryProvider);
   final unread = await repo.getNotifications(teamId, unreadOnly: true);
   return unread.length;

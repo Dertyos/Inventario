@@ -45,6 +45,12 @@ class AiService {
           'IA no disponible. Verifica que ANTHROPIC_API_KEY este configurada en el backend.',
         );
       }
+      if (e.response?.statusCode == 403) {
+        throw ApiException(
+          'No tienes permisos para usar el asistente IA.',
+          statusCode: 403,
+        );
+      }
       throw ApiException.fromDioError(e);
     }
   }
@@ -78,6 +84,12 @@ class AiService {
       if (e.response?.statusCode == 503) {
         throw ApiException(
           'IA no disponible. Verifica que ANTHROPIC_API_KEY este configurada en el backend.',
+        );
+      }
+      if (e.response?.statusCode == 403) {
+        throw ApiException(
+          'No tienes permisos para usar el asistente IA.',
+          statusCode: 403,
         );
       }
       throw ApiException.fromDioError(e);

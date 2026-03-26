@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/providers/auth_provider.dart';
+import '../../../../core/providers/cache_for.dart';
 import '../../data/reports_repository.dart';
 
 // --- Providers ---
@@ -46,6 +47,7 @@ String _periodQueryValue(ReportPeriod period) {
 final salesAnalyticsProvider = FutureProvider.autoDispose
     .family<SalesAnalytics, ({String teamId, ReportPeriod period})>(
         (ref, params) {
+  ref.cacheFor(const Duration(minutes: 5));
   return ref.read(reportsRepositoryProvider).getSalesAnalytics(
         params.teamId,
         period: _periodQueryValue(params.period),

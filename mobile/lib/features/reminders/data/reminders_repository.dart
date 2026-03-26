@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/providers/cache_for.dart';
 import '../../../shared/models/payment_reminder_model.dart';
 
 final remindersRepositoryProvider = Provider<RemindersRepository>((ref) {
@@ -12,6 +13,7 @@ final remindersRepositoryProvider = Provider<RemindersRepository>((ref) {
 /// Family key: `(teamId, status)` where status can be null.
 final remindersProvider = FutureProvider.autoDispose
     .family<List<PaymentReminderModel>, (String, String?)>((ref, arg) async {
+  ref.cacheFor(const Duration(minutes: 5));
   final repo = ref.read(remindersRepositoryProvider);
   return repo.getReminders(arg.$1, status: arg.$2);
 });
