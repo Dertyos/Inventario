@@ -1,6 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -183,7 +184,8 @@ class SalesReportScreen extends ConsumerWidget {
             startDate: dates.start,
             endDate: dates.end,
           );
-      await SharePlus.instance.share(ShareParams(text: csv, title: 'Ventas.csv'));
+      // ignore: deprecated_member_use
+      await Share.share(csv, subject: 'Ventas.csv');
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -200,7 +202,7 @@ class SalesReportScreen extends ConsumerWidget {
     ReportPeriod period,
     NumberFormat cop,
   ) {
-    final data = analyticsAsync.valueOrNull;
+    final data = analyticsAsync.value;
     if (data == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Cargando datos...')),

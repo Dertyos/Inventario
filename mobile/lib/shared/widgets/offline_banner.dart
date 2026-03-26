@@ -12,7 +12,7 @@ class OfflineBanner extends ConsumerWidget {
     final isOnline = ref.watch(isOnlineProvider);
     final pendingCount = ref.watch(pendingSalesCountProvider);
 
-    if (isOnline && (pendingCount.valueOrNull ?? 0) == 0) {
+    if (isOnline && (pendingCount.value ?? 0) == 0) {
       return const SizedBox.shrink();
     }
 
@@ -30,7 +30,7 @@ class OfflineBanner extends ConsumerWidget {
           Expanded(
             child: Text(
               isOnline
-                  ? 'Sincronizando ${pendingCount.valueOrNull} ventas...'
+                  ? 'Sincronizando ${pendingCount.value} ventas...'
                   : 'Sin conexion \u00b7 Las ventas se guardan localmente',
               style: const TextStyle(color: Colors.white, fontSize: 12),
             ),

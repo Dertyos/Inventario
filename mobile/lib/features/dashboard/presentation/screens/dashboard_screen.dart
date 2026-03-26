@@ -92,13 +92,13 @@ class DashboardScreen extends ConsumerWidget {
             // Check low stock alerts once per session
             NotificationService().checkLowStockAlerts(data.lowStockProducts);
             final summaryAsync = ref.watch(analyticsSummaryProvider(teamId));
-            final pendingCount = ref.watch(pendingSalesCountProvider).valueOrNull ?? 0;
+            final pendingCount = ref.watch(pendingSalesCountProvider).value ?? 0;
             return ListView(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md + 4, vertical: AppSpacing.sm),
             children: [
               // Hero metric card (graceful degradation)
-              if (summaryAsync.valueOrNull != null)
-                _buildHeroMetric(context, summaryAsync.valueOrNull!, cop, colorScheme),
+              if (summaryAsync.value != null)
+                _buildHeroMetric(context, summaryAsync.value!, cop, colorScheme),
 
               // Stats grid
               GridView.count(
