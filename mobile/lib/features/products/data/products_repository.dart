@@ -2,16 +2,21 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/offline/pending_sales_service.dart';
 import '../../../shared/models/product_model.dart';
 
 final productsRepositoryProvider = Provider<ProductsRepository>((ref) {
-  return ProductsRepository(ref.read(dioProvider));
+  return ProductsRepository(
+    ref.read(dioProvider),
+    ref.read(pendingSalesServiceProvider),
+  );
 });
 
 class ProductsRepository {
   final Dio _dio;
+  final PendingSalesService _offline;
 
-  ProductsRepository(this._dio);
+  ProductsRepository(this._dio, this._offline);
 
   Future<List<ProductModel>> getProducts(
     String teamId, {
@@ -27,10 +32,28 @@ class ProductsRepository {
         '/teams/$teamId/products',
         queryParameters: params,
       );
-      return (response.data as List)
+      final products = (response.data as List)
           .map((e) => ProductModel.fromJson(e as Map<String, dynamic>))
           .toList();
+
+      // Cache for offline use (only full catalog, no filters)
+      if (categoryId == null && (search == null || search.isEmpty)) {
+        _offline.cacheProducts(
+          teamId,
+          (response.data as List).cast<Map<String, dynamic>>(),
+        );
+      }
+
+      return products;
     } on DioException catch (e) {
+      // Offline fallback: return cached products
+      if (e.type == DioExceptionType.connectionError ||
+          e.type == DioExceptionType.connectionTimeout) {
+        final cached = await _offline.getCachedProducts(teamId);
+        if (cached != null) {
+          return cached.map((e) => ProductModel.fromJson(e)).toList();
+        }
+      }
       throw ApiException.fromDioError(e);
     }
   }
@@ -52,6 +75,17 @@ class ProductsRepository {
       final response = await _dio.post('/teams/$teamId/products', data: data);
       return ProductModel.fromJson(response.data);
     } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionError ||
+          e.type == DioExceptionType.connectionTimeout) {
+        await _offline.savePendingOperation(
+          teamId: teamId,
+          type: 'create_product',
+          endpoint: '/teams/$teamId/products',
+          data: data,
+        );
+        throw ApiException(
+            'Producto guardado localmente. Se creara cuando haya conexion.');
+      }
       throw ApiException.fromDioError(e);
     }
   }
@@ -107,7 +141,8 @@ class ProductsRepository {
     Map<String, dynamic> data,
   ) async {
     try {
-      final response = await _dio.post('/teams/$teamId/categories', data: data);
+      final response =
+          await _dio.post('/teams/$teamId/categories', data: data);
       return CategoryModel.fromJson(response.data);
     } on DioException catch (e) {
       throw ApiException.fromDioError(e);

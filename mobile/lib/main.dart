@@ -95,7 +95,7 @@ class _InventarioAppState extends ConsumerState<InventarioApp> {
     Connectivity().onConnectivityChanged.listen((results) {
       if (!results.contains(ConnectivityResult.none)) {
         // Volvio la conexion - sincronizar ventas pendientes
-        ref.read(syncServiceProvider).syncPendingSales();
+        ref.read(syncServiceProvider).syncAll();
       }
     });
   }
