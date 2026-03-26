@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/config/app_config.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/providers/auth_provider.dart';
+import '../../../../shared/widgets/app_modal.dart';
 
 void _showEditTeamNameDialog(BuildContext context, WidgetRef ref) {
   final auth = ref.read(authProvider);
@@ -271,21 +272,8 @@ class SettingsScreen extends ConsumerWidget {
             ),
           const SizedBox(height: AppSpacing.lg),
 
-          // Menu items
-          if (auth.hasPermission('admin.members'))
-            _SettingsTile(
-              icon: Icons.group_outlined,
-              title: 'Equipo y miembros',
-              subtitle: 'Gestiona los miembros de tu equipo',
-              onTap: () => context.push('/team-members'),
-            ),
-          if (auth.hasPermission('admin.team_settings'))
-            _SettingsTile(
-              icon: Icons.settings_outlined,
-              title: 'Configuración del equipo',
-              subtitle: 'Nombre, moneda y más',
-              onTap: () => context.push('/team-settings'),
-            ),
+          // --- Contactos ---
+          const _SectionHeader(title: 'Contactos'),
           _SettingsTile(
             icon: Icons.people_outlined,
             title: 'Clientes',
@@ -294,9 +282,11 @@ class SettingsScreen extends ConsumerWidget {
           _SettingsTile(
             icon: Icons.local_shipping_outlined,
             title: 'Proveedores',
-            subtitle: 'Gestiona tus proveedores',
             onTap: () => context.push('/suppliers'),
           ),
+
+          // --- Finanzas ---
+          const _SectionHeader(title: 'Finanzas'),
           _SettingsTile(
             icon: Icons.credit_score_outlined,
             title: 'Créditos',
@@ -308,17 +298,6 @@ class SettingsScreen extends ConsumerWidget {
             title: 'Compras',
             subtitle: 'Órdenes de compra a proveedores',
             onTap: () => context.push('/purchases'),
-          ),
-          _SettingsTile(
-            icon: Icons.inventory_outlined,
-            title: 'Lotes',
-            subtitle: 'Lotes y fechas de vencimiento',
-            onTap: () => context.push('/lots'),
-          ),
-          _SettingsTile(
-            icon: Icons.notifications_outlined,
-            title: 'Notificaciones',
-            onTap: () => context.push('/notifications'),
           ),
           _SettingsTile(
             icon: Icons.schedule_outlined,
@@ -333,39 +312,66 @@ class SettingsScreen extends ConsumerWidget {
               subtitle: 'Ventas, productos y exportar',
               onTap: () => context.push('/reports'),
             ),
+
+          // --- Inventario ---
+          const _SectionHeader(title: 'Inventario'),
+          _SettingsTile(
+            icon: Icons.inventory_outlined,
+            title: 'Lotes',
+            subtitle: 'Lotes y fechas de vencimiento',
+            onTap: () => context.push('/lots'),
+          ),
+
+          // --- Herramientas ---
+          const _SectionHeader(title: 'Herramientas'),
           _SettingsTile(
             icon: Icons.mic,
             title: 'Registrar con voz',
             subtitle: 'Ventas y compras en lenguaje natural',
             onTap: () => context.push('/voice-transaction'),
           ),
+          _SettingsTile(
+            icon: Icons.notifications_outlined,
+            title: 'Notificaciones',
+            onTap: () => context.push('/notifications'),
+          ),
+
+          // --- Administración ---
+          if (auth.hasPermission('admin.members') ||
+              auth.hasPermission('admin.team_settings')) ...[
+            const _SectionHeader(title: 'Administración'),
+            if (auth.hasPermission('admin.members'))
+              _SettingsTile(
+                icon: Icons.group_outlined,
+                title: 'Equipo y miembros',
+                subtitle: 'Gestiona los miembros de tu equipo',
+                onTap: () => context.push('/team-members'),
+              ),
+            if (auth.hasPermission('admin.team_settings'))
+              _SettingsTile(
+                icon: Icons.settings_outlined,
+                title: 'Configuración del equipo',
+                subtitle: 'Nombre, moneda y más',
+                onTap: () => context.push('/team-settings'),
+              ),
+          ],
           const SizedBox(height: AppSpacing.lg),
 
           // Logout
           OutlinedButton.icon(
             onPressed: () async {
-              final confirmed = await showDialog<bool>(
+              final confirmed = await showAppConfirmation(
                 context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text('Cerrar sesion?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, false),
-                      child: const Text('Cancelar'),
-                    ),
-                    FilledButton(
-                      onPressed: () => Navigator.pop(ctx, true),
-                      child: const Text('Cerrar sesion'),
-                    ),
-                  ],
-                ),
+                title: '¿Cerrar sesión?',
+                confirmLabel: 'Cerrar sesión',
+                isDestructive: true,
               );
               if (confirmed == true) {
                 ref.read(authProvider.notifier).logout();
               }
             },
             icon: const Icon(Icons.logout),
-            label: const Text('Cerrar sesion'),
+            label: const Text('Cerrar sesión'),
             style: OutlinedButton.styleFrom(
               foregroundColor: colorScheme.error,
               side: BorderSide(color: colorScheme.error.withValues(alpha: 0.5)),
@@ -388,6 +394,31 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String title;
+
+  const _SectionHeader({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(
+        top: AppSpacing.lg,
+        bottom: AppSpacing.sm,
+        left: AppSpacing.xs,
+      ),
+      child: Text(
+        title.toUpperCase(),
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.2,
+            ),
+      ),
+    );
+  }
 }
 
 class _SettingsTile extends StatelessWidget {

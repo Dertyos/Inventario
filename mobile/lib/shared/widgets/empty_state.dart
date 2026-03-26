@@ -27,22 +27,17 @@ class EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, size: 48, color: colorScheme.onSurfaceVariant),
-            ),
-            const SizedBox(height: AppSpacing.md),
+            _IllustrationBubble(icon: icon),
+            const SizedBox(height: AppSpacing.lg),
             Text(
               title,
-              style: Theme.of(context).textTheme.titleMedium,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
               textAlign: TextAlign.center,
             ),
             if (subtitle != null) ...[
-              const SizedBox(height: AppSpacing.xs),
+              const SizedBox(height: AppSpacing.sm),
               Text(
                 subtitle!,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -52,7 +47,7 @@ class EmptyState extends StatelessWidget {
               ),
             ],
             if (actionLabel != null && onAction != null) ...[
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: AppSpacing.lg),
               ElevatedButton.icon(
                 onPressed: onAction,
                 icon: const Icon(Icons.add),
@@ -61,6 +56,87 @@ class EmptyState extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// A visually richer illustration bubble for empty states.
+/// Uses layered circles with the icon for a modern, friendly look.
+class _IllustrationBubble extends StatelessWidget {
+  final IconData icon;
+
+  const _IllustrationBubble({required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return SizedBox(
+      width: 120,
+      height: 120,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Outer ring
+          Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: colorScheme.primaryContainer.withValues(alpha: 0.3),
+            ),
+          ),
+          // Middle ring
+          Container(
+            width: 88,
+            height: 88,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: colorScheme.primaryContainer.withValues(alpha: 0.5),
+            ),
+          ),
+          // Inner circle with icon
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: colorScheme.primaryContainer,
+            ),
+            child: Icon(
+              icon,
+              size: 28,
+              color: colorScheme.onPrimaryContainer,
+            ),
+          ),
+          // Decorative dot top-right
+          Positioned(
+            top: 8,
+            right: 12,
+            child: Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: colorScheme.tertiary.withValues(alpha: 0.4),
+              ),
+            ),
+          ),
+          // Decorative dot bottom-left
+          Positioned(
+            bottom: 14,
+            left: 10,
+            child: Container(
+              width: 7,
+              height: 7,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: colorScheme.secondary.withValues(alpha: 0.4),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
