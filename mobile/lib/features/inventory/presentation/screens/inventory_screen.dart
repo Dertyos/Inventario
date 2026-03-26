@@ -86,15 +86,27 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
     String teamId, {
     ProductModel? preselectedProduct,
   }) async {
-    // Ensure products are loaded by awaiting the future
-    final products = await ref.read(productsProvider(teamId).future);
+    final List<ProductModel> products;
+    final List<SupplierModel> suppliers;
+    try {
+      products = await ref.read(productsProvider(teamId).future);
+      if (!mounted) return;
+      suppliers = await ref.read(suppliersProvider(teamId).future);
+      if (!mounted) return;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al cargar datos: $e')),
+        );
+      }
+      return;
+    }
 
     String? selectedProductId = preselectedProduct?.id;
     String type = preselectedProduct != null ? 'in' : 'in';
     final quantityController = TextEditingController();
     final reasonController = TextEditingController();
     SupplierModel? selectedSupplier;
-    final suppliers = await ref.read(suppliersProvider(teamId).future);
 
     showModalBottomSheet(
       context: context,
