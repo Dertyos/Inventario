@@ -186,10 +186,12 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.go('/products/new'),
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: ref.watch(authProvider).isManager
+          ? FloatingActionButton(
+              onPressed: () => context.go('/products/new'),
+              child: const Icon(Icons.add),
+            )
+          : null,
     );
   }
 }

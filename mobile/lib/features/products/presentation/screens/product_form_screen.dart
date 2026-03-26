@@ -289,7 +289,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       appBar: AppBar(
         title: Text(isEditing ? 'Editar producto' : 'Nuevo producto'),
         actions: [
-          if (isEditing)
+          if (isEditing && ref.watch(authProvider).isAdmin)
             IconButton(
               icon: Icon(Icons.delete_outline, color: colorScheme.error),
               onPressed: _confirmDelete,
