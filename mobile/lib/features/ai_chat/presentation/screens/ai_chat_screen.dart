@@ -8,6 +8,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/ai/ai_service.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../shared/providers/auth_provider.dart';
+import '../../../suppliers/data/suppliers_repository.dart';
 
 class VoiceTransactionScreen extends ConsumerStatefulWidget {
   const VoiceTransactionScreen({super.key});
@@ -264,7 +265,32 @@ class _VoiceTransactionScreenState
 
         case CommandAction.createPurchase:
           final t = _parsed!.transaction!;
+          // Resolve supplier by name from cached list
+          String? supplierId;
+          if (t.customerOrSupplier != null) {
+            final suppliers =
+                await ref.read(suppliersProvider(teamId).future);
+            final normalizedInput = t.customerOrSupplier!.toLowerCase();
+            try {
+              final match = suppliers.firstWhere(
+                (s) =>
+                    s.name.toLowerCase().contains(normalizedInput) ||
+                    normalizedInput.contains(s.name.toLowerCase()),
+              );
+              supplierId = match.id;
+            } catch (_) {
+              // No match found
+            }
+          }
+          if (supplierId == null) {
+            throw Exception(
+              t.customerOrSupplier != null
+                  ? 'Proveedor "${t.customerOrSupplier}" no encontrado. Créalo primero en Proveedores.'
+                  : 'Indica el proveedor para registrar la compra.',
+            );
+          }
           await dio.post('/teams/$teamId/purchases', data: {
+            'supplierId': supplierId,
             'items': t.items
                 .where((i) => i.matchedProductId != null)
                 .map((i) => {

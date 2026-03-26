@@ -1,13 +1,11 @@
 # Gaps y Pendientes — Inventario
 
 Documento generado a partir de auditoría exhaustiva comparando documentación vs implementación.
-Última revisión: 2026-03-25
+Última revisión: 2026-03-26
 
 ---
 
-## Estado General: 95/100
-
-El proyecto está en excelente estado. Backend completo, Flutter con UI para todos los módulos, CI/CD funcional, documentación actualizada.
+## Estado General: 98/100
 
 ---
 
@@ -28,29 +26,37 @@ El proyecto está en excelente estado. Backend completo, Flutter con UI para tod
 
 ---
 
+## Corregido en v1.2.1 (2026-03-26)
+
+| Issue | Severidad | Estado | Archivo |
+|-------|-----------|--------|---------|
+| `context.go` en rutas con `parentNavigatorKey: _rootNavigatorKey` — sin back button al navegar a formularios | ALTO | Corregido | `products_screen.dart` (×3), `dashboard_screen.dart` (×1) |
+| Método de pago `card` (Tarjeta) faltante en UI de venta — backend sí lo soporta | ALTO | Corregido | `create_sale_screen.dart` |
+| `int.parse` sin manejo → crash `FormatException` si usuario escribe texto en cantidad | ALTO | Corregido | `inventory_screen.dart` |
+| AI `createPurchase` no enviaba `supplierId` (no-nullable en backend) → siempre 400 | ALTO | Corregido | `ai_chat_screen.dart` |
+| Dead code: ternario `preselectedProduct != null ? 'in' : 'in'` ambas ramas idénticas | BAJO | Corregido | `inventory_screen.dart` |
+| GAPS.md reportaba SupplierModel como incompleto (ya parseaba email/address/notes) | BAJO | Corregido | `GAPS.md` |
+
+---
+
 ## Pendientes Menores
 
-### 1. SupplierModel incompleto (ALTO)
-- **Problema**: Flutter `SupplierModel` no parsea `email`, `address`, `notes` del backend
-- **Archivo**: `mobile/lib/shared/models/supplier_model.dart`
-- **Impacto**: Si la API devuelve estos campos, se pierden silenciosamente
-
-### 2. Navegación inconsistente en Flutter (ALTO)
-- **Problema**: Mezcla de patrones de navegación entre pantallas
-  - `sales_screen.dart` usa `context.go('/sales/new')`
-  - `purchases_screen.dart` usa `context.push('/purchases/new')`
-  - `credits_screen.dart` usa `Navigator.of(context).push(MaterialPageRoute(...))`
-- **Estándar**: Debería ser `context.push()` para todas las pantallas modales
-- **Impacto**: UX inconsistente, posibles memory leaks
-
-### 3. TODO obsoleto en ai_chat_screen.dart (BAJO)
-- **Línea 142**: `// TODO: Purchase flow when implemented`
-- **Estado**: Compras YA están implementadas, el TODO es obsoleto
-
-### 4. DEVELOPMENT.md incompleto (MEDIO)
+### 1. DEVELOPMENT.md incompleto (MEDIO)
 - No menciona setup para Flutter web
 - Sin sección de troubleshooting
 - Sin tips de debugging específicos del proyecto
+
+### 2. Falta paginación en listas (MEDIO)
+- `sales_screen.dart`, `purchases_screen.dart`, `credits_screen.dart` cargan todos los registros
+- Para negocios con > 500 registros impactará rendimiento y tiempo de carga
+- El backend ya soporta `page` + `limit` query params
+
+### 3. RefreshIndicator faltante en estados de error (BAJO)
+- Cuando un provider falla, el usuario ve el error pero no puede hacer pull-to-refresh
+- Agregar `RefreshIndicator` en los estados de error en `products_screen.dart`, `sales_screen.dart`, etc.
+
+### 4. Validación visual al alcanzar stock máximo en carrito (BAJO)
+- `create_sale_screen.dart`: el botón `+` se deshabilita cuando `qty >= stock` pero sin feedback visual claro
 
 ---
 

@@ -125,7 +125,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                         : 'Intenta con otro término de búsqueda',
                     actionLabel: items.isEmpty ? 'Agregar producto' : null,
                     onAction: items.isEmpty
-                        ? () => context.go('/products/new')
+                        ? () => context.push('/products/new')
                         : null,
                   );
                 }
@@ -175,7 +175,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                             ],
                           ),
                           trailing: const Icon(Icons.chevron_right),
-                          onTap: () => context.go('/products/${product.id}/edit'),
+                          onTap: () => context.push('/products/${product.id}/edit'),
                         ),
                       );
                     },
@@ -188,7 +188,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
       ),
       floatingActionButton: ref.watch(authProvider).hasPermission('inventory.create_product')
           ? FloatingActionButton(
-              onPressed: () => context.go('/products/new'),
+              onPressed: () => context.push('/products/new'),
               child: const Icon(Icons.add),
             )
           : null,

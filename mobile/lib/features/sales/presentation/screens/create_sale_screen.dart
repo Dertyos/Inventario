@@ -498,8 +498,9 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
                     child: SegmentedButton<String>(
                       segments: const [
                         ButtonSegment(value: 'cash', label: Text('Efectivo')),
-                        ButtonSegment(value: 'credit', label: Text('Crédito')),
+                        ButtonSegment(value: 'card', label: Text('Tarjeta')),
                         ButtonSegment(value: 'transfer', label: Text('Transfer')),
+                        ButtonSegment(value: 'credit', label: Text('Crédito')),
                       ],
                       selected: {_paymentMethod},
                       onSelectionChanged: (v) =>

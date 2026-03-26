@@ -287,7 +287,7 @@ class DashboardScreen extends ConsumerWidget {
           const SizedBox(height: AppSpacing.sm),
           FloatingActionButton.extended(
             heroTag: 'sale',
-            onPressed: () => context.go('/sales/new'),
+            onPressed: () => context.push('/sales/new'),
             icon: const Icon(Icons.add),
             label: const Text('Nueva venta'),
           ),

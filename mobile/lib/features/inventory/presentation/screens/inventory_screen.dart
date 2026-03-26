@@ -103,7 +103,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
     }
 
     String? selectedProductId = preselectedProduct?.id;
-    String type = preselectedProduct != null ? 'in' : 'in';
+    String type = 'in';
     final quantityController = TextEditingController();
     final reasonController = TextEditingController();
     SupplierModel? selectedSupplier;
@@ -339,10 +339,15 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
               const SizedBox(height: AppSpacing.md),
               ElevatedButton(
                 onPressed: () async {
+                  final qty = int.tryParse(quantityController.text.trim());
                   if (selectedProductId == null ||
-                      quantityController.text.isEmpty) {
+                      quantityController.text.isEmpty ||
+                      qty == null ||
+                      qty <= 0) {
                     ScaffoldMessenger.of(ctx).showSnackBar(
-                      const SnackBar(content: Text('Selecciona un producto y cantidad')),
+                      const SnackBar(
+                        content: Text('Selecciona un producto y una cantidad válida'),
+                      ),
                     );
                     return;
                   }
@@ -352,7 +357,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                         .createMovement(teamId, {
                       'productId': selectedProductId,
                       'type': type,
-                      'quantity': int.parse(quantityController.text),
+                      'quantity': qty,
                       if (reasonController.text.isNotEmpty)
                         'reason': reasonController.text,
                       if (selectedSupplier != null)
