@@ -11,6 +11,7 @@ import { Response } from 'express';
 import { ExportService } from './export.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TeamRolesGuard } from '../teams/guards/team-roles.guard';
+import { RequirePermission } from '../teams/decorators/require-permission.decorator';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
 @ApiTags('export')
@@ -21,6 +22,7 @@ export class ExportController {
   constructor(private readonly exportService: ExportService) {}
 
   @Get('sales')
+  @RequirePermission('reports.export')
   async exportSales(
     @Param('teamId', ParseUUIDPipe) teamId: string,
     @Query('startDate') startDate?: string,
@@ -36,6 +38,7 @@ export class ExportController {
   }
 
   @Get('products')
+  @RequirePermission('reports.export')
   async exportProducts(
     @Param('teamId', ParseUUIDPipe) teamId: string,
     @Res() res?: Response,
@@ -49,6 +52,7 @@ export class ExportController {
   }
 
   @Get('inventory')
+  @RequirePermission('reports.export')
   async exportInventory(
     @Param('teamId', ParseUUIDPipe) teamId: string,
     @Query('startDate') startDate?: string,

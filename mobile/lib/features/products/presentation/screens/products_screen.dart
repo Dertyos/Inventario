@@ -186,7 +186,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
           ),
         ],
       ),
-      floatingActionButton: ref.watch(authProvider).isManager
+      floatingActionButton: ref.watch(authProvider).hasPermission('inventory.create_product')
           ? FloatingActionButton(
               onPressed: () => context.go('/products/new'),
               child: const Icon(Icons.add),

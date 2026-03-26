@@ -74,6 +74,26 @@ class AuthNotifier extends Notifier<AuthState> {
   AuthRepository get _repo => ref.read(authRepositoryProvider);
   SecureStorage get _storage => ref.read(secureStorageProvider);
 
+  /// Fetch permissions for the current user's role on the given team.
+  /// Owner/Admin always have all permissions, so we skip the network call.
+  Future<List<String>> _fetchPermissions(TeamModel team) async {
+    final role = team.userRole;
+    if (role == null || role == 'owner' || role == 'admin') {
+      return const [];
+    }
+    try {
+      final dio = ref.read(dioProvider);
+      final response = await dio.get('/teams/${team.id}/permissions/$role');
+      final data = response.data;
+      final List<dynamic> perms = data is Map
+          ? (data['permissions'] as List<dynamic>? ?? [])
+          : (data as List<dynamic>? ?? []);
+      return perms.cast<String>().toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
   Future<void> _init() async {
     final token = await _storage.getToken();
     if (token == null) {
@@ -92,11 +112,16 @@ class AuthNotifier extends Notifier<AuthState> {
         );
         await _storage.saveActiveTeamId(activeTeam.id);
       }
+      List<String> permissions = const [];
+      if (activeTeam != null) {
+        permissions = await _fetchPermissions(activeTeam);
+      }
       state = state.copyWith(
         status: AuthStatus.authenticated,
         user: user,
         teams: teams,
         activeTeam: activeTeam,
+        permissions: permissions,
       );
     } catch (_) {
       await _storage.clearAll();
@@ -114,11 +139,16 @@ class AuthNotifier extends Notifier<AuthState> {
         activeTeam = teams.first;
         await _storage.saveActiveTeamId(activeTeam.id);
       }
+      List<String> permissions = const [];
+      if (activeTeam != null) {
+        permissions = await _fetchPermissions(activeTeam);
+      }
       state = state.copyWith(
         status: AuthStatus.authenticated,
         user: auth.user,
         teams: teams,
         activeTeam: activeTeam,
+        permissions: permissions,
         isLoading: false,
       );
     } catch (e) {
@@ -147,11 +177,16 @@ class AuthNotifier extends Notifier<AuthState> {
         activeTeam = teams.first;
         await _storage.saveActiveTeamId(activeTeam.id);
       }
+      List<String> permissions = const [];
+      if (activeTeam != null) {
+        permissions = await _fetchPermissions(activeTeam);
+      }
       state = state.copyWith(
         status: AuthStatus.authenticated,
         user: auth.user,
         teams: teams,
         activeTeam: activeTeam,
+        permissions: permissions,
         isLoading: false,
       );
     } catch (e) {
@@ -187,11 +222,16 @@ class AuthNotifier extends Notifier<AuthState> {
         activeTeam = teams.first;
         await _storage.saveActiveTeamId(activeTeam.id);
       }
+      List<String> permissions = const [];
+      if (activeTeam != null) {
+        permissions = await _fetchPermissions(activeTeam);
+      }
       state = state.copyWith(
         status: AuthStatus.authenticated,
         user: auth.user,
         teams: teams,
         activeTeam: activeTeam,
+        permissions: permissions,
         isLoading: false,
       );
     } catch (e) {
@@ -229,11 +269,16 @@ class AuthNotifier extends Notifier<AuthState> {
         activeTeam = teams.first;
         await _storage.saveActiveTeamId(activeTeam.id);
       }
+      List<String> permissions = const [];
+      if (activeTeam != null) {
+        permissions = await _fetchPermissions(activeTeam);
+      }
       state = state.copyWith(
         status: AuthStatus.authenticated,
         user: auth.user,
         teams: teams,
         activeTeam: activeTeam,
+        permissions: permissions,
         isLoading: false,
       );
     } catch (e) {
@@ -274,12 +319,17 @@ class AuthNotifier extends Notifier<AuthState> {
       );
       await _storage.saveActiveTeamId(activeTeam.id);
     }
-    state = state.copyWith(teams: teams, activeTeam: activeTeam);
+    List<String> permissions = const [];
+    if (activeTeam != null) {
+      permissions = await _fetchPermissions(activeTeam);
+    }
+    state = state.copyWith(teams: teams, activeTeam: activeTeam, permissions: permissions);
   }
 
-  void switchTeam(TeamModel team) {
+  Future<void> switchTeam(TeamModel team) async {
     _storage.saveActiveTeamId(team.id);
-    state = state.copyWith(activeTeam: team);
+    final permissions = await _fetchPermissions(team);
+    state = state.copyWith(activeTeam: team, permissions: permissions);
   }
 
   Future<void> updateTeamName(String teamId, String name) async {

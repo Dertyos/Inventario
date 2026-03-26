@@ -14,6 +14,7 @@ import {
   ParseCommandDto,
 } from './dto/parse-transaction.dto';
 import { TeamRolesGuard } from '../teams/guards/team-roles.guard';
+import { RequirePermission } from '../teams/decorators/require-permission.decorator';
 
 @ApiTags('AI')
 @ApiBearerAuth()
@@ -25,6 +26,7 @@ export class AiController {
   constructor(private readonly aiService: AiService) {}
 
   @Post('parse-transaction')
+  @RequirePermission('admin.ai')
   @Throttle({ short: { limit: 5, ttl: 60000 } })
   @ApiOperation({
     summary: 'Parse natural language into a structured transaction',
@@ -42,6 +44,7 @@ export class AiController {
   }
 
   @Post('parse-command')
+  @RequirePermission('admin.ai')
   @Throttle({ short: { limit: 5, ttl: 60000 } })
   @ApiOperation({
     summary: 'Parse natural language into a structured command',

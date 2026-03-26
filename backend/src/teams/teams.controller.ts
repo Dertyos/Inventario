@@ -20,6 +20,7 @@ import { CreateInviteDto } from './dto/create-invite.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TeamRolesGuard } from './guards/team-roles.guard';
 import { TeamRoles } from './decorators/team-roles.decorator';
+import { RequirePermission } from './decorators/require-permission.decorator';
 import { TeamRole } from './entities/team-member.entity';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
@@ -81,6 +82,7 @@ export class TeamsController {
   @Post(':teamId/members')
   @UseGuards(TeamRolesGuard)
   @TeamRoles(TeamRole.OWNER, TeamRole.ADMIN)
+  @RequirePermission('admin.members')
   addMember(
     @Param('teamId', ParseUUIDPipe) teamId: string,
     @Body() addMemberDto: AddMemberDto,
@@ -91,6 +93,7 @@ export class TeamsController {
   @Delete(':teamId/members/:memberId')
   @UseGuards(TeamRolesGuard)
   @TeamRoles(TeamRole.OWNER, TeamRole.ADMIN)
+  @RequirePermission('admin.members')
   removeMember(
     @Param('teamId', ParseUUIDPipe) teamId: string,
     @Param('memberId', ParseUUIDPipe) memberId: string,
@@ -101,6 +104,7 @@ export class TeamsController {
   @Patch(':teamId/members/:memberId/role')
   @UseGuards(TeamRolesGuard)
   @TeamRoles(TeamRole.OWNER, TeamRole.ADMIN)
+  @RequirePermission('admin.members')
   updateMemberRole(
     @Param('teamId', ParseUUIDPipe) teamId: string,
     @Param('memberId', ParseUUIDPipe) memberId: string,
@@ -183,6 +187,7 @@ export class TeamsController {
   @Patch(':teamId/settings')
   @UseGuards(TeamRolesGuard)
   @TeamRoles(TeamRole.OWNER, TeamRole.ADMIN)
+  @RequirePermission('admin.team_settings')
   updateSettings(
     @Param('teamId', ParseUUIDPipe) teamId: string,
     @Body() updateSettingsDto: UpdateSettingsDto,

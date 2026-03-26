@@ -10,6 +10,7 @@ import { AuditService } from './audit.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TeamRolesGuard } from '../teams/guards/team-roles.guard';
 import { TeamRoles } from '../teams/decorators/team-roles.decorator';
+import { RequirePermission } from '../teams/decorators/require-permission.decorator';
 import { TeamRole } from '../teams/entities/team-member.entity';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
@@ -22,6 +23,7 @@ export class AuditController {
 
   @Get()
   @TeamRoles(TeamRole.OWNER, TeamRole.ADMIN)
+  @RequirePermission('admin.audit')
   findAll(
     @Param('teamId', ParseUUIDPipe) teamId: string,
     @Query('limit') limit?: string,

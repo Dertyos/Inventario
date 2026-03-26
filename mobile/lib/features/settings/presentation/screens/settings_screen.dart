@@ -272,14 +272,14 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: AppSpacing.lg),
 
           // Menu items
-          if (auth.isAdmin)
+          if (auth.hasPermission('admin.members'))
             _SettingsTile(
               icon: Icons.group_outlined,
               title: 'Equipo y miembros',
               subtitle: 'Gestiona los miembros de tu equipo',
               onTap: () => context.push('/team-members'),
             ),
-          if (auth.isAdmin)
+          if (auth.hasPermission('admin.team_settings'))
             _SettingsTile(
               icon: Icons.settings_outlined,
               title: 'Configuración del equipo',
@@ -326,12 +326,13 @@ class SettingsScreen extends ConsumerWidget {
             subtitle: 'Genera y gestiona cobros',
             onTap: () => context.push('/reminders'),
           ),
-          _SettingsTile(
-            icon: Icons.bar_chart_rounded,
-            title: 'Reportes',
-            subtitle: 'Ventas, productos y exportar',
-            onTap: () => context.push('/reports'),
-          ),
+          if (auth.hasPermission('reports.view'))
+            _SettingsTile(
+              icon: Icons.bar_chart_rounded,
+              title: 'Reportes',
+              subtitle: 'Ventas, productos y exportar',
+              onTap: () => context.push('/reports'),
+            ),
           _SettingsTile(
             icon: Icons.mic,
             title: 'Registrar con voz',
