@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../../core/config/app_config.dart';
-import '../../core/network/api_client.dart';
+import '../../core/network/api_client.dart' show dioProvider, setSessionExpiredCallback;
 import '../../core/storage/secure_storage.dart';
 import '../../features/auth/data/auth_repository.dart';
 import '../models/user_model.dart';
@@ -68,8 +68,17 @@ class AuthState {
 class AuthNotifier extends Notifier<AuthState> {
   @override
   AuthState build() {
+    // Register the 401 callback so expired tokens force a logout
+    setSessionExpiredCallback(_handleSessionExpired);
     _init();
     return const AuthState();
+  }
+
+  void _handleSessionExpired() {
+    // Only force logout if we think we're still authenticated
+    if (state.isAuthenticated) {
+      state = const AuthState(status: AuthStatus.unauthenticated);
+    }
   }
 
   AuthRepository get _repo => ref.read(authRepositoryProvider);

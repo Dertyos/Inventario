@@ -14,10 +14,17 @@ class AppShell extends StatelessWidget {
     _TabItem(icon: Icons.more_horiz_rounded, activeIcon: Icons.more_horiz_rounded, label: 'Más', path: '/settings'),
   ];
 
+  /// Routes that should highlight the "Más" tab in the navbar.
+  static const _moreTabPaths = ['/settings', '/customers'];
+
   @override
   Widget build(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
-    final currentIndex = _tabs.indexWhere((t) => location.startsWith(t.path));
+    int currentIndex = _tabs.indexWhere((t) => location.startsWith(t.path));
+    // Routes like /customers belong to the "Más" tab
+    if (currentIndex < 0 && _moreTabPaths.any((p) => location.startsWith(p))) {
+      currentIndex = _tabs.length - 1;
+    }
 
     return Scaffold(
       body: child,

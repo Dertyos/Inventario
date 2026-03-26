@@ -251,12 +251,16 @@ class _TeamMembersScreenState extends ConsumerState<TeamMembersScreen> {
               itemBuilder: (context, index) {
                 final member = items[index];
                 final auth = ref.read(authProvider);
+                final canManageMembers =
+                    auth.hasPermission('admin.members') &&
+                        member.role != 'owner' &&
+                        member.userId != auth.user?.id;
                 return _MemberCard(
                   member: member,
-                  onChangeRole: member.role != 'owner'
+                  onChangeRole: canManageMembers
                       ? () => _changeRole(member)
                       : null,
-                  onRemove: member.role != 'owner'
+                  onRemove: canManageMembers
                       ? () => _removeMember(member)
                       : null,
                   onConfigurePermissions:
