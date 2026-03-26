@@ -40,6 +40,10 @@ dependencies:
   # Forms & Validation
   reactive_forms: ^18.2.2
 
+  # Shortcuts & Widgets
+  quick_actions: ^1.0.7
+  home_widget: ^0.7.0
+
   # Utils
   intl: ^0.20.2
   uuid: ^4.5.1
