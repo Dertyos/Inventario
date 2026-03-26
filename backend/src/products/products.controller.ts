@@ -43,7 +43,7 @@ export class ProductsController {
     @Body() createProductDto: CreateProductDto,
   ) {
     const result = await this.productsService.create(teamId, createProductDto);
-    await this.cacheManager.reset();
+    await this.cacheManager.clear();
     return result;
   }
 
@@ -88,7 +88,7 @@ export class ProductsController {
     @Body() updateProductDto: UpdateProductDto,
   ) {
     const result = await this.productsService.update(teamId, id, updateProductDto);
-    await this.cacheManager.reset();
+    await this.cacheManager.clear();
     return result;
   }
 
@@ -100,7 +100,7 @@ export class ProductsController {
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     const result = await this.productsService.remove(teamId, id);
-    await this.cacheManager.reset();
+    await this.cacheManager.clear();
     return result;
   }
 }
