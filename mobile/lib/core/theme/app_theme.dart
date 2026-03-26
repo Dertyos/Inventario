@@ -5,7 +5,7 @@ class AppTheme {
   AppTheme._();
 
   // Brand colors — refined palette
-  static const _primarySeed = Color(0xFF4F6BF6);
+  static const _primarySeed = Color(0xFF3D5AF5);
   static const _secondarySeed = Color(0xFF2ECC71);
   static const _tertiarySeed = Color(0xFFFF9F43);
   static const _errorSeed = Color(0xFFEB4D4B);
@@ -217,7 +217,7 @@ class AppColors {
   static const success = Color(0xFF2ECC71);
   static const warning = Color(0xFFFF9F43);
   static const danger = Color(0xFFEB4D4B);
-  static const info = Color(0xFF4F6BF6);
+  static const info = Color(0xFF3D5AF5);
 
   // Status with opacity for backgrounds
   static Color successBg(BuildContext context) =>

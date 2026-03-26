@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -11,6 +12,7 @@ import '../../../../shared/widgets/offline_banner.dart';
 import '../../data/dashboard_repository.dart';
 import '../../../../shared/widgets/stat_card.dart';
 import '../../../../shared/widgets/mini_line_chart.dart';
+import '../../../../shared/widgets/expandable_fab.dart';
 import '../../../reports/data/reports_repository.dart';
 
 final dashboardProvider =
@@ -94,11 +96,39 @@ class DashboardScreen extends ConsumerWidget {
             final summaryAsync = ref.watch(analyticsSummaryProvider(teamId));
             final pendingCount = ref.watch(pendingSalesCountProvider).value ?? 0;
             return ListView(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md + 4, vertical: AppSpacing.sm),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md + 4, vertical: AppSpacing.md),
             children: [
+              // Period selector chips
+              SizedBox(
+                height: 38,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: ['Hoy', 'Semana', '30 días'].map((label) {
+                    final isSelected = label == 'Hoy';
+                    return Padding(
+                      padding: const EdgeInsets.only(right: AppSpacing.sm),
+                      child: ChoiceChip(
+                        label: Text(label),
+                        selected: isSelected,
+                        onSelected: (_) {
+                          // TODO: wire to period-based analytics provider
+                        },
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ).animate()
+                  .fadeIn(duration: AppAnimations.normal)
+                  .slideX(begin: -0.05, end: 0, duration: AppAnimations.normal),
+              const SizedBox(height: AppSpacing.md),
+
               // Hero metric card (graceful degradation)
               if (summaryAsync.value != null)
-                _buildHeroMetric(context, summaryAsync.value!, cop, colorScheme),
+                _buildHeroMetric(context, summaryAsync.value!, cop, colorScheme)
+                    .animate()
+                    .fadeIn(duration: AppAnimations.normal, delay: 100.ms)
+                    .slideY(begin: 0.05, end: 0, duration: AppAnimations.normal),
 
               // Stats grid
               GridView.count(
@@ -147,11 +177,13 @@ class DashboardScreen extends ConsumerWidget {
                     onTap: () => context.go('/sales'),
                   ),
                 ],
-              ),
+              ).animate()
+                  .fadeIn(duration: AppAnimations.normal, delay: 150.ms)
+                  .slideY(begin: 0.05, end: 0, duration: AppAnimations.normal),
 
               // Low stock alert
               if (data.lowStockProducts.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.lg),
+                const SizedBox(height: AppSpacing.xl),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -200,7 +232,7 @@ class DashboardScreen extends ConsumerWidget {
 
               // Recent sales
               if (data.recentSales.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.lg),
+                const SizedBox(height: AppSpacing.xl),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -265,31 +297,26 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ],
       ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          FloatingActionButton.small(
-            heroTag: 'scanner',
-            onPressed: () => context.push('/scanner'),
-            backgroundColor: colorScheme.tertiaryContainer,
+      floatingActionButton: ExpandableFab(
+        actions: [
+          FabAction(
+            icon: Icons.qr_code_scanner,
+            label: 'Escanear',
+            color: colorScheme.tertiaryContainer,
             foregroundColor: colorScheme.onTertiaryContainer,
-            child: const Icon(Icons.qr_code_scanner),
+            onPressed: () => context.push('/scanner'),
           ),
-          const SizedBox(height: AppSpacing.sm),
-          FloatingActionButton.small(
-            heroTag: 'voice',
-            onPressed: () => context.push('/voice-transaction'),
-            backgroundColor: colorScheme.secondaryContainer,
+          FabAction(
+            icon: Icons.mic,
+            label: 'Voz',
+            color: colorScheme.secondaryContainer,
             foregroundColor: colorScheme.onSecondaryContainer,
-            child: const Icon(Icons.mic),
+            onPressed: () => context.push('/voice-transaction'),
           ),
-          const SizedBox(height: AppSpacing.sm),
-          FloatingActionButton.extended(
-            heroTag: 'sale',
+          FabAction(
+            icon: Icons.point_of_sale_rounded,
+            label: 'Nueva venta',
             onPressed: () => context.push('/sales/new'),
-            icon: const Icon(Icons.add),
-            label: const Text('Nueva venta'),
           ),
         ],
       ),
