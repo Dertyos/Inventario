@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/config/app_config.dart';
-import '../../../../core/network/api_client.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/providers/auth_provider.dart';
 
@@ -41,6 +40,132 @@ void _showEditTeamNameDialog(BuildContext context, WidgetRef ref) {
   );
 }
 
+void _showTeamSwitcher(BuildContext context, WidgetRef ref) {
+  final auth = ref.read(authProvider);
+  showModalBottomSheet(
+    context: context,
+    builder: (ctx) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.sm),
+            child: Row(
+              children: [
+                Text(
+                  'Tus equipos',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(ctx),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          ...auth.teams.map((team) {
+            final isActive = team.id == auth.activeTeam?.id;
+            return ListTile(
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: isActive
+                      ? Theme.of(context).colorScheme.primaryContainer
+                      : Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.store_rounded,
+                  color: isActive
+                      ? Theme.of(context).colorScheme.onPrimaryContainer
+                      : Theme.of(context).colorScheme.onSurfaceVariant,
+                  size: 20,
+                ),
+              ),
+              title: Text(team.name),
+              subtitle: Text(team.currency),
+              trailing: isActive
+                  ? Icon(Icons.check_circle,
+                      color: Theme.of(context).colorScheme.primary)
+                  : null,
+              onTap: () {
+                ref.read(authProvider.notifier).switchTeam(team);
+                Navigator.pop(ctx);
+              },
+            );
+          }),
+          const Divider(height: 1),
+          ListTile(
+            leading: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.secondaryContainer,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                Icons.add_rounded,
+                color: Theme.of(context).colorScheme.onSecondaryContainer,
+                size: 20,
+              ),
+            ),
+            title: const Text('Crear nuevo equipo'),
+            onTap: () {
+              Navigator.pop(ctx);
+              _showCreateTeamDialog(context, ref);
+            },
+          ),
+          const SizedBox(height: AppSpacing.sm),
+        ],
+      ),
+    ),
+  );
+}
+
+void _showCreateTeamDialog(BuildContext context, WidgetRef ref) {
+  final controller = TextEditingController();
+  showDialog(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Nuevo equipo'),
+      content: TextField(
+        controller: controller,
+        autofocus: true,
+        textCapitalization: TextCapitalization.words,
+        decoration: const InputDecoration(
+          labelText: 'Nombre del negocio',
+          prefixIcon: Icon(Icons.store_rounded),
+          hintText: 'Ej: Mi Tienda',
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: () async {
+            final name = controller.text.trim();
+            if (name.isEmpty || name.length < 2) return;
+            Navigator.pop(ctx);
+            await ref.read(authProvider.notifier).createTeam(name);
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Equipo "$name" creado')),
+              );
+            }
+          },
+          child: const Text('Crear'),
+        ),
+      ],
+    ),
+  );
+}
+
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -48,7 +173,6 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authProvider);
     final colorScheme = Theme.of(context).colorScheme;
-    final serverUrl = ref.watch(serverUrlProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Mas')),
@@ -100,7 +224,8 @@ class SettingsScreen extends ConsumerWidget {
             Card(
               child: InkWell(
                 borderRadius: BorderRadius.circular(12),
-                onTap: () => _showEditTeamNameDialog(context, ref),
+                onTap: () => _showTeamSwitcher(context, ref),
+                onLongPress: () => _showEditTeamNameDialog(context, ref),
                 child: Padding(
                   padding: const EdgeInsets.all(AppSpacing.md),
                   child: Row(
@@ -127,7 +252,7 @@ class SettingsScreen extends ConsumerWidget {
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
                             Text(
-                              '${auth.activeTeam!.currency} · Toca para editar',
+                              '${auth.activeTeam!.currency} · ${auth.teams.length} equipo${auth.teams.length > 1 ? 's' : ''}',
                               style:
                                   Theme.of(context).textTheme.bodySmall?.copyWith(
                                         color: colorScheme.onSurfaceVariant,
@@ -136,22 +261,7 @@ class SettingsScreen extends ConsumerWidget {
                           ],
                         ),
                       ),
-                      Icon(Icons.edit_outlined, color: colorScheme.onSurfaceVariant, size: 20),
-                      if (auth.teams.length > 1)
-                        PopupMenuButton<String>(
-                          icon: const Icon(Icons.swap_horiz),
-                          onSelected: (teamId) {
-                            final team =
-                                auth.teams.firstWhere((t) => t.id == teamId);
-                            ref.read(authProvider.notifier).switchTeam(team);
-                          },
-                          itemBuilder: (context) => auth.teams
-                              .map((t) => PopupMenuItem(
-                                    value: t.id,
-                                    child: Text(t.name),
-                                  ))
-                              .toList(),
-                        ),
+                      Icon(Icons.unfold_more_rounded, color: colorScheme.onSurfaceVariant, size: 22),
                     ],
                   ),
                 ),
@@ -218,14 +328,6 @@ class SettingsScreen extends ConsumerWidget {
             subtitle: 'Ventas y compras en lenguaje natural',
             onTap: () => context.push('/voice-transaction'),
           ),
-          _SettingsTile(
-            icon: Icons.dns_outlined,
-            title: 'Servidor',
-            subtitle: serverUrl == AppConfig.baseUrl
-                ? 'Sin configurar'
-                : serverUrl,
-            onTap: () => _showServerDialog(context, ref),
-          ),
           const SizedBox(height: AppSpacing.lg),
 
           // Logout
@@ -275,83 +377,6 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  void _showServerDialog(BuildContext context, WidgetRef ref) {
-    final controller = TextEditingController(
-      text: ref.read(serverUrlProvider),
-    );
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('URL del servidor'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Ingresa la URL de tu backend (Render, Railway, etc.)',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextField(
-              controller: controller,
-              keyboardType: TextInputType.url,
-              decoration: const InputDecoration(
-                hintText: 'https://mi-api.onrender.com',
-                prefixIcon: Icon(Icons.link),
-              ),
-              autofocus: true,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              'Ejemplo: https://inventario-api.onrender.com',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    fontStyle: FontStyle.italic,
-                  ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              var url = controller.text.trim();
-              if (url.isEmpty) return;
-              // Remove trailing slash
-              if (url.endsWith('/')) url = url.substring(0, url.length - 1);
-
-              // Save and update
-              await ref.read(secureStorageProvider).saveServerUrl(url);
-              ref.read(serverUrlProvider.notifier).update(url);
-
-              if (ctx.mounted) Navigator.pop(ctx);
-
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Servidor actualizado: $url'),
-                    action: SnackBarAction(
-                      label: 'Reconectar',
-                      onPressed: () {
-                        ref.read(authProvider.notifier).logout();
-                      },
-                    ),
-                  ),
-                );
-              }
-            },
-            child: const Text('Guardar'),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _SettingsTile extends StatelessWidget {
