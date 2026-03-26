@@ -15,11 +15,12 @@ import {
 } from './dto/parse-transaction.dto';
 import { TeamRolesGuard } from '../teams/guards/team-roles.guard';
 import { RequirePermission } from '../teams/decorators/require-permission.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @ApiTags('AI')
 @ApiBearerAuth()
 @Controller('teams/:teamId/ai')
-@UseGuards(TeamRolesGuard)
+@UseGuards(JwtAuthGuard, TeamRolesGuard)
 export class AiController {
   private readonly logger = new Logger(AiController.name);
 

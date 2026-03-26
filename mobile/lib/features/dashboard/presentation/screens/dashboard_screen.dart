@@ -107,7 +107,7 @@ class DashboardScreen extends ConsumerWidget {
                 physics: const NeverScrollableScrollPhysics(),
                 mainAxisSpacing: AppSpacing.md,
                 crossAxisSpacing: AppSpacing.md,
-                childAspectRatio: 1.1,
+                childAspectRatio: 1.0,
                 children: [
                   StatCard(
                     title: 'Ventas hoy',

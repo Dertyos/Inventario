@@ -6,7 +6,6 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/models/customer_model.dart';
 import '../../../../shared/models/product_model.dart';
 import '../../../../shared/providers/auth_provider.dart';
-import '../../../customers/data/customers_repository.dart';
 import '../../../customers/presentation/screens/customers_screen.dart';
 import '../../../products/presentation/screens/products_screen.dart';
 import '../../data/sales_repository.dart';
@@ -21,17 +20,43 @@ class CreateSaleScreen extends ConsumerStatefulWidget {
 
 class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
   final List<_CartItem> _cart = [];
-  String _paymentMethod = 'cash';
+  bool _isCredit = false;
   bool _isSaving = false;
   CustomerModel? _selectedCustomer;
+  final _cashAmountController = TextEditingController();
+  final _cardAmountController = TextEditingController();
+  final _transferAmountController = TextEditingController();
   final _installmentsController = TextEditingController(text: '1');
   final _paidAmountController = TextEditingController();
   final _interestController = TextEditingController();
+  String _paymentMethod = 'cash';
   String _creditFrequency = 'monthly';
   late DateTime _creditNextPayment = DateTime.now().add(const Duration(days: 30));
 
   double get _total =>
       _cart.fold(0, (sum, item) => sum + (item.product.price * item.quantity));
+
+  String get _resolvedPaymentMethod {
+    if (_isCredit) return 'credit';
+    final cash = double.tryParse(_cashAmountController.text) ?? 0;
+    final card = double.tryParse(_cardAmountController.text) ?? 0;
+    final transfer = double.tryParse(_transferAmountController.text) ?? 0;
+    final active = [
+      if (cash > 0) 'cash',
+      if (card > 0) 'card',
+      if (transfer > 0) 'transfer',
+    ];
+    if (active.length > 1) return 'mixed';
+    return active.isEmpty ? 'cash' : active.first;
+  }
+
+  double get _enteredAmount {
+    if (_isCredit) return _total;
+    final cash = double.tryParse(_cashAmountController.text) ?? 0;
+    final card = double.tryParse(_cardAmountController.text) ?? 0;
+    final transfer = double.tryParse(_transferAmountController.text) ?? 0;
+    return cash + card + transfer;
+  }
 
   DateTime _nextPaymentFor(String frequency) {
     final now = DateTime.now();
@@ -201,9 +226,14 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
                   'unitPrice': c.product.price,
                 })
             .toList(),
-        'paymentMethod': _paymentMethod,
+        'paymentMethod': _resolvedPaymentMethod,
+        if (_resolvedPaymentMethod == 'mixed') ...{
+          'cashAmount': double.tryParse(_cashAmountController.text) ?? 0,
+          'cardAmount': double.tryParse(_cardAmountController.text) ?? 0,
+          'transferAmount': double.tryParse(_transferAmountController.text) ?? 0,
+        },
         if (_selectedCustomer != null) 'customerId': _selectedCustomer!.id,
-        if (_paymentMethod == 'credit') ...{
+        if (_isCredit) ...{
           'creditInstallments':
               int.tryParse(_installmentsController.text) ?? 1,
           if (_paidAmountController.text.isNotEmpty)
@@ -247,6 +277,9 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
 
   @override
   void dispose() {
+    _cashAmountController.dispose();
+    _cardAmountController.dispose();
+    _transferAmountController.dispose();
     _installmentsController.dispose();
     _paidAmountController.dispose();
     _interestController.dispose();
@@ -493,18 +526,31 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
                     ),
                   ),
                   const Divider(),
+                  // Modo de pago: Contado | Crédito
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                    child: SegmentedButton<String>(
+                    child: SegmentedButton<bool>(
                       segments: const [
-                        ButtonSegment(value: 'cash', label: Text('Efectivo')),
-                        ButtonSegment(value: 'card', label: Text('Tarjeta')),
-                        ButtonSegment(value: 'transfer', label: Text('Transfer')),
-                        ButtonSegment(value: 'credit', label: Text('Crédito')),
+                        ButtonSegment(
+                          value: false,
+                          icon: Icon(Icons.payments_outlined),
+                          label: Text('Contado'),
+                        ),
+                        ButtonSegment(
+                          value: true,
+                          icon: Icon(Icons.calendar_month_outlined),
+                          label: Text('Crédito'),
+                        ),
                       ],
-                      selected: {_paymentMethod},
-                      onSelectionChanged: (v) =>
-                          setState(() => _paymentMethod = v.first),
+                      selected: {_isCredit},
+                      onSelectionChanged: (v) => setState(() {
+                        _isCredit = v.first;
+                        if (!_isCredit) {
+                          _cashAmountController.clear();
+                          _cardAmountController.clear();
+                          _transferAmountController.clear();
+                        }
+                      }),
                       style: ButtonStyle(
                         visualDensity: VisualDensity.compact,
                         textStyle: WidgetStatePropertyAll(
@@ -513,7 +559,84 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
                       ),
                     ),
                   ),
-                  if (_paymentMethod == 'credit') ...[
+                  // Campos de monto contado (efectivo + tarjeta + transferencia)
+                  if (!_isCredit) ...[
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.md, AppSpacing.sm, AppSpacing.md, 0,
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _cashAmountController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                labelText: 'Efectivo',
+                                prefixIcon: Icon(Icons.payments_outlined),
+                                isDense: true,
+                              ),
+                              onChanged: (_) => setState(() {}),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _cardAmountController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                labelText: 'Tarjeta',
+                                prefixIcon: Icon(Icons.credit_card_outlined),
+                                isDense: true,
+                              ),
+                              onChanged: (_) => setState(() {}),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _transferAmountController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                labelText: 'Transfer',
+                                prefixIcon: Icon(Icons.swap_horiz_outlined),
+                                isDense: true,
+                              ),
+                              onChanged: (_) => setState(() {}),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (_enteredAmount > 0)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.md, 4, AppSpacing.md, 0,
+                        ),
+                        child: Builder(builder: (context) {
+                          final diff = _enteredAmount - _total;
+                          final cop = NumberFormat.currency(
+                            locale: 'es_CO', symbol: '\$', decimalDigits: 0,
+                          );
+                          return Text(
+                            diff == 0
+                                ? 'Cuadra exacto'
+                                : diff > 0
+                                    ? 'Vuelto: ${cop.format(diff)}'
+                                    : 'Faltan: ${cop.format(-diff)}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: diff == 0
+                                  ? Colors.green
+                                  : diff > 0
+                                      ? colorScheme.primary
+                                      : colorScheme.error,
+                            ),
+                          );
+                        }),
+                      ),
+                  ],
+                  if (_isCredit) ...[
                     Padding(
                       padding: const EdgeInsets.fromLTRB(
                         AppSpacing.md, AppSpacing.sm, AppSpacing.md, 0,
