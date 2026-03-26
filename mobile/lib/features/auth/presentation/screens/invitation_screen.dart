@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../shared/providers/auth_provider.dart';
+import '../../../../shared/providers/auth_provider.dart'
+    show authProvider, pendingInviteTokenProvider, AuthState;
 import '../../../settings/data/team_repository.dart';
 
 class InvitationScreen extends ConsumerStatefulWidget {
@@ -51,7 +52,8 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
   Future<void> _acceptInvitation() async {
     final authState = ref.read(authProvider);
     if (!authState.isAuthenticated) {
-      // Redirect to login - the router will handle coming back
+      // Save the token so it survives the login/register flow
+      ref.read(pendingInviteTokenProvider.notifier).state = widget.token;
       context.go('/login');
       return;
     }
@@ -63,16 +65,19 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
 
     try {
       await ref.read(teamRepositoryProvider).acceptInvitation(widget.token);
+      // Clear the pending token
+      ref.read(pendingInviteTokenProvider.notifier).state = null;
+      // Refresh teams so the new team appears
+      await ref.read(authProvider.notifier).refreshTeams();
       if (mounted) {
         setState(() {
           _accepting = false;
           _successMessage = 'Te has unido al equipo exitosamente';
         });
-        // Refresh auth state to pick up new team
-        await ref.read(authProvider.notifier).logout();
-        if (mounted) {
-          context.go('/login');
-        }
+        // Go straight to dashboard — user is already logged in
+        Future.delayed(const Duration(seconds: 1), () {
+          if (mounted) context.go('/dashboard');
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -129,13 +134,8 @@ class _InvitationScreenState extends ConsumerState<InvitationScreen> {
               ),
               const SizedBox(height: AppSpacing.sm),
               const Text(
-                'Inicia sesión para acceder a tu nuevo equipo.',
+                'Redirigiendo al inicio...',
                 textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              FilledButton(
-                onPressed: () => context.go('/login'),
-                child: const Text('Iniciar sesión'),
               ),
             ],
           ),

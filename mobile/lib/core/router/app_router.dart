@@ -41,10 +41,24 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: '/dashboard',
     redirect: (context, state) {
       final isAuth = authState.isAuthenticated;
-      final isAuthRoute = state.matchedLocation == '/login' ||
-          state.matchedLocation == '/register';
-      final isCreateTeam = state.matchedLocation == '/create-team';
-      final isInvite = state.matchedLocation.startsWith('/invite/');
+      final location = state.matchedLocation;
+
+      // Handle custom scheme deep links: inventario://invite/TOKEN
+      final uri = state.uri;
+      if (uri.scheme == 'inventario' && uri.host == 'invite') {
+        final token = uri.pathSegments.isNotEmpty
+            ? uri.pathSegments.first
+            : uri.path.replaceAll('/', '');
+        if (token.isNotEmpty) {
+          ref.read(pendingInviteTokenProvider.notifier).state = token;
+          return '/invite/$token';
+        }
+      }
+
+      final isAuthRoute =
+          location == '/login' || location == '/register';
+      final isCreateTeam = location == '/create-team';
+      final isInvite = location.startsWith('/invite/');
 
       if (authState.status == AuthStatus.initial) return null;
 
@@ -52,8 +66,20 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (isInvite) return null;
 
       if (!isAuth && !isAuthRoute) return '/login';
-      if (isAuth && isAuthRoute) return '/dashboard';
+      if (isAuth && isAuthRoute) {
+        // After login/register, check for pending invite
+        final pendingToken = ref.read(pendingInviteTokenProvider);
+        if (pendingToken != null) {
+          return '/invite/$pendingToken';
+        }
+        return '/dashboard';
+      }
       if (isAuth && authState.activeTeam == null && !isCreateTeam) {
+        // Check for pending invite before forcing team creation
+        final pendingToken = ref.read(pendingInviteTokenProvider);
+        if (pendingToken != null) {
+          return '/invite/$pendingToken';
+        }
         return '/create-team';
       }
       return null;
