@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/models/credit_model.dart';
 import '../../../../shared/providers/auth_provider.dart';
@@ -203,6 +204,7 @@ class _CreditDetailBody extends ConsumerWidget {
               installment: installment,
               creditId: credit.id,
               creditStatus: credit.status,
+              customerName: credit.customer?.name,
             ),
           ),
         ],
@@ -310,11 +312,13 @@ class _InstallmentTile extends ConsumerWidget {
   final CreditInstallmentModel installment;
   final String creditId;
   final CreditStatus creditStatus;
+  final String? customerName;
 
   const _InstallmentTile({
     required this.installment,
     required this.creditId,
     required this.creditStatus,
+    this.customerName,
   });
 
   @override
@@ -384,10 +388,21 @@ class _InstallmentTile extends ConsumerWidget {
           ],
         ),
         trailing: canPay
-            ? IconButton(
-                icon: Icon(Icons.payment, color: colorScheme.primary),
-                tooltip: 'Registrar abono',
-                onPressed: () => _showPayDialog(context, ref),
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.chat_outlined, size: 20),
+                    tooltip: 'Cobrar por WhatsApp',
+                    onPressed: () => _sendWhatsAppReminder(context),
+                    color: AppColors.success,
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.payment, color: colorScheme.primary),
+                    tooltip: 'Registrar abono',
+                    onPressed: () => _showPayDialog(context, ref),
+                  ),
+                ],
               )
             : isPaid
                 ? Icon(Icons.check_circle, color: AppColors.success, size: 24)
@@ -458,6 +473,17 @@ class _InstallmentTile extends ConsumerWidget {
     final date = DateTime.tryParse(dateStr);
     if (date == null) return dateStr;
     return _dateFormat.format(date);
+  }
+
+  void _sendWhatsAppReminder(BuildContext context) {
+    final name = customerName ?? 'Cliente';
+    final amount = _currencyFormat.format(installment.balance);
+    final dueDate = _formatDate(installment.dueDate);
+    final message =
+        'Hola $name, te recuerdo que tienes un pago pendiente de $amount con vencimiento $dueDate. Gracias!';
+    final encoded = Uri.encodeComponent(message);
+    final url = Uri.parse('https://wa.me/?text=$encoded');
+    launchUrl(url, mode: LaunchMode.externalApplication);
   }
 
   void _showPayDialog(BuildContext context, WidgetRef ref) {

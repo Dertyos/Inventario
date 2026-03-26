@@ -283,5 +283,60 @@ class DashboardScreen extends ConsumerWidget {
       ),
     );
   }
+
+  Widget _buildHeroMetric(
+    BuildContext context,
+    AnalyticsSummary summary,
+    NumberFormat cop,
+    ColorScheme colorScheme,
+  ) {
+    final textTheme = Theme.of(context).textTheme;
+    final isPositive = summary.changePercent >= 0;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(
+            color: colorScheme.primary.withValues(alpha: 0.15),
+          ),
+        ),
+        color: colorScheme.primary.withValues(alpha: 0.04),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md + 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                cop.format(summary.todayRevenue),
+                style: textTheme.headlineLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -1,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                '${summary.todayTransactions} transacciones'
+                '${summary.changePercent != 0 ? ' \u00b7 ${isPositive ? '+' : ''}${summary.changePercent.toStringAsFixed(1)}% vs ayer' : ''}',
+                style: textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+              if (summary.last7DaysRevenue.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.sm),
+                MiniLineChart(
+                  data: summary.last7DaysRevenue,
+                  color: colorScheme.primary,
+                  height: 60,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
