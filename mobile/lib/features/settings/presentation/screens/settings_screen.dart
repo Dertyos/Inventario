@@ -221,7 +221,7 @@ class SettingsScreen extends ConsumerWidget {
           _SettingsTile(
             icon: Icons.dns_outlined,
             title: 'Servidor',
-            subtitle: serverUrl == AppConfig.defaultBaseUrl
+            subtitle: serverUrl == AppConfig.baseUrl
                 ? 'Sin configurar'
                 : serverUrl,
             onTap: () => _showServerDialog(context, ref),

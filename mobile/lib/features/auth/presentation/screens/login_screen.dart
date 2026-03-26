@@ -97,7 +97,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final auth = ref.watch(authProvider);
     final colorScheme = Theme.of(context).colorScheme;
     final serverUrl = ref.watch(serverUrlProvider);
-    final isDefaultUrl = serverUrl == AppConfig.defaultBaseUrl;
+    final isDefaultUrl = serverUrl == AppConfig.baseUrl;
 
     ref.listen<AuthState>(authProvider, (prev, next) {
       if (next.error != null) {
