@@ -50,13 +50,19 @@ import { TeamAuditInterceptor } from './common/interceptors/team-audit.intercept
         limit: 200,
       },
     ]),
+    // Global cache using cache-manager v6 + @nestjs/cache-manager v3.
+    // - With REDIS_URL: uses cache-manager-redis-yet (Redis 7 via docker-compose).
+    // - Without REDIS_URL: falls back to in-memory cache (dev/test).
+    // Default TTL: 5 min. Endpoints can override via @CacheTTL().
+    // Products controller calls cacheManager.clear() on mutations
+    // to invalidate all cached entries (products list + analytics).
     CacheModule.registerAsync({
       isGlobal: true,
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: async (config: ConfigService) => {
         const redisUrl = config.get<string>('REDIS_URL');
-        if (!redisUrl) return { ttl: 300 * 1000 }; // In-memory fallback
+        if (!redisUrl) return { ttl: 300 * 1000 };
         return {
           store: await redisStore({ url: redisUrl, ttl: 300 * 1000 }),
         };
