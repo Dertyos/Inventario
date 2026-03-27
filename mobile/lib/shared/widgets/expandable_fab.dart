@@ -19,7 +19,6 @@ class FabAction {
 }
 
 /// An expandable FAB that reveals child action buttons with animation.
-/// Replaces stacked FABs with a cleaner, standard speed-dial pattern.
 class ExpandableFab extends StatefulWidget {
   final List<FabAction> actions;
 
@@ -102,20 +101,23 @@ class _ExpandableFabState extends State<ExpandableFab>
           ),
         ),
 
-        // Main FAB
-        if (_open)
-          FloatingActionButton.extended(
-            heroTag: 'expandable_fab',
-            onPressed: _toggle,
-            icon: const Icon(Icons.close),
-            label: const Text('Cerrar'),
-          )
-        else
-          FloatingActionButton(
-            heroTag: 'expandable_fab',
-            onPressed: _toggle,
-            child: const Icon(Icons.add),
+        // Main FAB - always the same widget to keep alignment stable
+        FloatingActionButton.extended(
+          heroTag: 'expandable_fab',
+          onPressed: _toggle,
+          icon: AnimatedRotation(
+            turns: _open ? 0.125 : 0,
+            duration: AppAnimations.normal,
+            child: Icon(_open ? Icons.close : Icons.add),
           ),
+          label: AnimatedSwitcher(
+            duration: AppAnimations.fast,
+            child: Text(
+              _open ? 'Cerrar' : 'Acciones',
+              key: ValueKey(_open),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -141,19 +143,19 @@ class _ActionChip extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.sm + 4,
-            vertical: AppSpacing.xs + 2,
-          ),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
-            boxShadow: AppShadows.sm(context),
-          ),
-          child: Text(
-            label,
-            style: Theme.of(context).textTheme.labelMedium,
+        Material(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
+          elevation: 2,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm + 4,
+              vertical: AppSpacing.xs + 2,
+            ),
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
           ),
         ),
         const SizedBox(width: AppSpacing.sm),
