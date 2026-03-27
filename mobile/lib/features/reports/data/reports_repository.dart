@@ -21,6 +21,7 @@ class AnalyticsSummary {
   final double weekChangePercent;
   final double monthChangePercent;
   final List<double> last7DaysRevenue;
+  final List<double> last30DaysRevenue;
 
   const AnalyticsSummary({
     required this.todayRevenue,
@@ -34,6 +35,7 @@ class AnalyticsSummary {
     required this.weekChangePercent,
     required this.monthChangePercent,
     required this.last7DaysRevenue,
+    required this.last30DaysRevenue,
   });
 
   factory AnalyticsSummary.fromJson(Map<String, dynamic> json) {
@@ -54,6 +56,10 @@ class AnalyticsSummary {
       weekChangePercent: _toDouble(json['weekPercentChange']),
       monthChangePercent: _toDouble(json['monthPercentChange']),
       last7DaysRevenue: (json['revenueHistory'] as List?)
+              ?.map((e) => _toDouble(e))
+              .toList() ??
+          [],
+      last30DaysRevenue: (json['monthlyRevenueHistory'] as List?)
               ?.map((e) => _toDouble(e))
               .toList() ??
           [],

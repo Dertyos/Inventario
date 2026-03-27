@@ -404,14 +404,22 @@ class DashboardScreen extends ConsumerWidget {
                   color: colorScheme.onSurfaceVariant,
                 ),
               ),
-              if (summary.last7DaysRevenue.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.sm),
-                MiniLineChart(
-                  data: summary.last7DaysRevenue,
-                  color: colorScheme.primary,
-                  height: 60,
-                ),
-              ],
+              () {
+                final chartData = period == DashboardPeriod.month
+                    ? summary.last30DaysRevenue
+                    : summary.last7DaysRevenue;
+                if (chartData.isNotEmpty) {
+                  return Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.sm),
+                    child: MiniLineChart(
+                      data: chartData,
+                      color: colorScheme.primary,
+                      height: 60,
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              }(),
             ],
           ),
         ),
