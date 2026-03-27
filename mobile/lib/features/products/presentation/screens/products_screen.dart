@@ -167,14 +167,44 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          subtitle: Row(
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(cop.format(product.price)),
-                              const SizedBox(width: AppSpacing.sm),
-                              StatusBadge(
-                                label: 'Stock: ${product.stock}',
-                                color: product.isLowStock ? AppColors.warning : AppColors.success,
+                              Row(
+                                children: [
+                                  Text(cop.format(product.price)),
+                                  const SizedBox(width: AppSpacing.sm),
+                                  StatusBadge(
+                                    label: 'Stock: ${product.stock}',
+                                    color: product.isLowStock ? AppColors.warning : AppColors.success,
+                                  ),
+                                ],
                               ),
+                              if (product.barcode != null && product.barcode!.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.qr_code,
+                                        size: 12,
+                                        color: colorScheme.onSurfaceVariant,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Expanded(
+                                        child: Text(
+                                          product.barcode!,
+                                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                                color: colorScheme.onSurfaceVariant,
+                                                fontFamily: 'monospace',
+                                              ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                             ],
                           ),
                           trailing: const Icon(Icons.chevron_right),

@@ -182,39 +182,51 @@ class SettingsScreen extends ConsumerWidget {
         children: [
           // User card
           Card(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 28,
-                    backgroundColor: colorScheme.primaryContainer,
-                    child: Text(
-                      auth.user?.firstName[0].toUpperCase() ?? '?',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            color: colorScheme.onPrimaryContainer,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => context.push('/change-password'),
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 28,
+                      backgroundColor: colorScheme.primaryContainer,
+                      child: Text(
+                        auth.user?.firstName[0].toUpperCase() ?? '?',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              color: colorScheme.onPrimaryContainer,
+                            ),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            auth.user?.fullName ?? '',
+                            style: Theme.of(context).textTheme.titleMedium,
                           ),
+                          Text(
+                            auth.user?.email ?? '',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Cambiar contrasena',
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                  color: colorScheme.primary,
+                                ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          auth.user?.fullName ?? '',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        Text(
-                          auth.user?.email ?? '',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: colorScheme.onSurfaceVariant,
-                              ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                    Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant),
+                  ],
+                ),
               ),
             ),
           ),
