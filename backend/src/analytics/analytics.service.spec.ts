@@ -72,12 +72,16 @@ describe('AnalyticsService', () => {
 
   describe('getSummary', () => {
     beforeEach(() => {
-      // getSummary calls salesRepo.createQueryBuilder 4 times:
-      // today, yesterday, thisWeek, revenueHistory
+      // getSummary uses Promise.all with 6 salesRepo queries:
+      // today, yesterday, thisWeek, prevWeek, last30, prev30
+      // then 1 more for revenueHistory (sequential after Promise.all)
       salesQBs = [
         createChainableQB({ revenue: '1500.50', count: '5' }),   // today
         createChainableQB({ revenue: '1200.00', count: '4' }),   // yesterday
         createChainableQB({ revenue: '7500.00', count: '20' }),  // thisWeek
+        createChainableQB({ revenue: '6000.00', count: '15' }),  // prevWeek
+        createChainableQB({ revenue: '25000.00', count: '80' }), // last30Days
+        createChainableQB({ revenue: '20000.00', count: '70' }), // prev30Days
         createChainableQB(null, [                                 // revenueHistory
           { date: new Date().toISOString().split('T')[0], revenue: '1500.50' },
         ]),
@@ -98,7 +102,7 @@ describe('AnalyticsService', () => {
       mockCreditsRepo.createQueryBuilder.mockReturnValue(creditsQB);
     });
 
-    it('should return correct summary structure with today, yesterday, thisWeek, percentChange, revenueHistory, topProducts', async () => {
+    it('should return correct summary structure with all periods, percentChanges, revenueHistory, topProducts', async () => {
       const result = await service.getSummary(TEAM_ID);
 
       expect(result).toBeDefined();
@@ -111,8 +115,15 @@ describe('AnalyticsService', () => {
       expect(result.thisWeek).toBeDefined();
       expect(result.thisWeek.revenue).toBe(7500.00);
       expect(result.thisWeek.count).toBe(20);
+      expect(result.last30Days).toBeDefined();
+      expect(result.last30Days.revenue).toBe(25000.00);
+      expect(result.last30Days.count).toBe(80);
       expect(result.percentChange).toBeDefined();
       expect(typeof result.percentChange).toBe('number');
+      expect(result.weekPercentChange).toBeDefined();
+      expect(typeof result.weekPercentChange).toBe('number');
+      expect(result.monthPercentChange).toBeDefined();
+      expect(typeof result.monthPercentChange).toBe('number');
       expect(result.revenueHistory).toBeDefined();
       expect(result.revenueHistory).toHaveLength(7);
       expect(result.topProducts).toBeDefined();
@@ -126,6 +137,18 @@ describe('AnalyticsService', () => {
       // (1500.50 - 1200) / 1200 * 100 = 25.04166...
       const expected = Math.round(((1500.50 - 1200) / 1200) * 100 * 100) / 100;
       expect(result.percentChange).toBe(expected);
+    });
+
+    it('should calculate week and month percent changes correctly', async () => {
+      const result = await service.getSummary(TEAM_ID);
+
+      // week: (7500 - 6000) / 6000 * 100 = 25
+      const expectedWeek = Math.round(((7500 - 6000) / 6000) * 100 * 100) / 100;
+      expect(result.weekPercentChange).toBe(expectedWeek);
+
+      // month: (25000 - 20000) / 20000 * 100 = 25
+      const expectedMonth = Math.round(((25000 - 20000) / 20000) * 100 * 100) / 100;
+      expect(result.monthPercentChange).toBe(expectedMonth);
     });
 
     it('should return topProducts with name, revenue, and count', async () => {
@@ -149,6 +172,9 @@ describe('AnalyticsService', () => {
         createChainableQB({ revenue: '0', count: '0' }),   // today
         createChainableQB({ revenue: '0', count: '0' }),   // yesterday
         createChainableQB({ revenue: '0', count: '0' }),   // thisWeek
+        createChainableQB({ revenue: '0', count: '0' }),   // prevWeek
+        createChainableQB({ revenue: '0', count: '0' }),   // last30
+        createChainableQB({ revenue: '0', count: '0' }),   // prev30
         createChainableQB(null, []),                         // revenueHistory (empty)
       ];
 
@@ -167,7 +193,10 @@ describe('AnalyticsService', () => {
       expect(result.today.revenue).toBe(0);
       expect(result.today.count).toBe(0);
       expect(result.yesterday.revenue).toBe(0);
+      expect(result.last30Days.revenue).toBe(0);
       expect(result.percentChange).toBe(0);
+      expect(result.weekPercentChange).toBe(0);
+      expect(result.monthPercentChange).toBe(0);
       expect(result.revenueHistory).toEqual([0, 0, 0, 0, 0, 0, 0]);
       expect(result.topProducts).toEqual([]);
       expect(result.activeCredits).toBe(0);
@@ -178,6 +207,9 @@ describe('AnalyticsService', () => {
         createChainableQB({ revenue: '500', count: '2' }),  // today
         createChainableQB({ revenue: '0', count: '0' }),    // yesterday
         createChainableQB({ revenue: '500', count: '2' }),  // thisWeek
+        createChainableQB({ revenue: '0', count: '0' }),    // prevWeek
+        createChainableQB({ revenue: '500', count: '2' }),  // last30
+        createChainableQB({ revenue: '0', count: '0' }),    // prev30
         createChainableQB(null, []),                          // revenueHistory
       ];
 
@@ -190,6 +222,8 @@ describe('AnalyticsService', () => {
       const result = await service.getSummary(TEAM_ID);
 
       expect(result.percentChange).toBe(100);
+      expect(result.weekPercentChange).toBe(100);
+      expect(result.monthPercentChange).toBe(100);
     });
 
     it('should fill revenue history array to 7 days even when data is sparse', async () => {
@@ -200,10 +234,13 @@ describe('AnalyticsService', () => {
       const twoDaysAgoStr = twoDaysAgo.toISOString().split('T')[0];
 
       salesQBs = [
-        createChainableQB({ revenue: '100', count: '1' }),
-        createChainableQB({ revenue: '50', count: '1' }),
-        createChainableQB({ revenue: '150', count: '2' }),
-        createChainableQB(null, [
+        createChainableQB({ revenue: '100', count: '1' }),   // today
+        createChainableQB({ revenue: '50', count: '1' }),    // yesterday
+        createChainableQB({ revenue: '150', count: '2' }),   // thisWeek
+        createChainableQB({ revenue: '100', count: '1' }),   // prevWeek
+        createChainableQB({ revenue: '300', count: '4' }),   // last30
+        createChainableQB({ revenue: '200', count: '3' }),   // prev30
+        createChainableQB(null, [                             // revenueHistory
           { date: twoDaysAgoStr, revenue: '50' },
           { date: todayStr, revenue: '100' },
         ]),
