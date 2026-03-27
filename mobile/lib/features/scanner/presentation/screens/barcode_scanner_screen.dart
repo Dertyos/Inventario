@@ -209,7 +209,6 @@ class _BarcodeScannerScreenState extends ConsumerState<BarcodeScannerScreen> {
                     child: OutlinedButton.icon(
                       onPressed: () {
                         Navigator.pop(ctx);
-                        context.pop(); // close scanner
                         context.go('/inventory');
                       },
                       icon: const Icon(Icons.add_box_outlined),
@@ -224,7 +223,6 @@ class _BarcodeScannerScreenState extends ConsumerState<BarcodeScannerScreen> {
                     child: FilledButton.icon(
                       onPressed: () {
                         Navigator.pop(ctx);
-                        context.pop(); // close scanner
                         context.go('/sales/new');
                       },
                       icon: const Icon(Icons.point_of_sale_rounded),
