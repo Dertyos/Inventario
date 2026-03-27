@@ -25,8 +25,12 @@ export class AnalyticsController {
   @CacheTTL(300000) // 5 minutes
   @Get('summary')
   @RequirePermission('reports.view')
-  getSummary(@Param('teamId', ParseUUIDPipe) teamId: string) {
-    return this.analyticsService.getSummary(teamId);
+  getSummary(
+    @Param('teamId', ParseUUIDPipe) teamId: string,
+    @Query('tzOffset') tzOffset?: string,
+  ) {
+    const offset = tzOffset ? parseInt(tzOffset, 10) : undefined;
+    return this.analyticsService.getSummary(teamId, offset);
   }
 
   @Get('sales')

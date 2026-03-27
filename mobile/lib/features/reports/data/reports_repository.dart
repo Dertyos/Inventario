@@ -210,7 +210,11 @@ class ReportsRepository {
 
   Future<AnalyticsSummary> getSummary(String teamId) async {
     try {
-      final response = await _dio.get('/teams/$teamId/analytics/summary');
+      final tzOffset = DateTime.now().timeZoneOffset.inMinutes;
+      final response = await _dio.get(
+        '/teams/$teamId/analytics/summary',
+        queryParameters: {'tzOffset': tzOffset.toString()},
+      );
       return AnalyticsSummary.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw ApiException.fromDioError(e);

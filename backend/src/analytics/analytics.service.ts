@@ -22,9 +22,15 @@ export class AnalyticsService {
     private readonly creditsRepository: Repository<CreditAccount>,
   ) {}
 
-  async getSummary(teamId: string) {
+  async getSummary(teamId: string, tzOffsetMinutes?: number) {
+    // Use client timezone offset to calculate "today" in the user's local time.
+    // tzOffsetMinutes follows JS convention: UTC-5 (Colombia) = 300
+    const offsetMs = (tzOffsetMinutes ?? 0) * 60 * 1000;
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const localNow = new Date(now.getTime() - offsetMs);
+    const todayStart = new Date(
+      Date.UTC(localNow.getUTCFullYear(), localNow.getUTCMonth(), localNow.getUTCDate()) + offsetMs,
+    );
     const todayEnd = new Date(todayStart);
     todayEnd.setDate(todayEnd.getDate() + 1);
 
