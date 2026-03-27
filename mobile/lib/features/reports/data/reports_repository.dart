@@ -13,26 +13,47 @@ class AnalyticsSummary {
   final double todayRevenue;
   final int todayTransactions;
   final double yesterdayRevenue;
+  final double weekRevenue;
+  final int weekTransactions;
+  final double monthRevenue;
+  final int monthTransactions;
+  final double changePercent;
+  final double weekChangePercent;
+  final double monthChangePercent;
   final List<double> last7DaysRevenue;
 
   const AnalyticsSummary({
     required this.todayRevenue,
     required this.todayTransactions,
     required this.yesterdayRevenue,
+    required this.weekRevenue,
+    required this.weekTransactions,
+    required this.monthRevenue,
+    required this.monthTransactions,
+    required this.changePercent,
+    required this.weekChangePercent,
+    required this.monthChangePercent,
     required this.last7DaysRevenue,
   });
 
-  double get changePercent {
-    if (yesterdayRevenue == 0) return 0;
-    return ((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100;
-  }
-
   factory AnalyticsSummary.fromJson(Map<String, dynamic> json) {
+    final today = json['today'] as Map<String, dynamic>? ?? {};
+    final yesterday = json['yesterday'] as Map<String, dynamic>? ?? {};
+    final thisWeek = json['thisWeek'] as Map<String, dynamic>? ?? {};
+    final last30 = json['last30Days'] as Map<String, dynamic>? ?? {};
+
     return AnalyticsSummary(
-      todayRevenue: _toDouble(json['todayRevenue']),
-      todayTransactions: _toInt(json['todayTransactions']),
-      yesterdayRevenue: _toDouble(json['yesterdayRevenue']),
-      last7DaysRevenue: (json['last7DaysRevenue'] as List?)
+      todayRevenue: _toDouble(today['revenue'] ?? json['todayRevenue']),
+      todayTransactions: _toInt(today['count'] ?? json['todayTransactions']),
+      yesterdayRevenue: _toDouble(yesterday['revenue'] ?? json['yesterdayRevenue']),
+      weekRevenue: _toDouble(thisWeek['revenue']),
+      weekTransactions: _toInt(thisWeek['count']),
+      monthRevenue: _toDouble(last30['revenue']),
+      monthTransactions: _toInt(last30['count']),
+      changePercent: _toDouble(json['percentChange']),
+      weekChangePercent: _toDouble(json['weekPercentChange']),
+      monthChangePercent: _toDouble(json['monthPercentChange']),
+      last7DaysRevenue: (json['revenueHistory'] as List?)
               ?.map((e) => _toDouble(e))
               .toList() ??
           [],

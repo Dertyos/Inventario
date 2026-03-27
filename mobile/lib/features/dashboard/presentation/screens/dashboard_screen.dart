@@ -36,6 +36,12 @@ final analyticsSummaryProvider =
   return ref.read(reportsRepositoryProvider).getSummary(teamId);
 });
 
+enum DashboardPeriod { today, week, month }
+
+final _dashboardPeriodProvider = StateProvider<DashboardPeriod>((ref) {
+  return DashboardPeriod.today;
+});
+
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
@@ -98,6 +104,12 @@ class DashboardScreen extends ConsumerWidget {
             NotificationService().checkLowStockAlerts(data.lowStockProducts);
             final summaryAsync = ref.watch(analyticsSummaryProvider(teamId));
             final pendingCount = ref.watch(pendingSalesCountProvider).value ?? 0;
+            final selectedPeriod = ref.watch(_dashboardPeriodProvider);
+            final periodLabels = {
+              DashboardPeriod.today: 'Hoy',
+              DashboardPeriod.week: 'Semana',
+              DashboardPeriod.month: '30 días',
+            };
             return ListView(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md + 4, vertical: AppSpacing.md),
             children: [
@@ -106,15 +118,15 @@ class DashboardScreen extends ConsumerWidget {
                 height: 38,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
-                  children: ['Hoy', 'Semana', '30 días'].map((label) {
-                    final isSelected = label == 'Hoy';
+                  children: DashboardPeriod.values.map((period) {
+                    final isSelected = period == selectedPeriod;
                     return Padding(
                       padding: const EdgeInsets.only(right: AppSpacing.sm),
                       child: ChoiceChip(
-                        label: Text(label),
+                        label: Text(periodLabels[period]!),
                         selected: isSelected,
                         onSelected: (_) {
-                          // TODO: wire to period-based analytics provider
+                          ref.read(_dashboardPeriodProvider.notifier).state = period;
                         },
                         visualDensity: VisualDensity.compact,
                       ),
@@ -128,7 +140,7 @@ class DashboardScreen extends ConsumerWidget {
 
               // Hero metric card (graceful degradation)
               if (summaryAsync.value != null)
-                _buildHeroMetric(context, summaryAsync.value!, cop, colorScheme)
+                _buildHeroMetric(context, summaryAsync.value!, cop, colorScheme, selectedPeriod)
                     .animate()
                     .fadeIn(duration: AppAnimations.normal, delay: 100.ms)
                     .slideY(begin: 0.05, end: 0, duration: AppAnimations.normal),
@@ -331,9 +343,34 @@ class DashboardScreen extends ConsumerWidget {
     AnalyticsSummary summary,
     NumberFormat cop,
     ColorScheme colorScheme,
+    DashboardPeriod period,
   ) {
     final textTheme = Theme.of(context).textTheme;
-    final isPositive = summary.changePercent >= 0;
+
+    final double revenue;
+    final int transactions;
+    final double change;
+    final String comparisonLabel;
+
+    switch (period) {
+      case DashboardPeriod.today:
+        revenue = summary.todayRevenue;
+        transactions = summary.todayTransactions;
+        change = summary.changePercent;
+        comparisonLabel = 'vs ayer';
+      case DashboardPeriod.week:
+        revenue = summary.weekRevenue;
+        transactions = summary.weekTransactions;
+        change = summary.weekChangePercent;
+        comparisonLabel = 'vs semana anterior';
+      case DashboardPeriod.month:
+        revenue = summary.monthRevenue;
+        transactions = summary.monthTransactions;
+        change = summary.monthChangePercent;
+        comparisonLabel = 'vs 30 días anteriores';
+    }
+
+    final isPositive = change >= 0;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -352,7 +389,7 @@ class DashboardScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                cop.format(summary.todayRevenue),
+                cop.format(revenue),
                 style: textTheme.headlineLarge?.copyWith(
                   fontWeight: FontWeight.w700,
                   letterSpacing: -1,
@@ -360,8 +397,8 @@ class DashboardScreen extends ConsumerWidget {
               ),
               const SizedBox(height: AppSpacing.xs),
               Text(
-                '${summary.todayTransactions} transacciones'
-                '${summary.changePercent != 0 ? ' \u00b7 ${isPositive ? '+' : ''}${summary.changePercent.toStringAsFixed(1)}% vs ayer' : ''}',
+                '$transactions transacciones'
+                '${change != 0 ? ' \u00b7 ${isPositive ? '+' : ''}${change.toStringAsFixed(1)}% $comparisonLabel' : ''}',
                 style: textTheme.bodySmall?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                 ),

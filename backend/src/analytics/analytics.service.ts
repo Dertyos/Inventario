@@ -34,38 +34,79 @@ export class AnalyticsService {
     const weekStart = new Date(todayStart);
     weekStart.setDate(weekStart.getDate() - weekStart.getDay());
 
-    // Today's sales
-    const todayResult = await this.salesRepository
-      .createQueryBuilder('sale')
-      .select('COALESCE(SUM(sale.total), 0)', 'revenue')
-      .addSelect('COUNT(sale.id)', 'count')
-      .where('sale.teamId = :teamId', { teamId })
-      .andWhere('sale.status != :cancelled', { cancelled: SaleStatus.CANCELLED })
-      .andWhere('sale.createdAt >= :start', { start: todayStart.toISOString() })
-      .andWhere('sale.createdAt < :end', { end: todayEnd.toISOString() })
-      .getRawOne();
+    const thirtyDaysAgoStart = new Date(todayStart);
+    thirtyDaysAgoStart.setDate(thirtyDaysAgoStart.getDate() - 30);
 
-    // Yesterday's sales
-    const yesterdayResult = await this.salesRepository
-      .createQueryBuilder('sale')
-      .select('COALESCE(SUM(sale.total), 0)', 'revenue')
-      .addSelect('COUNT(sale.id)', 'count')
-      .where('sale.teamId = :teamId', { teamId })
-      .andWhere('sale.status != :cancelled', { cancelled: SaleStatus.CANCELLED })
-      .andWhere('sale.createdAt >= :start', { start: yesterdayStart.toISOString() })
-      .andWhere('sale.createdAt < :end', { end: todayStart.toISOString() })
-      .getRawOne();
+    const previousWeekStart = new Date(weekStart);
+    previousWeekStart.setDate(previousWeekStart.getDate() - 7);
 
-    // This week's sales
-    const thisWeekResult = await this.salesRepository
-      .createQueryBuilder('sale')
-      .select('COALESCE(SUM(sale.total), 0)', 'revenue')
-      .addSelect('COUNT(sale.id)', 'count')
-      .where('sale.teamId = :teamId', { teamId })
-      .andWhere('sale.status != :cancelled', { cancelled: SaleStatus.CANCELLED })
-      .andWhere('sale.createdAt >= :start', { start: weekStart.toISOString() })
-      .andWhere('sale.createdAt < :end', { end: todayEnd.toISOString() })
-      .getRawOne();
+    const previous30Start = new Date(thirtyDaysAgoStart);
+    previous30Start.setDate(previous30Start.getDate() - 30);
+
+    // Run all period queries in parallel
+    const [todayResult, yesterdayResult, thisWeekResult, prevWeekResult, last30Result, prev30Result] =
+      await Promise.all([
+        // Today's sales
+        this.salesRepository
+          .createQueryBuilder('sale')
+          .select('COALESCE(SUM(sale.total), 0)', 'revenue')
+          .addSelect('COUNT(sale.id)', 'count')
+          .where('sale.teamId = :teamId', { teamId })
+          .andWhere('sale.status != :cancelled', { cancelled: SaleStatus.CANCELLED })
+          .andWhere('sale.createdAt >= :start', { start: todayStart.toISOString() })
+          .andWhere('sale.createdAt < :end', { end: todayEnd.toISOString() })
+          .getRawOne(),
+        // Yesterday's sales
+        this.salesRepository
+          .createQueryBuilder('sale')
+          .select('COALESCE(SUM(sale.total), 0)', 'revenue')
+          .addSelect('COUNT(sale.id)', 'count')
+          .where('sale.teamId = :teamId', { teamId })
+          .andWhere('sale.status != :cancelled', { cancelled: SaleStatus.CANCELLED })
+          .andWhere('sale.createdAt >= :start', { start: yesterdayStart.toISOString() })
+          .andWhere('sale.createdAt < :end', { end: todayStart.toISOString() })
+          .getRawOne(),
+        // This week's sales
+        this.salesRepository
+          .createQueryBuilder('sale')
+          .select('COALESCE(SUM(sale.total), 0)', 'revenue')
+          .addSelect('COUNT(sale.id)', 'count')
+          .where('sale.teamId = :teamId', { teamId })
+          .andWhere('sale.status != :cancelled', { cancelled: SaleStatus.CANCELLED })
+          .andWhere('sale.createdAt >= :start', { start: weekStart.toISOString() })
+          .andWhere('sale.createdAt < :end', { end: todayEnd.toISOString() })
+          .getRawOne(),
+        // Previous week's sales
+        this.salesRepository
+          .createQueryBuilder('sale')
+          .select('COALESCE(SUM(sale.total), 0)', 'revenue')
+          .addSelect('COUNT(sale.id)', 'count')
+          .where('sale.teamId = :teamId', { teamId })
+          .andWhere('sale.status != :cancelled', { cancelled: SaleStatus.CANCELLED })
+          .andWhere('sale.createdAt >= :start', { start: previousWeekStart.toISOString() })
+          .andWhere('sale.createdAt < :end', { end: weekStart.toISOString() })
+          .getRawOne(),
+        // Last 30 days sales
+        this.salesRepository
+          .createQueryBuilder('sale')
+          .select('COALESCE(SUM(sale.total), 0)', 'revenue')
+          .addSelect('COUNT(sale.id)', 'count')
+          .where('sale.teamId = :teamId', { teamId })
+          .andWhere('sale.status != :cancelled', { cancelled: SaleStatus.CANCELLED })
+          .andWhere('sale.createdAt >= :start', { start: thirtyDaysAgoStart.toISOString() })
+          .andWhere('sale.createdAt < :end', { end: todayEnd.toISOString() })
+          .getRawOne(),
+        // Previous 30 days sales
+        this.salesRepository
+          .createQueryBuilder('sale')
+          .select('COALESCE(SUM(sale.total), 0)', 'revenue')
+          .addSelect('COUNT(sale.id)', 'count')
+          .where('sale.teamId = :teamId', { teamId })
+          .andWhere('sale.status != :cancelled', { cancelled: SaleStatus.CANCELLED })
+          .andWhere('sale.createdAt >= :start', { start: previous30Start.toISOString() })
+          .andWhere('sale.createdAt < :end', { end: thirtyDaysAgoStart.toISOString() })
+          .getRawOne(),
+      ]);
 
     // Percent change vs yesterday
     const todayRevenue = parseFloat(todayResult.revenue) || 0;
@@ -132,6 +173,19 @@ export class AnalyticsService {
       .andWhere('credit.status = :status', { status: CreditStatus.ACTIVE })
       .getRawOne();
 
+    const weekRevenue = parseFloat(thisWeekResult.revenue) || 0;
+    const prevWeekRevenue = parseFloat(prevWeekResult.revenue) || 0;
+    const monthRevenue = parseFloat(last30Result.revenue) || 0;
+    const prevMonthRevenue = parseFloat(prev30Result.revenue) || 0;
+
+    const weekChange = prevWeekRevenue > 0
+      ? ((weekRevenue - prevWeekRevenue) / prevWeekRevenue) * 100
+      : weekRevenue > 0 ? 100 : 0;
+
+    const monthChange = prevMonthRevenue > 0
+      ? ((monthRevenue - prevMonthRevenue) / prevMonthRevenue) * 100
+      : monthRevenue > 0 ? 100 : 0;
+
     return {
       today: {
         revenue: parseFloat(todayResult.revenue) || 0,
@@ -142,10 +196,16 @@ export class AnalyticsService {
         count: parseInt(yesterdayResult.count, 10) || 0,
       },
       thisWeek: {
-        revenue: parseFloat(thisWeekResult.revenue) || 0,
+        revenue: weekRevenue,
         count: parseInt(thisWeekResult.count, 10) || 0,
       },
+      last30Days: {
+        revenue: monthRevenue,
+        count: parseInt(last30Result.count, 10) || 0,
+      },
       percentChange: Math.round(percentChange * 100) / 100,
+      weekPercentChange: Math.round(weekChange * 100) / 100,
+      monthPercentChange: Math.round(monthChange * 100) / 100,
       revenueHistory,
       topProducts: topProducts.map((p) => ({
         name: p.name,
