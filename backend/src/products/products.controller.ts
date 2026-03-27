@@ -57,7 +57,7 @@ export class ProductsController {
   }
 
   @UseInterceptors(CacheInterceptor)
-  @CacheTTL(1800000) // 30 minutes
+  @CacheTTL(300000) // 5 minutes
   @Get()
   findAll(
     @Param('teamId', ParseUUIDPipe) teamId: string,

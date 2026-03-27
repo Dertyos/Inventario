@@ -8,9 +8,12 @@ import {
   Body,
   Query,
   UseGuards,
+  Inject,
   ParseUUIDPipe,
   Request,
 } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 import { SalesService } from './sales.service';
 import { CreateSaleDto } from './dto/create-sale.dto';
 import { UpdateSaleDto } from './dto/update-sale.dto';
@@ -27,16 +30,21 @@ import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 @Controller('teams/:teamId/sales')
 @UseGuards(JwtAuthGuard, TeamRolesGuard)
 export class SalesController {
-  constructor(private readonly salesService: SalesService) {}
+  constructor(
+    private readonly salesService: SalesService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+  ) {}
 
   @Post()
   @RequirePermission('sales.create')
-  create(
+  async create(
     @Param('teamId', ParseUUIDPipe) teamId: string,
     @Body() createSaleDto: CreateSaleDto,
     @Request() req,
   ) {
-    return this.salesService.create(teamId, req.user.id, createSaleDto);
+    const result = await this.salesService.create(teamId, req.user.id, createSaleDto);
+    await this.cacheManager.clear();
+    return result;
   }
 
   @Get()
@@ -70,33 +78,39 @@ export class SalesController {
   @Patch(':id')
   @TeamRoles(TeamRole.OWNER, TeamRole.ADMIN, TeamRole.MANAGER)
   @RequirePermission('sales.edit')
-  update(
+  async update(
     @Param('teamId', ParseUUIDPipe) teamId: string,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateSaleDto: UpdateSaleDto,
   ) {
-    return this.salesService.update(teamId, id, updateSaleDto);
+    const result = await this.salesService.update(teamId, id, updateSaleDto);
+    await this.cacheManager.clear();
+    return result;
   }
 
   @Delete(':id')
   @TeamRoles(TeamRole.OWNER, TeamRole.ADMIN)
   @RequirePermission('sales.delete')
-  remove(
+  async remove(
     @Param('teamId', ParseUUIDPipe) teamId: string,
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req,
   ) {
-    return this.salesService.remove(teamId, id, req.user.id);
+    const result = await this.salesService.remove(teamId, id, req.user.id);
+    await this.cacheManager.clear();
+    return result;
   }
 
   @Patch(':id/cancel')
   @TeamRoles(TeamRole.OWNER, TeamRole.ADMIN, TeamRole.MANAGER)
   @RequirePermission('sales.cancel')
-  cancel(
+  async cancel(
     @Param('teamId', ParseUUIDPipe) teamId: string,
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req,
   ) {
-    return this.salesService.cancel(teamId, id, req.user.id);
+    const result = await this.salesService.cancel(teamId, id, req.user.id);
+    await this.cacheManager.clear();
+    return result;
   }
 }
