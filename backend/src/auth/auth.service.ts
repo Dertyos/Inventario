@@ -314,6 +314,26 @@ export class AuthService {
     return { message: 'Contraseña restablecida exitosamente' };
   }
 
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await this.usersService.findOne(userId);
+
+    if (!user.password) {
+      throw new BadRequestException(
+        'Tu cuenta usa inicio de sesión social. No puedes cambiar la contraseña.',
+      );
+    }
+
+    const isCurrentValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isCurrentValid) {
+      throw new BadRequestException('La contraseña actual es incorrecta');
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await this.usersService.updatePassword(user.id, hashedPassword);
+
+    return { message: 'Contraseña actualizada exitosamente' };
+  }
+
   async googleAuth(idToken: string) {
     if (!this.googleClient) {
       throw new BadRequestException(

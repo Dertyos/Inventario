@@ -69,7 +69,7 @@ export class ProductsService {
 
     if (options?.search) {
       query.andWhere(
-        '(product.name ILIKE :search OR product.sku ILIKE :search)',
+        '(product.name ILIKE :search OR product.sku ILIKE :search OR product.barcode ILIKE :search)',
         { search: `%${options.search}%` },
       );
     }

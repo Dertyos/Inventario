@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/models/product_model.dart';
@@ -55,6 +56,13 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('Inventario'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.qr_code_scanner),
+            tooltip: 'Escanear código',
+            onPressed: () => context.push('/scanner'),
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
@@ -606,9 +614,36 @@ class _LowStockTab extends ConsumerWidget {
                         Row(
                           children: [
                             Expanded(
-                              child: Text(
-                                p.name,
-                                style: Theme.of(context).textTheme.titleSmall,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    p.name,
+                                    style: Theme.of(context).textTheme.titleSmall,
+                                  ),
+                                  if (p.barcode != null && p.barcode!.isNotEmpty)
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.qr_code,
+                                          size: 11,
+                                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                        ),
+                                        const SizedBox(width: 3),
+                                        Expanded(
+                                          child: Text(
+                                            p.barcode!,
+                                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                                  fontFamily: 'monospace',
+                                                ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                ],
                               ),
                             ),
                             Text(

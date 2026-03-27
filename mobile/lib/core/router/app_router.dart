@@ -30,6 +30,7 @@ import '../../features/lots/presentation/screens/create_lot_screen.dart';
 import '../../features/suppliers/presentation/screens/suppliers_screen.dart';
 import '../../features/reminders/presentation/screens/reminders_screen.dart';
 import '../../features/reports/presentation/screens/sales_report_screen.dart';
+import '../../features/settings/presentation/screens/change_password_screen.dart';
 import '../../shared/providers/auth_provider.dart';
 import '../../shared/widgets/app_shell.dart';
 
@@ -273,6 +274,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/reports',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const SalesReportScreen(),
+      ),
+      GoRoute(
+        path: '/change-password',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const ChangePasswordScreen(),
       ),
     ],
   );
