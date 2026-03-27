@@ -22,9 +22,15 @@ export class AnalyticsService {
     private readonly creditsRepository: Repository<CreditAccount>,
   ) {}
 
-  async getSummary(teamId: string) {
+  async getSummary(teamId: string, tzOffsetMinutes?: number) {
+    // Use client timezone offset to calculate "today" in the user's local time.
+    // tzOffsetMinutes follows JS convention: UTC-5 (Colombia) = 300
+    const offsetMs = (tzOffsetMinutes ?? 0) * 60 * 1000;
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const localNow = new Date(now.getTime() - offsetMs);
+    const todayStart = new Date(
+      Date.UTC(localNow.getUTCFullYear(), localNow.getUTCMonth(), localNow.getUTCDate()) + offsetMs,
+    );
     const todayEnd = new Date(todayStart);
     todayEnd.setDate(todayEnd.getDate() + 1);
 
@@ -146,6 +152,39 @@ export class AnalyticsService {
       revenueHistory.push(found ? parseFloat(found.revenue) : 0);
     }
 
+    // Revenue history: last 30 days
+    const monthlyHistoryRaw = await this.salesRepository
+      .createQueryBuilder('sale')
+      .select('DATE(sale.createdAt)', 'date')
+      .addSelect('COALESCE(SUM(sale.total), 0)', 'revenue')
+      .where('sale.teamId = :teamId', { teamId })
+      .andWhere('sale.status != :cancelled', {
+        cancelled: SaleStatus.CANCELLED,
+      })
+      .andWhere('sale.createdAt >= :start', {
+        start: thirtyDaysAgoStart.toISOString(),
+      })
+      .andWhere('sale.createdAt < :end', {
+        end: todayEnd.toISOString(),
+      })
+      .groupBy('DATE(sale.createdAt)')
+      .orderBy('DATE(sale.createdAt)', 'ASC')
+      .getRawMany();
+
+    const monthlyRevenueHistory: number[] = [];
+    for (let i = 0; i <= 30; i++) {
+      const d = new Date(thirtyDaysAgoStart);
+      d.setDate(d.getDate() + i);
+      const dateStr = d.toISOString().split('T')[0];
+      const found = monthlyHistoryRaw.find(
+        (r) =>
+          r.date === dateStr ||
+          (r.date instanceof Date &&
+            r.date.toISOString().split('T')[0] === dateStr),
+      );
+      monthlyRevenueHistory.push(found ? parseFloat(found.revenue) : 0);
+    }
+
     // Top 5 products by revenue (last 30 days)
     const thirtyDaysAgo = new Date(todayStart);
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -207,6 +246,7 @@ export class AnalyticsService {
       weekPercentChange: Math.round(weekChange * 100) / 100,
       monthPercentChange: Math.round(monthChange * 100) / 100,
       revenueHistory,
+      monthlyRevenueHistory,
       topProducts: topProducts.map((p) => ({
         name: p.name,
         revenue: parseFloat(p.revenue) || 0,
