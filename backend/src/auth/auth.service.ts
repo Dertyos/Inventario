@@ -314,7 +314,11 @@ export class AuthService {
     return { message: 'Contraseña restablecida exitosamente' };
   }
 
-  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ) {
     const user = await this.usersService.findOne(userId);
 
     if (!user.password) {
