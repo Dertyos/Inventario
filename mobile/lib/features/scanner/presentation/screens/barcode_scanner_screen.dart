@@ -19,6 +19,7 @@ class BarcodeScannerScreen extends ConsumerStatefulWidget {
 class _BarcodeScannerScreenState extends ConsumerState<BarcodeScannerScreen> {
   late final MobileScannerController _controller;
   bool _isProcessing = false;
+  bool _navigatingAway = false;
 
   @override
   void initState() {
@@ -208,8 +209,10 @@ class _BarcodeScannerScreenState extends ConsumerState<BarcodeScannerScreen> {
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () {
+                        _navigatingAway = true;
+                        final router = GoRouter.of(context);
                         Navigator.pop(ctx);
-                        context.go('/inventory');
+                        router.go('/inventory');
                       },
                       icon: const Icon(Icons.add_box_outlined),
                       label: const Text('Agregar stock'),
@@ -222,8 +225,10 @@ class _BarcodeScannerScreenState extends ConsumerState<BarcodeScannerScreen> {
                   Expanded(
                     child: FilledButton.icon(
                       onPressed: () {
+                        _navigatingAway = true;
+                        final router = GoRouter.of(context);
                         Navigator.pop(ctx);
-                        context.go('/sales/new');
+                        router.go('/sales/new');
                       },
                       icon: const Icon(Icons.point_of_sale_rounded),
                       label: const Text('Vender'),
@@ -312,9 +317,10 @@ class _BarcodeScannerScreenState extends ConsumerState<BarcodeScannerScreen> {
               const SizedBox(height: AppSpacing.lg),
               FilledButton.icon(
                 onPressed: () {
+                  _navigatingAway = true;
+                  final router = GoRouter.of(context);
                   Navigator.pop(ctx);
-                  context.pop(); // close scanner
-                  context.push('/products/new', extra: barcodeValue);
+                  router.push('/products/new', extra: barcodeValue);
                 },
                 icon: const Icon(Icons.add),
                 label: const Text('Crear nuevo producto'),
@@ -393,7 +399,7 @@ class _BarcodeScannerScreenState extends ConsumerState<BarcodeScannerScreen> {
   }
 
   void _resumeScanner() {
-    if (!mounted) return;
+    if (!mounted || _navigatingAway) return;
     setState(() => _isProcessing = false);
     _controller.start();
   }
