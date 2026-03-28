@@ -4,6 +4,7 @@ import { DataSource } from 'typeorm';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { SalesService } from './sales.service';
 import { Sale, SaleStatus, PaymentMethod } from './entities/sale.entity';
+import { CreditsService } from '../credits/credits.service';
 
 const TEAM_ID = 'team-uuid-1';
 const USER_ID = 'user-uuid-1';
@@ -77,6 +78,10 @@ describe('SalesService', () => {
         SalesService,
         { provide: getRepositoryToken(Sale), useValue: mockSalesRepo },
         { provide: DataSource, useValue: mockDataSource },
+        {
+          provide: CreditsService,
+          useValue: { createFromSale: jest.fn().mockResolvedValue(undefined) },
+        },
       ],
     }).compile();
 

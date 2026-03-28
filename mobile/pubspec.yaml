@@ -40,6 +40,9 @@ dependencies:
   shared_preferences: ^2.3.4
   flutter_secure_storage: ^10.0.0
 
+  # Biometric auth
+  local_auth: ^2.3.0
+
   # Google Sign-In
   google_sign_in: ^6.2.1
 

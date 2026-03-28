@@ -10,9 +10,12 @@ import 'core/config/app_config.dart';
 import 'core/network/keep_alive_service.dart';
 import 'core/notifications/notification_service.dart';
 import 'core/offline/sync_service.dart';
+import 'core/providers/app_lock_provider.dart';
 import 'core/router/app_router.dart';
 import 'core/storage/secure_storage.dart';
 import 'core/theme/app_theme.dart';
+import 'features/auth/presentation/screens/biometric_lock_screen.dart';
+import 'shared/providers/auth_provider.dart';
 
 /// Global key for navigating from quick actions / widget taps.
 final globalNavigatorKey = GlobalKey<NavigatorState>();
@@ -84,6 +87,13 @@ class InventarioApp extends ConsumerStatefulWidget {
 class _InventarioAppState extends ConsumerState<InventarioApp> {
   final QuickActions _quickActions = const QuickActions();
 
+  late AppLifecycleListener _lifecycleListener;
+  DateTime? _backgroundedAt;
+  bool _biometricAvailable = false;
+
+  // Lock after 2 minutes in background
+  static const _lockThresholdSeconds = 120;
+
   @override
   void initState() {
     super.initState();
@@ -91,6 +101,37 @@ class _InventarioAppState extends ConsumerState<InventarioApp> {
     _setupHomeWidgetLaunch();
     _setupAutoSync();
     _setupKeepAlive();
+    _setupLifecycleListener();
+    _initBiometric();
+  }
+
+  Future<void> _initBiometric() async {
+    _biometricAvailable =
+        await ref.read(biometricServiceProvider).isAvailable();
+  }
+
+  void _setupLifecycleListener() {
+    _lifecycleListener = AppLifecycleListener(
+      onHide: () => _backgroundedAt = DateTime.now(),
+      onShow: () {
+        final at = _backgroundedAt;
+        _backgroundedAt = null;
+        if (at == null) return;
+        final elapsed = DateTime.now().difference(at).inSeconds;
+        if (elapsed >= _lockThresholdSeconds) {
+          final isAuth = ref.read(authProvider).isAuthenticated;
+          if (isAuth && _biometricAvailable) {
+            ref.read(appLockProvider.notifier).lock();
+          }
+        }
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _lifecycleListener.dispose();
+    super.dispose();
   }
 
   void _setupKeepAlive() {
@@ -170,6 +211,9 @@ class _InventarioAppState extends ConsumerState<InventarioApp> {
   @override
   Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
+    final isLocked = ref.watch(appLockProvider);
+    final isAuth = ref.watch(authProvider).isAuthenticated;
+    final showLock = isLocked && isAuth;
 
     return MaterialApp.router(
       title: 'Inventario',
@@ -194,10 +238,18 @@ class _InventarioAppState extends ConsumerState<InventarioApp> {
           minScaleFactor: 0.8,
           maxScaleFactor: 1.4,
         );
-        return MediaQuery(
+        final content = MediaQuery(
           data: mediaQuery.copyWith(textScaler: cappedTextScaler),
           child: child!,
         );
+
+        if (showLock) {
+          return MediaQuery(
+            data: mediaQuery.copyWith(textScaler: cappedTextScaler),
+            child: const BiometricLockScreen(),
+          );
+        }
+        return content;
       },
     );
   }

@@ -9,7 +9,10 @@ import { TeamsService } from './teams.service';
 import { Team } from './entities/team.entity';
 import { TeamMember, TeamRole } from './entities/team-member.entity';
 import { TeamSettings } from './entities/team-settings.entity';
+import { TeamInvite } from './entities/team-invite.entity';
+import { RolePermissions } from './entities/role-permissions.entity';
 import { UsersService } from '../users/users.service';
+import { EmailService } from '../email/email.service';
 
 describe('TeamsService', () => {
   let service: TeamsService;
@@ -63,6 +66,13 @@ describe('TeamsService', () => {
     lastName: 'Doe',
   };
 
+  const mockSettingsQueryBuilder = {
+    update: jest.fn().mockReturnThis(),
+    set: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    execute: jest.fn().mockResolvedValue({ affected: 0 }),
+  };
+
   beforeEach(async () => {
     teamsRepo = {
       findOne: jest.fn(),
@@ -81,6 +91,7 @@ describe('TeamsService', () => {
       findOne: jest.fn().mockResolvedValue(mockSettings),
       create: jest.fn().mockReturnValue(mockSettings),
       save: jest.fn().mockResolvedValue(mockSettings),
+      createQueryBuilder: jest.fn().mockReturnValue(mockSettingsQueryBuilder),
     };
 
     usersService = {
@@ -93,7 +104,32 @@ describe('TeamsService', () => {
         { provide: getRepositoryToken(Team), useValue: teamsRepo },
         { provide: getRepositoryToken(TeamMember), useValue: membersRepo },
         { provide: getRepositoryToken(TeamSettings), useValue: settingsRepo },
+        {
+          provide: getRepositoryToken(TeamInvite),
+          useValue: {
+            findOne: jest.fn(),
+            create: jest.fn(),
+            save: jest.fn(),
+            find: jest.fn().mockResolvedValue([]),
+          },
+        },
+        {
+          provide: getRepositoryToken(RolePermissions),
+          useValue: {
+            findOne: jest.fn(),
+            create: jest.fn().mockReturnValue({}),
+            save: jest.fn().mockResolvedValue({}),
+            find: jest.fn().mockResolvedValue([]),
+          },
+        },
         { provide: UsersService, useValue: usersService },
+        {
+          provide: EmailService,
+          useValue: {
+            sendTeamInvite: jest.fn().mockResolvedValue(undefined),
+            sendVerificationCode: jest.fn().mockResolvedValue(undefined),
+          },
+        },
       ],
     }).compile();
 

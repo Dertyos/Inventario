@@ -3,6 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { LotsService } from './lots.service';
 import { ProductLot, LotStatus } from './entities/product-lot.entity';
+import { Team } from '../teams/entities/team.entity';
 
 const TEAM_ID = 'team-uuid-1';
 
@@ -48,6 +49,7 @@ describe('LotsService', () => {
       providers: [
         LotsService,
         { provide: getRepositoryToken(ProductLot), useValue: mockRepository },
+        { provide: getRepositoryToken(Team), useValue: { find: jest.fn().mockResolvedValue([]) } },
       ],
     }).compile();
 

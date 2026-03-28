@@ -11,6 +11,7 @@ import {
   CreditInstallment,
   InstallmentStatus,
 } from './entities/credit-installment.entity';
+import { Notification } from '../reminders/entities/notification.entity';
 
 const TEAM_ID = 'team-uuid-1';
 
@@ -93,6 +94,13 @@ describe('CreditsService', () => {
         {
           provide: getRepositoryToken(CreditInstallment),
           useValue: installmentsRepo,
+        },
+        {
+          provide: getRepositoryToken(Notification),
+          useValue: {
+            create: jest.fn().mockReturnValue({}),
+            save: jest.fn().mockResolvedValue({}),
+          },
         },
       ],
     }).compile();

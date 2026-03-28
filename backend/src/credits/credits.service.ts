@@ -16,6 +16,10 @@ import {
 } from './entities/credit-installment.entity';
 import { CreateCreditDto } from './dto/create-credit.dto';
 import { PayInstallmentDto } from './dto/pay-installment.dto';
+import {
+  Notification,
+  NotificationType,
+} from '../reminders/entities/notification.entity';
 
 @Injectable()
 export class CreditsService {
@@ -24,6 +28,8 @@ export class CreditsService {
     private readonly creditsRepository: Repository<CreditAccount>,
     @InjectRepository(CreditInstallment)
     private readonly installmentsRepository: Repository<CreditInstallment>,
+    @InjectRepository(Notification)
+    private readonly notificationsRepository: Repository<Notification>,
   ) {}
 
   async create(
@@ -67,6 +73,25 @@ export class CreditsService {
       });
       installments.push(await this.installmentsRepository.save(installment));
     }
+
+    // Immediate notification so the team sees the new credit right away
+    const firstDue = installments[0]?.dueDate ?? '';
+    const total = createCreditDto.totalAmount.toLocaleString('es-CO');
+    const n = createCreditDto.installments;
+    const notification = this.notificationsRepository.create({
+      teamId,
+      type: NotificationType.SYSTEM,
+      title: 'Crédito registrado',
+      message: `Crédito por $${total} en ${n} cuota${n > 1 ? 's' : ''}. Primera cuota: ${firstDue}`,
+      metadata: {
+        creditAccountId: savedCredit.id,
+        customerId: savedCredit.customerId,
+        totalAmount: createCreditDto.totalAmount,
+        installments: n,
+        firstDueDate: firstDue,
+      },
+    });
+    await this.notificationsRepository.save(notification);
 
     return this.findOne(teamId, savedCredit.id);
   }

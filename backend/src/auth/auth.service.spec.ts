@@ -1,11 +1,16 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
+import { EmailService } from '../email/email.service';
 import * as bcrypt from 'bcrypt';
 
 jest.mock('bcrypt');
+jest.mock('jwks-rsa', () =>
+  jest.fn().mockReturnValue({ getSigningKey: jest.fn() }),
+);
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -19,6 +24,13 @@ describe('AuthService', () => {
     firstName: 'John',
     lastName: 'Doe',
     phone: null,
+    emailVerified: false,
+    verificationCode: null,
+    verificationCodeExpiry: null,
+    verificationAttempts: 0,
+    resetCode: null,
+    resetCodeExpiry: null,
+    resetAttempts: 0,
     isActive: true,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -31,6 +43,9 @@ describe('AuthService', () => {
       create: jest.fn().mockResolvedValue(mockUser),
       findByEmail: jest.fn().mockResolvedValue(mockUser),
       findOne: jest.fn().mockResolvedValue(mockUser),
+      updateVerification: jest.fn().mockResolvedValue(undefined),
+      updateResetCode: jest.fn().mockResolvedValue(undefined),
+      updatePassword: jest.fn().mockResolvedValue(undefined),
     };
 
     jwtService = {
@@ -42,6 +57,17 @@ describe('AuthService', () => {
         AuthService,
         { provide: UsersService, useValue: usersService },
         { provide: JwtService, useValue: jwtService },
+        {
+          provide: EmailService,
+          useValue: {
+            sendVerificationCode: jest.fn().mockResolvedValue(undefined),
+            sendPasswordResetCode: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn().mockReturnValue(null) },
+        },
       ],
     }).compile();
 

@@ -16,6 +16,13 @@ describe('UsersService', () => {
     firstName: 'John',
     lastName: 'Doe',
     phone: null,
+    emailVerified: false,
+    verificationCode: null,
+    verificationCodeExpiry: null,
+    verificationAttempts: 0,
+    resetCode: null,
+    resetCodeExpiry: null,
+    resetAttempts: 0,
     isActive: true,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -29,6 +36,7 @@ describe('UsersService', () => {
       find: jest.fn().mockResolvedValue([mockUser]),
       create: jest.fn().mockReturnValue(mockUser),
       save: jest.fn().mockResolvedValue(mockUser),
+      update: jest.fn().mockResolvedValue({}),
     };
 
     const module: TestingModule = await Test.createTestingModule({

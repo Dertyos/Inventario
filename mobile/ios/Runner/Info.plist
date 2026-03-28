@@ -57,6 +57,8 @@
 	<string>Esta app necesita acceso a la cámara para escanear códigos de barras y QR.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Esta app usa reconocimiento de voz para registrar ventas y compras.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Esta app usa Face ID para desbloquear la sesión rápidamente.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Esta app necesita acceso al micrófono para reconocimiento de voz.</string>
 	<key>UISupportedInterfaceOrientations</key>

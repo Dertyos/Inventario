@@ -11,6 +11,7 @@ import {
   CreditInstallment,
   InstallmentStatus,
 } from '../credits/entities/credit-installment.entity';
+import { TeamSettings } from '../teams/entities/team-settings.entity';
 
 const TEAM_ID = 'team-uuid-1';
 
@@ -99,6 +100,10 @@ describe('RemindersService', () => {
         {
           provide: getRepositoryToken(CreditInstallment),
           useValue: mockInstallmentsRepo,
+        },
+        {
+          provide: getRepositoryToken(TeamSettings),
+          useValue: { findOne: jest.fn().mockResolvedValue({ enableReminders: true }) },
         },
       ],
     }).compile();

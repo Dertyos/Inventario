@@ -4,6 +4,38 @@ Todos los cambios notables del proyecto se documentan aquí.
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 Versionado según [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.3.0] - 2026-03-28
+
+### Agregado
+- **Notificación inmediata al crear crédito**: Al registrar una venta a crédito, el sistema crea inmediatamente una notificación `SYSTEM` visible en el centro de notificaciones de la app (antes solo llegaba el día del vencimiento via cron)
+  - `credits.service.ts`: Inyecta `NotificationsRepository` y guarda la notificación tras crear las cuotas
+  - `credits.module.ts`: Agrega `Notification` a `TypeOrmModule.forFeature`
+- **Sesión larga (30 días)**: `JWT_EXPIRATION` actualizado de 3600 s (1 hora) a 2592000 s (30 días) en `.env.example`. Aplicar en Render para que la sesión persista como Facebook/YouTube
+- **Desbloqueo biométrico** (Android + iOS):
+  - `local_auth: ^2.3.0` agregado a `pubspec.yaml`
+  - `BiometricService` (`lib/core/services/biometric_service.dart`): wrapper sobre `LocalAuthentication` con `isAvailable()`, `authenticate()` y `stopAuthentication()`
+  - `AppLockNotifier` (`lib/core/providers/app_lock_provider.dart`): estado booleano de bloqueo con métodos `lock()`, `unlock()` y `attemptBiometric()`
+  - `BiometricLockScreen` (`lib/features/auth/presentation/screens/biometric_lock_screen.dart`): pantalla de bloqueo con auto-trigger, botón de huella, reintento y "Cerrar sesión"
+  - `main.dart`: `AppLifecycleListener` que bloquea la app si estuvo en background ≥ 2 minutos y el usuario está autenticado
+  - Solo bloquea si el dispositivo tiene biometría disponible (`_biometricAvailable`), evitando bloqueo permanente en dispositivos sin huella
+- **Permiso USE_BIOMETRIC** en `android/app/src/main/AndroidManifest.xml`
+- **NSFaceIDUsageDescription** en `ios/Runner/Info.plist` para soporte de Face ID en iPhone
+- **MainActivity**: migrada de `FlutterActivity` a `FlutterFragmentActivity` (requerido por `local_auth`)
+
+### Corregido
+- **6 test suites fallando (41 tests)**: Todos los `*.service.spec.ts` tenían mocks de repositorios/servicios incompletos. Causa raíz: dependencias nuevas (EmailService, ConfigService, CreditsService, etc.) inyectadas en los servicios sin reflejar en los módulos de prueba
+  - `lots.service.spec.ts`: Agregado mock de `Team` repository (el cron job lo necesita)
+  - `users.service.spec.ts`: Agregados 7 campos faltantes en `mockUser` (`emailVerified`, campos de verification/reset) + `update: jest.fn()` en el repo mock
+  - `auth.service.spec.ts`: Reescrito — agregados `ConfigService`, `EmailService`, métodos `updateVerification/ResetCode/Password` en el mock de UsersService, y `jest.mock('jwks-rsa', ...)` para manejar que `jwks-rsa` v3 es ESM-only y rompe Jest
+  - `teams.service.spec.ts`: Reescrito — agregados mocks de `TeamInvite`, `RolePermissions`, `EmailService` y `createQueryBuilder` para el hook `onApplicationBootstrap`
+  - `sales.service.spec.ts`: Agregado mock de `CreditsService`
+  - `reminders.service.spec.ts`: Agregado mock de `TeamSettings` repository
+  - `credits.service.spec.ts`: Agregado mock de `Notification` repository (tras agregar la notificación inmediata)
+  - **Resultado final**: 20/20 suites, 213/213 tests en verde
+
+### Importante — acción requerida en Render
+- Actualizar la variable de entorno `JWT_EXPIRATION` a `2592000` en el dashboard de Render para que las sesiones existentes duren 30 días
+
 ## [1.2.2] - 2026-03-26
 
 ### Agregado
