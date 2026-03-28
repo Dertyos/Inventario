@@ -8,16 +8,24 @@ Alcance: Backend NestJS + Mobile Flutter
 
 | Categoría | Estado | Detalles |
 |-----------|--------|----------|
-| Multi-tenant | **SEGURO** | Todas las queries filtran por teamId |
-| Autenticación | **SEGURO** | JWT refresh tokens (15m/7d), bcrypt 10 rounds |
+| Multi-tenant | **SEGURO** | Todas las queries filtran por teamId (31 archivos auditados) |
+| Autenticación | **SEGURO** | JWT refresh tokens (15m/7d), bcrypt 10 rounds, crypto.randomInt para códigos |
 | Autorización | **SEGURO** | JwtAuthGuard + TeamRolesGuard + RBAC en todos los endpoints |
 | Inyección SQL | **SEGURO** | TypeORM con queries parametrizadas, sin concatenación de strings |
 | XSS | **SEGURO** | Helmet headers habilitados, ValidationPipe con whitelist |
 | Rate Limiting | **SEGURO** | ThrottlerGuard global + @Throttle específico en endpoints sensibles |
-| CORS | **SEGURO** | Orígenes configurables por variable de entorno |
-| Dependencias | **ACEPTABLE** | 0 vulnerabilidades críticas; path-to-regexp ReDoS mitigado por ThrottlerGuard |
-| Mobile Storage | **SEGURO** | flutter_secure_storage con encriptación |
-| Secrets | **SEGURO** | Variables de entorno, .env en .gitignore |
+| CORS | **SEGURO** | Orígenes configurables en producción, wildcard solo en dev |
+| Dependencias | **ACEPTABLE** | 0 críticas; path-to-regexp ReDoS mitigado por ThrottlerGuard |
+| Mobile Storage | **SEGURO** | flutter_secure_storage con encriptación nativa |
+| Secrets | **SEGURO** | Variables de entorno, .env en .gitignore, validación al arranque |
+| Password Policy | **SEGURO** | Mín 8 chars + mayúscula + minúscula + número |
+| DB SSL | **SEGURO** | rejectUnauthorized=true por defecto (configurable para hosts que lo requieran) |
+
+### Issues corregidos en esta auditoría de seguridad:
+1. **CRITICAL**: SSL `rejectUnauthorized: false` → `true` por defecto (configurable via `DB_SSL_REJECT_UNAUTHORIZED`)
+2. **HIGH**: Password sin complejidad → regex `(?=.*[a-z])(?=.*[A-Z])(?=.*\d)` en register, change, reset
+3. **MEDIUM**: `Math.random()` → `crypto.randomInt()` para códigos de verificación
+4. **MEDIUM**: Sin validación de env vars → `validateEnvironment()` en main.ts (fail-fast)
 
 ---
 

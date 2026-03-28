@@ -10,6 +10,7 @@ import { OAuth2Client } from 'google-auth-library';
 import * as jwksRsa from 'jwks-rsa';
 import * as jwt from 'jsonwebtoken';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { UsersService } from '../users/users.service';
 import { EmailService } from '../email/email.service';
@@ -506,6 +507,6 @@ export class AuthService {
   }
 
   private generateSixDigitCode(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+    return crypto.randomInt(100000, 999999).toString();
   }
 }

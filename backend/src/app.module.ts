@@ -81,7 +81,7 @@ import { TeamAuditInterceptor } from './common/interceptors/team-audit.intercept
         logging: config.get('NODE_ENV') === 'development',
         ssl:
           config.get('NODE_ENV') === 'production'
-            ? { rejectUnauthorized: false }
+            ? { rejectUnauthorized: config.get('DB_SSL_REJECT_UNAUTHORIZED') !== 'false' }
             : false,
       }),
     }),

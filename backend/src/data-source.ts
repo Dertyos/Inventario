@@ -17,5 +17,7 @@ export default new DataSource({
   migrations: ['dist/migrations/*.js'],
   synchronize: false,
   logging: false,
-  ssl: isProduction ? { rejectUnauthorized: false } : false,
+  ssl: isProduction
+    ? { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false' }
+    : false,
 });
