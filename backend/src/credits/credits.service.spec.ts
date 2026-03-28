@@ -82,6 +82,10 @@ describe('CreditsService', () => {
       })),
       save: jest.fn().mockImplementation((data) => Promise.resolve(data)),
       createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
+      manager: {
+        create: jest.fn().mockImplementation((entity, data) => data),
+        save: jest.fn().mockResolvedValue({}),
+      },
     };
 
     const module: TestingModule = await Test.createTestingModule({

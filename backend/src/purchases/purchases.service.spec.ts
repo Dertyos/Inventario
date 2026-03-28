@@ -173,7 +173,7 @@ describe('PurchasesService', () => {
 
       expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
       expect(mockQueryRunner.manager.save).toHaveBeenCalledWith(
-        expect.objectContaining({ stock: 60, cost: 200 }),
+        expect.objectContaining({ stock: 60, cost: 183.33 }),
       );
       expect(result.status).toBe(PurchaseStatus.RECEIVED);
     });
@@ -192,23 +192,24 @@ describe('PurchasesService', () => {
 
   describe('cancel', () => {
     it('should cancel a pending purchase', async () => {
-      mockPurchasesRepo.findOne.mockResolvedValue({ ...mockPurchase });
-      mockPurchasesRepo.save.mockResolvedValue({
+      mockQueryRunner.manager.findOne.mockResolvedValueOnce({ ...mockPurchase, items: [] });
+      mockPurchasesRepo.findOne.mockResolvedValue({
         ...mockPurchase,
         status: PurchaseStatus.CANCELLED,
       });
 
-      const result = await service.cancel(TEAM_ID, 'purch-uuid-1');
+      const result = await service.cancel(TEAM_ID, 'purch-uuid-1', USER_ID);
       expect(result.status).toBe(PurchaseStatus.CANCELLED);
     });
 
-    it('should throw BadRequestException for non-pending purchase', async () => {
-      mockPurchasesRepo.findOne.mockResolvedValue({
+    it('should throw BadRequestException for already cancelled purchase', async () => {
+      mockQueryRunner.manager.findOne.mockResolvedValueOnce({
         ...mockPurchase,
-        status: PurchaseStatus.RECEIVED,
+        status: PurchaseStatus.CANCELLED,
+        items: [],
       });
 
-      await expect(service.cancel(TEAM_ID, 'purch-uuid-1')).rejects.toThrow(
+      await expect(service.cancel(TEAM_ID, 'purch-uuid-1', USER_ID)).rejects.toThrow(
         BadRequestException,
       );
     });

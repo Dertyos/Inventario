@@ -85,6 +85,7 @@ describe('AnalyticsService', () => {
         createChainableQB(null, [                                 // revenueHistory
           { date: new Date().toISOString().split('T')[0], revenue: '1500.50' },
         ]),
+        createChainableQB(null, []),                              // monthlyRevenueHistory
       ];
 
       let salesCallIndex = 0;
@@ -176,6 +177,7 @@ describe('AnalyticsService', () => {
         createChainableQB({ revenue: '0', count: '0' }),   // last30
         createChainableQB({ revenue: '0', count: '0' }),   // prev30
         createChainableQB(null, []),                         // revenueHistory (empty)
+        createChainableQB(null, []),                         // monthlyRevenueHistory (empty)
       ];
 
       let salesCallIndex = 0;
@@ -211,6 +213,7 @@ describe('AnalyticsService', () => {
         createChainableQB({ revenue: '500', count: '2' }),  // last30
         createChainableQB({ revenue: '0', count: '0' }),    // prev30
         createChainableQB(null, []),                          // revenueHistory
+        createChainableQB(null, []),                          // monthlyRevenueHistory
       ];
 
       let salesCallIndex = 0;
@@ -244,6 +247,7 @@ describe('AnalyticsService', () => {
           { date: twoDaysAgoStr, revenue: '50' },
           { date: todayStr, revenue: '100' },
         ]),
+        createChainableQB(null, []),                          // monthlyRevenueHistory
       ];
 
       let salesCallIndex = 0;

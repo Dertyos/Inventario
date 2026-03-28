@@ -28,7 +28,8 @@ describe('UsersService', () => {
     updatedAt: new Date(),
     teamMemberships: [],
     inventoryMovements: [],
-  };
+    consentGivenAt: null,
+  } as User;
 
   beforeEach(async () => {
     repository = {
