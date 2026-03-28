@@ -841,6 +841,7 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
                                 prefixIcon: Icon(Icons.percent),
                                 isDense: true,
                               ),
+                              onChanged: (_) => setState(() {}),
                             ),
                           ),
                         ],
