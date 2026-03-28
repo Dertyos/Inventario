@@ -19,12 +19,13 @@ export class CreateCreditDto {
   @IsUUID()
   saleId: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: '550e8400-e29b-41d4-a716-446655440001',
-    description: 'UUID del cliente',
+    description: 'UUID del cliente (opcional para ventas directas)',
   })
   @IsUUID()
-  customerId: string;
+  @IsOptional()
+  customerId?: string;
 
   @ApiProperty({
     example: 150000,

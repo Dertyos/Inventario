@@ -44,12 +44,12 @@ export class CreditAccount {
   @JoinColumn({ name: 'saleId' })
   sale: Sale;
 
-  @Column()
-  customerId: string;
+  @Column({ nullable: true })
+  customerId: string | null;
 
-  @ManyToOne(() => Customer)
+  @ManyToOne(() => Customer, { nullable: true })
   @JoinColumn({ name: 'customerId' })
-  customer: Customer;
+  customer: Customer | null;
 
   @Column({ type: 'decimal', precision: 12, scale: 2 })
   totalAmount: number;

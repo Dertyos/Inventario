@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   Logger,
+  OnApplicationBootstrap,
 } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -23,9 +24,10 @@ import {
   NotificationType,
 } from '../reminders/entities/notification.entity';
 import { Payment } from '../payments/entities/payment.entity';
+import { Sale, PaymentMethod } from '../sales/entities/sale.entity';
 
 @Injectable()
-export class CreditsService {
+export class CreditsService implements OnApplicationBootstrap {
   private readonly logger = new Logger(CreditsService.name);
 
   constructor(
@@ -35,7 +37,99 @@ export class CreditsService {
     private readonly installmentsRepository: Repository<CreditInstallment>,
     @InjectRepository(Notification)
     private readonly notificationsRepository: Repository<Notification>,
+    @InjectRepository(Sale)
+    private readonly salesRepository: Repository<Sale>,
   ) {}
+
+  async onApplicationBootstrap(): Promise<void> {
+    await this.backfillCreditAccounts();
+  }
+
+  /**
+   * Creates CreditAccount records for credit sales that are missing them.
+   * This handles sales created before the fix that required a customer.
+   */
+  private async backfillCreditAccounts(): Promise<void> {
+    try {
+      const orphanSales = await this.salesRepository
+        .createQueryBuilder('sale')
+        .leftJoin('credit_accounts', 'ca', 'ca."saleId" = sale.id')
+        .where('sale."paymentMethod" = :method', { method: PaymentMethod.CREDIT })
+        .andWhere('ca.id IS NULL')
+        .andWhere('sale."creditInstallments" IS NOT NULL')
+        .getMany();
+
+      if (orphanSales.length === 0) return;
+
+      this.logger.log(`Backfilling ${orphanSales.length} credit sale(s) missing CreditAccount...`);
+
+      for (const sale of orphanSales) {
+        const interestRate = Number(sale.creditInterestRate) || 0;
+        let interestType = InterestType.NONE;
+        if (interestRate > 0) {
+          interestType = sale.creditFrequency === 'monthly'
+            ? InterestType.MONTHLY
+            : InterestType.FIXED;
+        }
+
+        const numInstallments = sale.creditInstallments || 1;
+        const startDate = sale.createdAt.toISOString().split('T')[0];
+
+        let totalWithInterest: number;
+        const subtotal = Number(sale.total);
+        if (interestType === InterestType.FIXED) {
+          totalWithInterest = subtotal * (1 + interestRate / 100);
+        } else if (interestType === InterestType.MONTHLY) {
+          totalWithInterest = subtotal * Math.pow(1 + interestRate / 100, numInstallments);
+        } else {
+          totalWithInterest = subtotal;
+        }
+
+        const totalCents = Math.round(totalWithInterest * 100);
+        const baseCents = Math.floor(totalCents / numInstallments);
+        const remainder = totalCents - baseCents * numInstallments;
+
+        const creditAccount = this.creditsRepository.create({
+          teamId: sale.teamId,
+          saleId: sale.id,
+          customerId: sale.customerId || null,
+          totalAmount: totalWithInterest,
+          interestRate,
+          interestType,
+          installments: numInstallments,
+          startDate,
+        });
+        const saved = await this.creditsRepository.save(creditAccount);
+
+        const frequency = sale.creditFrequency || 'monthly';
+        for (let i = 0; i < numInstallments; i++) {
+          const amount = (baseCents + (i < remainder ? 1 : 0)) / 100;
+          const dueDate = new Date(startDate);
+          if (frequency === 'daily') {
+            dueDate.setDate(dueDate.getDate() + i + 1);
+          } else if (frequency === 'weekly') {
+            dueDate.setDate(dueDate.getDate() + (i + 1) * 7);
+          } else {
+            dueDate.setMonth(dueDate.getMonth() + i + 1);
+          }
+
+          const installment = this.installmentsRepository.create({
+            creditAccountId: saved.id,
+            installmentNumber: i + 1,
+            amount,
+            dueDate: dueDate.toISOString().split('T')[0],
+          });
+          await this.installmentsRepository.save(installment);
+        }
+
+        this.logger.log(`Backfilled CreditAccount for sale ${sale.saleNumber}`);
+      }
+
+      this.logger.log(`Backfill complete: ${orphanSales.length} credit account(s) created.`);
+    } catch (error) {
+      this.logger.error(`Credit backfill failed: ${error.message}`);
+    }
+  }
 
   async create(
     teamId: string,
