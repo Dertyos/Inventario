@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Param,
+  ParseUUIDPipe,
   Post,
   UseGuards,
   Logger,
@@ -35,7 +36,7 @@ export class AiController {
       'Receives voice-transcribed text in Spanish and returns a structured transaction for user confirmation. Rate limited to 5 requests/minute.',
   })
   async parseTransaction(
-    @Param('teamId') teamId: string,
+    @Param('teamId', ParseUUIDPipe) teamId: string,
     @Body() dto: ParseTransactionDto,
   ) {
     this.logger.log(
@@ -53,7 +54,7 @@ export class AiController {
       'Receives text in Spanish and returns a structured command for any inventory management operation. Rate limited to 5 requests/minute.',
   })
   async parseCommand(
-    @Param('teamId') teamId: string,
+    @Param('teamId', ParseUUIDPipe) teamId: string,
     @Body() dto: ParseCommandDto,
   ) {
     this.logger.log(
