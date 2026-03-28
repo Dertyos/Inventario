@@ -95,6 +95,7 @@ export class InventoryService {
     teamId: string,
     options?: {
       productId?: string;
+      supplierId?: string;
       type?: MovementType;
       page?: number;
       limit?: number;
@@ -110,6 +111,12 @@ export class InventoryService {
     if (options?.productId) {
       query.andWhere('movement.productId = :productId', {
         productId: options.productId,
+      });
+    }
+
+    if (options?.supplierId) {
+      query.andWhere('movement.supplierId = :supplierId', {
+        supplierId: options.supplierId,
       });
     }
 

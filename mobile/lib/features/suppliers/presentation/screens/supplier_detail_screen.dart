@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/whatsapp_utils.dart';
+import '../../../../shared/models/inventory_movement_model.dart';
 import '../../../../shared/models/purchase_model.dart';
 import '../../../../shared/models/supplier_model.dart';
 import '../../../../shared/providers/auth_provider.dart';
 import '../../../../shared/widgets/app_modal.dart';
 import '../../../../shared/widgets/status_badge.dart';
+import '../../../inventory/data/inventory_repository.dart';
 import '../../../purchases/data/purchases_repository.dart';
 import '../../data/suppliers_repository.dart';
 
@@ -21,6 +23,14 @@ final _supplierPurchasesProvider = FutureProvider.autoDispose
   return ref
       .read(purchasesRepositoryProvider)
       .getPurchases(params.teamId, supplierId: params.supplierId);
+});
+
+final _supplierMovementsProvider = FutureProvider.autoDispose
+    .family<List<InventoryMovementModel>, ({String teamId, String supplierId})>(
+        (ref, params) {
+  return ref
+      .read(inventoryRepositoryProvider)
+      .getMovements(params.teamId, supplierId: params.supplierId);
 });
 
 class SupplierDetailScreen extends ConsumerWidget {
@@ -180,6 +190,9 @@ class _SupplierBody extends ConsumerWidget {
     final purchasesAsync = ref.watch(
       _supplierPurchasesProvider((teamId: teamId, supplierId: supplier.id)),
     );
+    final movementsAsync = ref.watch(
+      _supplierMovementsProvider((teamId: teamId, supplierId: supplier.id)),
+    );
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
@@ -321,7 +334,7 @@ class _SupplierBody extends ConsumerWidget {
               if (purchases.isEmpty) {
                 return Padding(
                   padding:
-                      const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                      const EdgeInsets.symmetric(vertical: AppSpacing.sm),
                   child: Center(
                     child: Text(
                       'Sin compras registradas',
@@ -352,6 +365,46 @@ class _SupplierBody extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.md),
                   ...purchases.map((p) => _PurchaseTile(purchase: p)),
                 ],
+              );
+            },
+          ),
+
+          const SizedBox(height: AppSpacing.lg),
+
+          // ── Movimientos de inventario ─────────────────────────
+          Text('Movimientos de inventario',
+              style:
+                  textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+          const SizedBox(height: AppSpacing.sm),
+
+          movementsAsync.when(
+            loading: () => const Center(
+              child: Padding(
+                padding: EdgeInsets.all(AppSpacing.lg),
+                child: CircularProgressIndicator(),
+              ),
+            ),
+            error: (e, _) => Center(
+              child: Text('Error al cargar movimientos',
+                  style: TextStyle(color: colorScheme.error)),
+            ),
+            data: (movements) {
+              if (movements.isEmpty) {
+                return Padding(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                  child: Center(
+                    child: Text(
+                      'Sin movimientos registrados',
+                      style: textTheme.bodyMedium
+                          ?.copyWith(color: Colors.grey.shade500),
+                    ),
+                  ),
+                );
+              }
+
+              return Column(
+                children: movements.map((m) => _MovementTile(movement: m)).toList(),
               );
             },
           ),
@@ -486,6 +539,74 @@ class _PurchaseTile extends StatelessWidget {
             ),
             const SizedBox(height: 2),
             badge,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MovementTile extends StatelessWidget {
+  final InventoryMovementModel movement;
+
+  const _MovementTile({required this.movement});
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final isEntry = movement.type == 'in' || movement.type == 'purchase';
+    final sign = isEntry ? '+' : '-';
+    final color = isEntry ? AppColors.success : AppColors.danger;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: ListTile(
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: isEntry
+                ? AppColors.successBg(context)
+                : AppColors.dangerBg(context),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(
+            isEntry ? Icons.arrow_downward : Icons.arrow_upward,
+            size: 18,
+            color: color,
+          ),
+        ),
+        title: Text(
+          movement.productName,
+          style: textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Text(
+          [
+            movement.typeLabel,
+            if (movement.reason != null && movement.reason!.isNotEmpty)
+              movement.reason!,
+          ].join(' · '),
+          style: textTheme.bodySmall?.copyWith(color: Colors.grey.shade500),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              '$sign${movement.quantity}',
+              style: textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+            Text(
+              _date.format(movement.createdAt),
+              style: textTheme.bodySmall?.copyWith(color: Colors.grey.shade500),
+            ),
           ],
         ),
       ),
