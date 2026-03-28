@@ -190,7 +190,7 @@ class _BarcodeScannerScreenState extends ConsumerState<BarcodeScannerScreen> {
                                 : AppColors.success,
                           ),
                           _InfoChip(
-                            label: 'SKU',
+                            label: 'Código interno',
                             value: product.sku.isNotEmpty ? product.sku : '-',
                             color: colorScheme.onSurfaceVariant,
                           ),
@@ -304,7 +304,6 @@ class _BarcodeScannerScreenState extends ConsumerState<BarcodeScannerScreen> {
                 child: Text(
                   barcodeValue,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontFamily: 'monospace',
                         fontWeight: FontWeight.w600,
                       ),
                 ),

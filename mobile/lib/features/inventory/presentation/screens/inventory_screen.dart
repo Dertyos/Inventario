@@ -235,7 +235,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                 segments: const [
                   ButtonSegment(value: 'in', label: Text('Entrada')),
                   ButtonSegment(value: 'out', label: Text('Salida')),
-                  ButtonSegment(value: 'adjustment', label: Text('Ajuste')),
+                  ButtonSegment(value: 'adjustment', label: Text('Corrección')),
                 ],
                 selected: {type},
                 onSelectionChanged: (v) =>
@@ -635,7 +635,6 @@ class _LowStockTab extends ConsumerWidget {
                                             p.barcode!,
                                             style: Theme.of(context).textTheme.labelSmall?.copyWith(
                                                   color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                                  fontFamily: 'monospace',
                                                 ),
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,

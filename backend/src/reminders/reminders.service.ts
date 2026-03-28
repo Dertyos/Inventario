@@ -36,8 +36,16 @@ export class RemindersService {
    * - On due date: ON_DUE
    * - 1 day after due: AFTER_DUE
    */
-  async generateReminders(teamId: string): Promise<number> {
-    const today = new Date();
+  async generateReminders(teamId: string, tzOffsetMinutes?: number): Promise<number> {
+    const offsetMs = (tzOffsetMinutes ?? 0) * 60 * 1000;
+    const now = new Date();
+    const localNow = new Date(now.getTime() - offsetMs);
+
+    const today = new Date(Date.UTC(
+      localNow.getUTCFullYear(),
+      localNow.getUTCMonth(),
+      localNow.getUTCDate(),
+    ));
     const threeDaysAhead = new Date(today);
     threeDaysAhead.setDate(today.getDate() + 3);
     const oneDayAgo = new Date(today);
@@ -209,7 +217,7 @@ export class RemindersService {
       let totalCreated = 0;
       for (const setting of settings) {
         try {
-          const created = await this.generateReminders(setting.teamId);
+          const created = await this.generateReminders(setting.teamId, setting.tzOffsetMinutes);
           totalCreated += created;
         } catch (error) {
           this.logger.error(

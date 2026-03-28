@@ -207,8 +207,15 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
                       ),
                     ),
                     ListTile(
-                      leading: const Icon(Icons.storefront_outlined),
-                      title: const Text('Venta directa (sin cliente)'),
+                      leading: const CircleAvatar(
+                        backgroundColor: Color(0xFFE8F5E9),
+                        child: Icon(Icons.storefront_outlined, color: Color(0xFF4CAF50)),
+                      ),
+                      title: const Text(
+                        'Venta directa (sin cliente)',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: const Text('No requiere datos del comprador'),
                       onTap: () {
                         setState(() => _selectedCustomer = null);
                         Navigator.pop(ctx);
@@ -816,10 +823,11 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
                               controller: _installmentsController,
                               keyboardType: TextInputType.number,
                               decoration: const InputDecoration(
-                                labelText: 'Cuotas',
+                                labelText: 'Pagos',
                                 prefixIcon: Icon(Icons.calendar_month_outlined),
                                 isDense: true,
                               ),
+                              onChanged: (_) => setState(() {}),
                             ),
                           ),
                           const SizedBox(width: AppSpacing.sm),
@@ -842,7 +850,17 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
                       padding: const EdgeInsets.fromLTRB(
                         AppSpacing.md, AppSpacing.sm, AppSpacing.md, 0,
                       ),
-                      child: Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '\u00bfCada cu\u00e1nto paga?',
+                            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          Row(
                         children: [
                           Expanded(
                             child: SegmentedButton<String>(
@@ -867,6 +885,8 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
                               ),
                             ),
                           ),
+                        ],
+                      ),
                         ],
                       ),
                     ),

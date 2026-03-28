@@ -45,7 +45,7 @@ class InventoryMovementModel {
       case 'out':
         return 'Salida';
       case 'adjustment':
-        return 'Ajuste';
+        return 'Corrección de conteo';
       case 'sale':
         return 'Venta';
       case 'purchase':

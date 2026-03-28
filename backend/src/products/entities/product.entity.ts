@@ -56,6 +56,9 @@ export class Product {
   @Column({ default: false })
   trackLots: boolean;
 
+  @Column({ type: 'boolean', default: false })
+  isPerishable: boolean;
+
   @Column({ nullable: true })
   categoryId: string;
 
