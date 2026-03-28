@@ -112,32 +112,42 @@ class AuthNotifier extends Notifier<AuthState> {
       return;
     }
     try {
-      final user = await _repo.getProfile();
-      final teams = await _repo.getTeams();
-      final savedTeamId = await _storage.getActiveTeamId();
-      TeamModel? activeTeam;
-      if (teams.isNotEmpty) {
-        activeTeam = teams.firstWhere(
-          (t) => t.id == savedTeamId,
-          orElse: () => teams.first,
-        );
-        await _storage.saveActiveTeamId(activeTeam.id);
-      }
-      List<String> permissions = const [];
-      if (activeTeam != null) {
-        permissions = await _fetchPermissions(activeTeam);
-      }
-      state = state.copyWith(
-        status: AuthStatus.authenticated,
-        user: user,
-        teams: teams,
-        activeTeam: activeTeam,
-        permissions: permissions,
-      );
+      await _loadSession();
     } catch (_) {
-      await _storage.clearAll();
-      state = state.copyWith(status: AuthStatus.unauthenticated);
+      // Token might be expired — try refresh before giving up
+      try {
+        await _repo.refreshTokens();
+        await _loadSession();
+      } catch (_) {
+        await _storage.clearAll();
+        state = state.copyWith(status: AuthStatus.unauthenticated);
+      }
     }
+  }
+
+  Future<void> _loadSession() async {
+    final user = await _repo.getProfile();
+    final teams = await _repo.getTeams();
+    final savedTeamId = await _storage.getActiveTeamId();
+    TeamModel? activeTeam;
+    if (teams.isNotEmpty) {
+      activeTeam = teams.firstWhere(
+        (t) => t.id == savedTeamId,
+        orElse: () => teams.first,
+      );
+      await _storage.saveActiveTeamId(activeTeam.id);
+    }
+    List<String> permissions = const [];
+    if (activeTeam != null) {
+      permissions = await _fetchPermissions(activeTeam);
+    }
+    state = state.copyWith(
+      status: AuthStatus.authenticated,
+      user: user,
+      teams: teams,
+      activeTeam: activeTeam,
+      permissions: permissions,
+    );
   }
 
   Future<void> login(String email, String password) async {
