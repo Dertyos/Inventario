@@ -116,8 +116,12 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
     String? selectedProductId = preselectedProduct?.id;
     String type = 'in';
     final quantityController = TextEditingController();
+    final unitCostController = TextEditingController();
     final reasonController = TextEditingController();
     SupplierModel? selectedSupplier;
+    bool isCredit = false;
+    final installmentsController = TextEditingController(text: '1');
+    String creditFrequency = 'monthly';
 
     showModalBottomSheet(
       context: context,
@@ -339,6 +343,55 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                   prefixIcon: Icon(Icons.numbers),
                 ),
               ),
+              if (type == 'in') ...[
+                const SizedBox(height: AppSpacing.sm),
+                TextFormField(
+                  controller: unitCostController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Costo unitario (opcional)',
+                    prefixIcon: Icon(Icons.attach_money),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Compra a crédito'),
+                  value: isCredit,
+                  onChanged: (v) => setSheetState(() => isCredit = v),
+                ),
+                if (isCredit) ...[
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: installmentsController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Cuotas',
+                            prefixIcon: Icon(Icons.calendar_month),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: creditFrequency,
+                          decoration: const InputDecoration(
+                            labelText: 'Frecuencia',
+                          ),
+                          items: const [
+                            DropdownMenuItem(value: 'daily', child: Text('Diaria')),
+                            DropdownMenuItem(value: 'weekly', child: Text('Semanal')),
+                            DropdownMenuItem(value: 'monthly', child: Text('Mensual')),
+                          ],
+                          onChanged: (v) => setSheetState(() => creditFrequency = v!),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
               const SizedBox(height: AppSpacing.sm),
               TextFormField(
                 controller: reasonController,
@@ -363,16 +416,24 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                     return;
                   }
                   try {
+                    final unitCost = double.tryParse(unitCostController.text.trim());
                     await ref
                         .read(inventoryRepositoryProvider)
                         .createMovement(teamId, {
                       'productId': selectedProductId,
                       'type': type,
                       'quantity': qty,
+                      if (unitCost != null && type == 'in')
+                        'unitCost': unitCost,
                       if (reasonController.text.isNotEmpty)
                         'reason': reasonController.text,
                       if (selectedSupplier != null)
                         'supplierId': selectedSupplier!.id,
+                      if (isCredit && type == 'in') ...{
+                        'isCredit': true,
+                        'creditInstallments': int.tryParse(installmentsController.text) ?? 1,
+                        'creditFrequency': creditFrequency,
+                      },
                     });
                     ref.invalidate(movementsProvider(teamId));
                     ref.invalidate(productsProvider(teamId));

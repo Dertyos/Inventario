@@ -6,6 +6,8 @@ import {
   MovementType,
 } from './entities/inventory-movement.entity';
 import { Product } from '../products/entities/product.entity';
+import { CreditAccount, InterestType } from '../credits/entities/credit-account.entity';
+import { CreditInstallment } from '../credits/entities/credit-installment.entity';
 import { CreateMovementDto } from './dto/create-movement.dto';
 
 @Injectable()
@@ -72,14 +74,68 @@ export class InventoryService {
       product.stock = stockAfter;
       await queryRunner.manager.save(product);
 
+      // Calculate costs
+      const unitCost = createMovementDto.unitCost ?? null;
+      const totalCost = unitCost != null ? unitCost * createMovementDto.quantity : null;
+
       const movement = queryRunner.manager.create(InventoryMovement, {
-        ...createMovementDto,
+        type: createMovementDto.type,
+        quantity: createMovementDto.quantity,
+        reason: createMovementDto.reason,
+        productId: createMovementDto.productId,
+        supplierId: createMovementDto.supplierId,
+        unitCost,
+        totalCost,
         teamId,
         userId,
         stockBefore,
         stockAfter,
       });
       const savedMovement = await queryRunner.manager.save(movement);
+
+      // Create credit account for credit purchases
+      if (createMovementDto.isCredit && totalCost != null && totalCost > 0) {
+        const numInstallments = createMovementDto.creditInstallments || 1;
+        const frequency = createMovementDto.creditFrequency || 'monthly';
+        const startDate = new Date().toISOString().split('T')[0];
+
+        const totalCents = Math.round(totalCost * 100);
+        const baseCents = Math.floor(totalCents / numInstallments);
+        const remainder = totalCents - baseCents * numInstallments;
+
+        const creditAccount = queryRunner.manager.create(CreditAccount, {
+          teamId,
+          saleId: null,
+          customerId: null,
+          movementId: savedMovement.id,
+          totalAmount: totalCost,
+          interestRate: 0,
+          interestType: InterestType.NONE,
+          installments: numInstallments,
+          startDate,
+        });
+        const savedCredit = await queryRunner.manager.save(creditAccount);
+
+        for (let i = 0; i < numInstallments; i++) {
+          const amount = (baseCents + (i < remainder ? 1 : 0)) / 100;
+          const dueDate = new Date(startDate);
+          if (frequency === 'daily') {
+            dueDate.setDate(dueDate.getDate() + i + 1);
+          } else if (frequency === 'weekly') {
+            dueDate.setDate(dueDate.getDate() + (i + 1) * 7);
+          } else {
+            dueDate.setMonth(dueDate.getMonth() + i + 1);
+          }
+
+          const installment = queryRunner.manager.create(CreditInstallment, {
+            creditAccountId: savedCredit.id,
+            installmentNumber: i + 1,
+            amount,
+            dueDate: dueDate.toISOString().split('T')[0],
+          });
+          await queryRunner.manager.save(installment);
+        }
+      }
 
       await queryRunner.commitTransaction();
       return savedMovement;

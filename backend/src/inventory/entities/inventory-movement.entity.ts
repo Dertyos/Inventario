@@ -62,6 +62,12 @@ export class InventoryMovement {
   @JoinColumn({ name: 'supplierId' })
   supplier: Supplier;
 
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  unitCost: number;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  totalCost: number;
+
   @Column({ nullable: true })
   referenceType: string;
 

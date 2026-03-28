@@ -10,7 +10,7 @@ enum InstallmentStatus { pending, paid, overdue, partial }
 class CreditAccountModel {
   final String id;
   final String teamId;
-  final String saleId;
+  final String? saleId;
   final String? customerId;
   final CustomerModel? customer;
   final double totalAmount;
@@ -27,7 +27,7 @@ class CreditAccountModel {
   const CreditAccountModel({
     required this.id,
     required this.teamId,
-    required this.saleId,
+    this.saleId,
     this.customerId,
     this.customer,
     required this.totalAmount,
@@ -81,7 +81,7 @@ class CreditAccountModel {
     return CreditAccountModel(
       id: json['id'] as String,
       teamId: json['teamId'] as String,
-      saleId: json['saleId'] as String,
+      saleId: json['saleId'] as String?,
       customerId: json['customerId'] as String?,
       customer: json['customer'] != null
           ? CustomerModel.fromJson(json['customer'] as Map<String, dynamic>)

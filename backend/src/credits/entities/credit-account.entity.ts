@@ -37,12 +37,15 @@ export class CreditAccount {
   @JoinColumn({ name: 'teamId' })
   team: Team;
 
-  @Column()
-  saleId: string;
+  @Column({ nullable: true })
+  saleId: string | null;
 
-  @ManyToOne(() => Sale)
+  @ManyToOne(() => Sale, { nullable: true })
   @JoinColumn({ name: 'saleId' })
-  sale: Sale;
+  sale: Sale | null;
+
+  @Column({ nullable: true })
+  movementId: string | null;
 
   @Column({ nullable: true })
   customerId: string | null;
