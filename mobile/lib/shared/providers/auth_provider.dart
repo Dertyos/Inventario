@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -249,9 +250,30 @@ class AuthNotifier extends Notifier<AuthState> {
         permissions: permissions,
         isLoading: false,
       );
+    } on PlatformException catch (e) {
+      final message = _googleSignInErrorMessage(e);
+      state = state.copyWith(isLoading: false, error: message);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
     }
+  }
+
+  String _googleSignInErrorMessage(PlatformException e) {
+    // Error code 10 = DEVELOPER_ERROR: OAuth client misconfiguration
+    if (e.code == 'sign_in_failed' && e.message != null && e.message!.contains('10:')) {
+      return 'Google Sign-In no está configurado correctamente. '
+          'Verifica que google-services.json esté presente y que el SHA-1 '
+          'del certificado esté registrado en Google Cloud Console.';
+    }
+    // Error code 12500 = sign-in cancelled or general failure
+    if (e.code == 'sign_in_failed' && e.message != null && e.message!.contains('12500')) {
+      return 'No se pudo completar el inicio de sesión con Google. Intenta de nuevo.';
+    }
+    // Error code 7 = network error
+    if (e.code == 'sign_in_failed' && e.message != null && e.message!.contains('7:')) {
+      return 'Error de conexión. Verifica tu conexión a internet e intenta de nuevo.';
+    }
+    return 'Error al iniciar sesión con Google: ${e.message ?? e.code}';
   }
 
   Future<void> signInWithApple() async {
