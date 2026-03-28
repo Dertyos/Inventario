@@ -114,6 +114,72 @@ App: Inventario (NestJS backend + Flutter mobile)
 
 ---
 
+## 🎨 UX + USABILIDAD (30 hallazgos) — ver `06_UX_USABILITY.md`
+
+### 🔴 Flujos rotos (4)
+1. **"Venta sin cliente" enterrada en el picker** — `create_sale_screen.dart` — usuario selecciona cliente incorrecto sin querer
+2. **"Contado / Crédito" incomprensible para tendero** — `create_sale_screen.dart` — cambiar a "Paga hoy / Paga después"
+3. **"Entrada/Salida/Ajuste" en inventario — ¿qué es Ajuste?** — `inventory_screen.dart` — sin explicación para el usuario
+4. **"Marcar expirados" sin confirmación destructiva** — `lots_screen.dart` — un click accidental borra datos de lotes
+
+### 🟠 Flujos difíciles (9)
+5. **Flujo de crédito: 3 inputs sueltos sin guía** — Cuotas + Interés + Frecuencia confunden al usuario
+6. **Editar cliente/proveedor no es obvio desde la lista** — no hay ícono de editar visible
+7. **"Recibir compra" no explica que actualiza el stock** — usuario no entiende la consecuencia
+8. **FAB: "Nueva venta" al mismo nivel que Escanear/Voz** — acción principal no destacada
+9. **Proveedor obligatorio en compra pero no marcado** — error confuso al enviar
+10. **Error de IA muestra mensaje técnico** — "Error 503" incomprensible para vendedor
+11. **"Pendiente" significa cosas distintas en ventas/compras/créditos** — ambigüedad total
+12. **Dashboard muestra "¡Hola, !" si no hay firstName** — saludo roto
+13. **Confirmación de acciones inconsistente** — algunas piden confirmación, otras no
+
+### 🟡 Mejorables (9)
+14. **"SKU" — nadie sabe qué es** — cambiar a "Código interno (opcional)"
+15. **Campos numéricos sin validación de positivo en UI** — precio/costo pueden ser negativos
+16. **Gráficos del dashboard sin leyenda** — línea sin contexto de qué mide
+17. **"Confianza alta" / "Verificar datos" sin explicación** — badges incomprensibles
+18. **"Por vencer en 30 días" — umbral invisible al usuario**
+19. **Iconos en formularios inconsistentes** — algunos con prefixIcon, otros sin
+20. **Empty state de Stock bajo confunde a usuario nuevo** — parece que todo está bien aunque no haya mínimos configurados
+21. **Recordatorios: canal de envío sin explicación** — no está claro cómo se elige WhatsApp vs Email
+22. **Preview de cuotas en tiempo real ausente** — usuario no ve "3 cuotas de $350.000" antes de guardar
+
+### 🟢 Terminología colombiana a cambiar (8)
+23. **"SKU"** → "Código interno"
+24. **"Crédito"** → "Venta a plazo" / "Fío"
+25. **"Contado"** → "Paga hoy"
+26. **"Ajuste"** → "Corrección de conteo"
+27. **"Frecuencia de pago"** → "¿Cada cuánto paga?"
+28. **"Cuotas"** → "Pagos" en contextos informales
+29. **"Proveedor"** → también aceptar "Distribuidor"
+30. **"Barcode"** en UI monospace → mostrar como texto normal
+
+### Top 10 mejoras UX por impacto vs esfuerzo
+| # | Mejora | Esfuerzo |
+|---|--------|---------|
+| 1 | Renombrar "Contado → Paga hoy" / "Crédito → Paga después" | 1h |
+| 2 | "Venta sin cliente" como primera opción en picker | 30 min |
+| 3 | Confirmar "Recibir compra" con consecuencia clara | 1h |
+| 4 | Validar positivos en todos los inputs numéricos | 2h |
+| 5 | Renombrar "Ajuste" → "Corrección de conteo" + helper text | 30 min |
+| 6 | Confirmar antes de "Marcar expirados" | 30 min |
+| 7 | Renombrar "SKU" → "Código interno (opcional)" | 15 min |
+| 8 | Stepper de 3 pasos para configurar crédito | 4h |
+| 9 | Botón editar visible en listas de clientes/proveedores | 1h |
+| 10 | Preview de cuotas en tiempo real | 2h |
+
+---
+
+## Totales finales
+
+| Categoría | Crítico | Alto | Medio | Bajo | **Total** |
+|-----------|---------|------|-------|------|-----------|
+| Técnicos (backend + mobile) | 16 | 29 | 30 | 14 | **89** |
+| UX + Usabilidad | 4 | 9 | 9 | 8 | **30** |
+| **GRAN TOTAL** | **20** | **38** | **39** | **22** | **119** |
+
+---
+
 ## Áreas más problemáticas
 
 1. **Créditos/Pagos** — lógica de negocio incompleta: sin transacciones, sin audit trail de pagos, sin cancelación automática
