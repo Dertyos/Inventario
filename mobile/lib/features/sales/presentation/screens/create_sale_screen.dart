@@ -935,10 +935,53 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
                                 prefixIcon: const Icon(Icons.payments_outlined),
                                 isDense: true,
                               ),
+                              onChanged: (_) => setState(() {}),
                             ),
                           ),
                         ],
                       ),
+                    ),
+                  ],
+                  if (_isCredit) ...[
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 0),
+                      child: Builder(builder: (context) {
+                        final installments = int.tryParse(_installmentsController.text) ?? 1;
+                        final interest = double.tryParse(_interestController.text) ?? 0;
+                        final paidAmount = double.tryParse(_paidAmountController.text) ?? 0;
+                        final remaining = _total - paidAmount;
+
+                        if (installments <= 0 || remaining <= 0) return const SizedBox.shrink();
+
+                        final totalWithInterest = interest > 0
+                            ? remaining * (1 + interest / 100)
+                            : remaining;
+                        final perInstallment = totalWithInterest / installments;
+
+                        return Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: colorScheme.primaryContainer.withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.info_outline, size: 18, color: colorScheme.primary),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  '$installments pagos de ${cop.format(perInstallment)}'
+                                  '${paidAmount > 0 ? ' (abono: ${cop.format(paidAmount)})' : ''}',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: colorScheme.onSurface,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
                     ),
                   ],
                   Padding(
