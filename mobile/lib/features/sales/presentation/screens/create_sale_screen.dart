@@ -913,7 +913,7 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
                               },
                               child: InputDecorator(
                                 decoration: const InputDecoration(
-                                  labelText: 'Próxima cuota',
+                                  labelText: 'Próximo pago',
                                   prefixIcon: Icon(Icons.event_outlined),
                                   suffixIcon: Icon(Icons.edit_calendar),
                                   isDense: true,
