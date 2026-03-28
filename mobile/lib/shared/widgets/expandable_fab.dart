@@ -64,26 +64,26 @@ class _ExpandableFabState extends State<ExpandableFab>
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        // Child actions (appear above the main FAB)
-        SizeTransition(
-          sizeFactor: _expandAnimation,
-          axisAlignment: 1.0,
-          child: FadeTransition(
-            opacity: _expandAnimation,
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return SizedBox(
+      width: 56,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Child actions stacked directly above the main FAB
+          SizeTransition(
+            sizeFactor: _expandAnimation,
+            axisAlignment: 1.0,
+            child: FadeTransition(
+              opacity: _expandAnimation,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.end,
                 children: widget.actions.map((action) {
-                  final colorScheme = Theme.of(context).colorScheme;
                   return Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                    child: _ActionChip(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                    child: _ActionButton(
                       icon: action.icon,
                       label: action.label,
                       color: action.color ?? colorScheme.secondaryContainer,
@@ -99,39 +99,31 @@ class _ExpandableFabState extends State<ExpandableFab>
               ),
             ),
           ),
-        ),
 
-        // Main FAB — icon-only when collapsed, extended when open
-        AnimatedSwitcher(
-          duration: AppAnimations.fast,
-          child: _open
-              ? FloatingActionButton.extended(
-                  key: const ValueKey(true),
-                  heroTag: null,
-                  onPressed: _toggle,
-                  icon: const Icon(Icons.close),
-                  label: const Text('Cerrar'),
-                )
-              : FloatingActionButton(
-                  key: const ValueKey(false),
-                  heroTag: null,
-                  onPressed: _toggle,
-                  child: const Icon(Icons.add),
-                ),
-        ),
-      ],
+          // Main FAB
+          FloatingActionButton(
+            heroTag: null,
+            onPressed: _toggle,
+            child: AnimatedRotation(
+              turns: _open ? 0.125 : 0,
+              duration: AppAnimations.fast,
+              child: Icon(_open ? Icons.close : Icons.add),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
-class _ActionChip extends StatelessWidget {
+class _ActionButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
   final Color foregroundColor;
   final VoidCallback onPressed;
 
-  const _ActionChip({
+  const _ActionButton({
     required this.icon,
     required this.label,
     required this.color,
@@ -141,25 +133,9 @@ class _ActionChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Material(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
-          elevation: 2,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.sm + 4,
-              vertical: AppSpacing.xs + 2,
-            ),
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.labelMedium,
-            ),
-          ),
-        ),
-        const SizedBox(width: AppSpacing.sm),
         FloatingActionButton.small(
           heroTag: 'fab_$label',
           onPressed: onPressed,
@@ -167,6 +143,19 @@ class _ActionChip extends StatelessWidget {
           foregroundColor: foregroundColor,
           elevation: 2,
           child: Icon(icon),
+        ),
+        const SizedBox(height: 4),
+        Material(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
+          elevation: 1,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
+          ),
         ),
       ],
     );
