@@ -28,6 +28,8 @@ import '../../features/notifications/presentation/screens/notifications_screen.d
 import '../../features/lots/presentation/screens/lots_screen.dart';
 import '../../features/lots/presentation/screens/create_lot_screen.dart';
 import '../../features/suppliers/presentation/screens/suppliers_screen.dart';
+import '../../features/suppliers/presentation/screens/supplier_detail_screen.dart';
+import '../../features/customers/presentation/screens/customer_detail_screen.dart';
 import '../../features/reminders/presentation/screens/reminders_screen.dart';
 import '../../features/reports/presentation/screens/sales_report_screen.dart';
 import '../../features/settings/presentation/screens/change_password_screen.dart';
@@ -264,6 +266,22 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/suppliers',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const SuppliersScreen(),
+        routes: [
+          GoRoute(
+            path: ':id',
+            parentNavigatorKey: _rootNavigatorKey,
+            builder: (context, state) => SupplierDetailScreen(
+              supplierId: state.pathParameters['id']!,
+            ),
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/customers/:id',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => CustomerDetailScreen(
+          customerId: state.pathParameters['id']!,
+        ),
       ),
       GoRoute(
         path: '/reminders',

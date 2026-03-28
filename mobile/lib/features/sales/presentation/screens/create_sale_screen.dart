@@ -194,8 +194,8 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
           builder: (ctx, scrollController) {
             return Consumer(
               builder: (ctx, ref, _) {
-                final customersAsync =
-                    ref.watch(customersProvider(teamId));
+                final customersAsync = ref.watch(customersProvider(teamId));
+                final salesAsync = ref.watch(salesProvider(teamId));
                 return Column(
                   children: [
                     Padding(
@@ -230,35 +230,88 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
                               ),
                             );
                           }
-                          return ListView.builder(
-                            controller: scrollController,
-                            itemCount: customers.length,
-                            itemBuilder: (_, i) {
-                              final c = customers[i];
-                              final selected =
-                                  _selectedCustomer?.id == c.id;
-                              return ListTile(
-                                leading: Icon(
-                                  selected
-                                      ? Icons.radio_button_checked
-                                      : Icons.radio_button_unchecked,
-                                  color: selected
-                                      ? Theme.of(ctx)
-                                          .colorScheme
-                                          .primary
-                                      : null,
-                                ),
-                                title: Text(c.name),
-                                subtitle: c.phone != null
-                                    ? Text(c.phone!)
-                                    : null,
-                                onTap: () {
-                                  setState(
-                                      () => _selectedCustomer = c);
-                                  Navigator.pop(ctx);
-                                },
-                              );
+
+                          // Recent customer IDs from existing sales
+                          final recentIds = salesAsync.when(
+                            data: (sales) {
+                              final seen = <String>{};
+                              return sales
+                                  .where((s) => s.customerId != null)
+                                  .map((s) => s.customerId!)
+                                  .where((id) => seen.add(id))
+                                  .take(5)
+                                  .toList();
                             },
+                            loading: () => <String>[],
+                            error: (_, __) => <String>[],
+                          );
+
+                          final recentCustomers = recentIds
+                              .map((id) => customers.firstWhere(
+                                    (c) => c.id == id,
+                                    orElse: () => customers.first,
+                                  ))
+                              .where((c) => recentIds.contains(c.id))
+                              .toList();
+
+                          final recentSet = recentIds.toSet();
+                          final otherCustomers = customers
+                              .where((c) => !recentSet.contains(c.id))
+                              .toList()
+                            ..sort((a, b) => a.name
+                                .toLowerCase()
+                                .compareTo(b.name.toLowerCase()));
+
+                          ListTile customerTile(CustomerModel c) {
+                            final selected = _selectedCustomer?.id == c.id;
+                            return ListTile(
+                              leading: Icon(
+                                selected
+                                    ? Icons.radio_button_checked
+                                    : Icons.radio_button_unchecked,
+                                color: selected
+                                    ? Theme.of(ctx).colorScheme.primary
+                                    : null,
+                              ),
+                              title: Text(c.name),
+                              subtitle: c.phone != null
+                                  ? Text(c.phone!)
+                                  : null,
+                              onTap: () {
+                                setState(() => _selectedCustomer = c);
+                                Navigator.pop(ctx);
+                              },
+                            );
+                          }
+
+                          Widget sectionHeader(String label) => Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                    AppSpacing.md, AppSpacing.sm,
+                                    AppSpacing.md, 2),
+                                child: Text(
+                                  label,
+                                  style: Theme.of(ctx)
+                                      .textTheme
+                                      .labelSmall
+                                      ?.copyWith(
+                                        color: Theme.of(ctx)
+                                            .colorScheme
+                                            .onSurfaceVariant,
+                                        letterSpacing: 0.8,
+                                      ),
+                                ),
+                              );
+
+                          return ListView(
+                            controller: scrollController,
+                            children: [
+                              if (recentCustomers.isNotEmpty) ...[
+                                sectionHeader('ÚLTIMOS USADOS'),
+                                ...recentCustomers.map(customerTile),
+                                sectionHeader('TODOS'),
+                              ],
+                              ...otherCustomers.map(customerTile),
+                            ],
                           );
                         },
                       ),

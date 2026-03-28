@@ -7,7 +7,9 @@ import 'package:intl/intl.dart';
 import '../../../../core/notifications/notification_service.dart';
 import '../../../../core/offline/pending_sales_service.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/whatsapp_utils.dart';
 import '../../../../core/widgets/home_widget_updater.dart';
+import '../../../../shared/models/product_model.dart';
 import '../../../../shared/providers/auth_provider.dart';
 import '../../../../shared/widgets/offline_banner.dart';
 import '../../data/dashboard_repository.dart';
@@ -16,6 +18,7 @@ import '../../../../shared/widgets/mini_line_chart.dart';
 import '../../../../core/providers/cache_for.dart';
 import '../../../../shared/widgets/expandable_fab.dart';
 import '../../../reports/data/reports_repository.dart';
+import '../../../suppliers/data/suppliers_repository.dart';
 
 final dashboardProvider =
     FutureProvider.autoDispose.family<DashboardData, String>((ref, teamId) async {
@@ -232,13 +235,39 @@ class DashboardScreen extends ConsumerWidget {
                           ),
                           title: Text(p.name),
                           subtitle: Text('Stock: ${p.stock} / Mín: ${p.minStock}'),
-                          trailing: FilledButton.tonal(
-                            onPressed: () => context.go('/inventory'),
-                            style: FilledButton.styleFrom(
-                              visualDensity: VisualDensity.compact,
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                            ),
-                            child: const Text('+ Stock'),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.chat_rounded,
+                                  color: Color(0xFF25D366),
+                                ),
+                                tooltip: 'Pedir a proveedor',
+                                onPressed: () => showModalBottomSheet(
+                                  context: context,
+                                  isScrollControlled: true,
+                                  shape: const RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.vertical(
+                                        top: Radius.circular(20)),
+                                  ),
+                                  builder: (_) => _OrderSupplierSheet(
+                                    product: p,
+                                    teamId: teamId,
+                                    teamName: auth.activeTeam?.name ?? '',
+                                  ),
+                                ),
+                              ),
+                              FilledButton.tonal(
+                                onPressed: () => context.go('/inventory'),
+                                style: FilledButton.styleFrom(
+                                  visualDensity: VisualDensity.compact,
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12),
+                                ),
+                                child: const Text('+ Stock'),
+                              ),
+                            ],
                           ),
                           onTap: () => context.go('/inventory'),
                         ),
@@ -428,3 +457,167 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
+class _OrderSupplierSheet extends ConsumerStatefulWidget {
+  final ProductModel product;
+  final String teamId;
+  final String teamName;
+
+  const _OrderSupplierSheet({
+    required this.product,
+    required this.teamId,
+    required this.teamName,
+  });
+
+  @override
+  ConsumerState<_OrderSupplierSheet> createState() =>
+      _OrderSupplierSheetState();
+}
+
+class _OrderSupplierSheetState extends ConsumerState<_OrderSupplierSheet> {
+  late int _quantity;
+  final _qtyController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _quantity =
+        (widget.product.minStock - widget.product.stock).clamp(1, 9999);
+    _qtyController.text = _quantity.toString();
+  }
+
+  @override
+  void dispose() {
+    _qtyController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final suppliersAsync = ref.watch(suppliersProvider(widget.teamId));
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: AppSpacing.md,
+        right: AppSpacing.md,
+        top: AppSpacing.md,
+        bottom: MediaQuery.viewInsetsOf(context).bottom + AppSpacing.lg,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.outlineVariant,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            'Pedir ${widget.product.name}',
+            style: Theme.of(context)
+                .textTheme
+                .titleMedium
+                ?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          Text(
+            'Stock actual: ${widget.product.stock} / Mínimo: ${widget.product.minStock}',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          TextField(
+            controller: _qtyController,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Cantidad a pedir',
+              prefixIcon: Icon(Icons.numbers_rounded),
+            ),
+            onChanged: (v) {
+              final parsed = int.tryParse(v);
+              if (parsed != null && parsed > 0) _quantity = parsed;
+            },
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            'Selecciona proveedor',
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          suppliersAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => Text('Error al cargar proveedores: $e'),
+            data: (suppliers) {
+              if (suppliers.isEmpty) {
+                return Padding(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                  child: Text(
+                    'No hay proveedores registrados.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                );
+              }
+              final sorted = [...suppliers]
+                ..sort((a, b) =>
+                    a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+              return ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: sorted.length,
+                itemBuilder: (context, i) {
+                  final s = sorted[i];
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.tertiaryContainer,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Center(
+                        child: Text(
+                          s.name[0].toUpperCase(),
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelLarge
+                              ?.copyWith(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onTertiaryContainer,
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                      ),
+                    ),
+                    title: Text(s.name),
+                    subtitle: s.phone != null ? Text(s.phone!) : null,
+                    trailing: s.phone != null
+                        ? const Icon(Icons.chat_rounded,
+                            color: Color(0xFF25D366))
+                        : const Icon(Icons.phone_disabled_outlined),
+                    onTap: s.phone == null
+                        ? null
+                        : () {
+                            Navigator.pop(context);
+                            final msg =
+                                'Hola ${s.contactName ?? s.name}, necesito $_quantity unidades de ${widget.product.name}. — ${widget.teamName}';
+                            openWhatsApp(context, s.phone!, msg);
+                          },
+                  );
+                },
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}

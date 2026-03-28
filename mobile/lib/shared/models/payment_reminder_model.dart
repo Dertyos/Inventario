@@ -14,6 +14,7 @@ class PaymentReminderModel {
 
   // Nested relations
   final String? customerName;
+  final String? customerPhone;
   final double? installmentAmount;
   final double? installmentPaidAmount;
   final String? installmentDueDate;
@@ -32,6 +33,7 @@ class PaymentReminderModel {
     this.errorMessage,
     required this.createdAt,
     this.customerName,
+    this.customerPhone,
     this.installmentAmount,
     this.installmentPaidAmount,
     this.installmentDueDate,
@@ -57,6 +59,7 @@ class PaymentReminderModel {
       errorMessage: json['errorMessage'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
       customerName: customer?['name'] as String?,
+      customerPhone: customer?['phone'] as String?,
       installmentAmount: _toDouble(installment?['amount']),
       installmentPaidAmount: _toDouble(installment?['paidAmount']),
       installmentDueDate: installment?['dueDate'] as String?,

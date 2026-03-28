@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/models/customer_model.dart';
 import '../../../../shared/providers/auth_provider.dart';
@@ -7,6 +8,7 @@ import '../../../../shared/widgets/app_list_tile.dart';
 import '../../../../shared/widgets/app_modal.dart';
 import '../../../../shared/widgets/app_search_field.dart';
 import '../../../../shared/widgets/empty_state.dart';
+import '../../../../shared/widgets/wa_icon_button.dart';
 import '../../../../core/providers/cache_for.dart';
 import '../../data/customers_repository.dart';
 
@@ -135,6 +137,14 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                   );
                 }
 
+                // Orden A-Z
+                filtered.sort((a, b) => a.name
+                    .toLowerCase()
+                    .compareTo(b.name.toLowerCase()));
+
+                final teamName =
+                    ref.read(authProvider).activeTeam?.name ?? '';
+
                 return RefreshIndicator(
                   onRefresh: () async =>
                       ref.invalidate(customersProvider(teamId)),
@@ -149,6 +159,13 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                         subtitle: [customer.phone, customer.email]
                             .where((e) => e != null && e.isNotEmpty)
                             .join(' · '),
+                        onTap: () =>
+                            context.push('/customers/${customer.id}'),
+                        trailing: WaIconButton(
+                          phone: customer.phone,
+                          message:
+                              'Hola ${customer.name}, te escribo de $teamName.',
+                        ),
                       );
                     },
                   ),

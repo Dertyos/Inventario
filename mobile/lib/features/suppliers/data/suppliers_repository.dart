@@ -15,6 +15,15 @@ final suppliersProvider = FutureProvider.autoDispose
   return ref.read(suppliersRepositoryProvider).getSuppliers(teamId);
 });
 
+final supplierDetailProvider = FutureProvider.autoDispose
+    .family<SupplierModel, ({String teamId, String supplierId})>(
+        (ref, params) {
+  ref.cacheFor(const Duration(minutes: 5));
+  return ref
+      .read(suppliersRepositoryProvider)
+      .getSupplier(params.teamId, params.supplierId);
+});
+
 class SuppliersRepository {
   final Dio _dio;
 
@@ -35,6 +44,32 @@ class SuppliersRepository {
       return (response.data as List)
           .map((e) => SupplierModel.fromJson(e as Map<String, dynamic>))
           .toList();
+    } on DioException catch (e) {
+      throw ApiException.fromDioError(e);
+    }
+  }
+
+  Future<SupplierModel> getSupplier(String teamId, String supplierId) async {
+    try {
+      final response =
+          await _dio.get('/teams/$teamId/suppliers/$supplierId');
+      return SupplierModel.fromJson(response.data);
+    } on DioException catch (e) {
+      throw ApiException.fromDioError(e);
+    }
+  }
+
+  Future<SupplierModel> updateSupplier(
+    String teamId,
+    String supplierId,
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      final response = await _dio.patch(
+        '/teams/$teamId/suppliers/$supplierId',
+        data: data,
+      );
+      return SupplierModel.fromJson(response.data);
     } on DioException catch (e) {
       throw ApiException.fromDioError(e);
     }

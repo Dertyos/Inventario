@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/offline/pending_sales_service.dart';
+import '../../../core/providers/cache_for.dart';
 import '../../../shared/models/customer_model.dart';
 
 final customersRepositoryProvider = Provider<CustomersRepository>((ref) {
@@ -10,6 +11,15 @@ final customersRepositoryProvider = Provider<CustomersRepository>((ref) {
     ref.read(dioProvider),
     ref.read(pendingSalesServiceProvider),
   );
+});
+
+final customerDetailProvider = FutureProvider.autoDispose
+    .family<CustomerModel, ({String teamId, String customerId})>(
+        (ref, params) {
+  ref.cacheFor(const Duration(minutes: 5));
+  return ref
+      .read(customersRepositoryProvider)
+      .getCustomer(params.teamId, params.customerId);
 });
 
 class CustomersRepository {
@@ -76,6 +86,16 @@ class CustomersRepository {
         throw ApiException(
             'Cliente guardado localmente. Se creara cuando haya conexion.');
       }
+      throw ApiException.fromDioError(e);
+    }
+  }
+
+  Future<CustomerModel> getCustomer(String teamId, String customerId) async {
+    try {
+      final response =
+          await _dio.get('/teams/$teamId/customers/$customerId');
+      return CustomerModel.fromJson(response.data);
+    } on DioException catch (e) {
       throw ApiException.fromDioError(e);
     }
   }
