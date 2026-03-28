@@ -8,6 +8,7 @@ import '../../../../shared/models/supplier_model.dart';
 import '../../../../shared/providers/auth_provider.dart';
 import '../../../products/presentation/screens/products_screen.dart';
 import '../../../suppliers/data/suppliers_repository.dart';
+import '../../../dashboard/presentation/screens/dashboard_screen.dart';
 import '../../data/purchases_repository.dart';
 
 class CreatePurchaseScreen extends ConsumerStatefulWidget {
@@ -355,6 +356,7 @@ class _CreatePurchaseScreenState extends ConsumerState<CreatePurchaseScreen> {
           'notes': _notesController.text.trim(),
       });
       ref.invalidate(purchasesProvider(teamId));
+      ref.invalidate(dashboardProvider(teamId));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Orden de compra creada')),

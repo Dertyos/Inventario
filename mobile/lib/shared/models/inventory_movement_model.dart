@@ -35,7 +35,7 @@ class InventoryMovementModel {
         productName: json['product']?['name'] as String?,
         supplierId: json['supplierId'] as String?,
         supplierName: json['supplier']?['name'] as String?,
-        createdAt: DateTime.parse(json['createdAt'] as String),
+        createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ?? DateTime.now(),
       );
 
   String get typeLabel {

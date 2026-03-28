@@ -27,7 +27,9 @@ class InventoryRepository {
         '/teams/$teamId/inventory/movements',
         queryParameters: params,
       );
-      return (response.data as List)
+      final data = response.data;
+      final list = data is List ? data : <dynamic>[];
+      return list
           .map((e) =>
               InventoryMovementModel.fromJson(e as Map<String, dynamic>))
           .toList();

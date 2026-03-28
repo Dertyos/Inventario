@@ -66,6 +66,6 @@ class ProductLotModel {
             : null,
         status: json['status'] as String? ?? 'active',
         notes: json['notes'] as String?,
-        createdAt: DateTime.parse(json['createdAt'] as String),
+        createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ?? DateTime.now(),
       );
 }

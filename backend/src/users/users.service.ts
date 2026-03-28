@@ -90,6 +90,10 @@ export class UsersService {
     await this.usersRepository.update(id, { password: hashedPassword });
   }
 
+  async updateConsent(id: string, consentDate: Date): Promise<void> {
+    await this.usersRepository.update(id, { consentGivenAt: consentDate });
+  }
+
   async createFromSocial(data: {
     email: string;
     firstName: string;

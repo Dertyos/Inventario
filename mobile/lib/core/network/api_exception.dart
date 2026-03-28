@@ -18,7 +18,7 @@ class ApiException implements Exception {
         case DioExceptionType.connectionTimeout:
         case DioExceptionType.sendTimeout:
         case DioExceptionType.receiveTimeout:
-          message = 'Tiempo de conexión agotado. Intenta de nuevo.';
+          message = 'No se pudo conectar. Verifica tu conexión a internet.';
         case DioExceptionType.connectionError:
           message = 'Sin conexión a internet.';
         case DioExceptionType.badResponse:
@@ -34,21 +34,35 @@ class ApiException implements Exception {
   static String _messageForStatus(int? status) {
     switch (status) {
       case 400:
-        return 'Datos inválidos.';
+        return 'Datos incorrectos. Revisa la información e intenta de nuevo.';
       case 401:
-        return 'Sesión expirada. Inicia sesión de nuevo.';
+        return 'Tu sesión expiró. Inicia sesión de nuevo.';
       case 403:
-        return 'No tienes permisos para esta acción.';
+        return 'No tienes permiso para realizar esta acción.';
       case 404:
-        return 'Recurso no encontrado.';
+        return 'No se encontró el recurso solicitado.';
       case 409:
-        return 'Conflicto: el recurso ya existe.';
+        return 'Ya existe un registro con estos datos.';
       case 422:
-        return 'Datos no procesables.';
+        return 'Los datos enviados no son válidos.';
+      case 429:
+        return 'Demasiadas solicitudes. Espera un momento.';
+      case 405:
+        return 'Operación no permitida.';
+      case 408:
+        return 'La solicitud tardó demasiado. Intenta de nuevo.';
+      case 413:
+        return 'Los datos enviados son demasiado grandes.';
       case 500:
         return 'Error del servidor. Intenta más tarde.';
+      case 502:
+        return 'El servidor no está disponible. Intenta en unos segundos.';
+      case 503:
+        return 'El servidor está en mantenimiento. Intenta en unos minutos.';
+      case 504:
+        return 'El servidor tardó demasiado en responder. Intenta más tarde.';
       default:
-        return 'Error inesperado ($status).';
+        return 'Error inesperado (código $status). Intenta de nuevo.';
     }
   }
 

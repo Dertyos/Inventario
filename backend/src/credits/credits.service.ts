@@ -2,7 +2,9 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
@@ -20,9 +22,12 @@ import {
   Notification,
   NotificationType,
 } from '../reminders/entities/notification.entity';
+import { Payment } from '../payments/entities/payment.entity';
 
 @Injectable()
 export class CreditsService {
+  private readonly logger = new Logger(CreditsService.name);
+
   constructor(
     @InjectRepository(CreditAccount)
     private readonly creditsRepository: Repository<CreditAccount>,
@@ -173,6 +178,19 @@ export class CreditsService {
 
     await this.installmentsRepository.save(installment);
 
+    // Create Payment audit record
+    const paymentRecord = this.installmentsRepository.manager.create(Payment, {
+      teamId,
+      saleId: credit.saleId,
+      amount: paymentAmount,
+      method: 'cash' as any,
+      reference: `Installment #${installment.installmentNumber} of credit ${creditId}`,
+      creditAccountId: creditId,
+      installmentId: installment.id,
+      paidAt: new Date(),
+    });
+    await this.installmentsRepository.manager.save(paymentRecord);
+
     // Update credit account totals
     credit.paidAmount = Number(credit.paidAmount) + paymentAmount;
 
@@ -217,11 +235,9 @@ export class CreditsService {
 
     switch (interestType) {
       case InterestType.FIXED:
-        // Fixed interest applied once to total
         totalWithInterest = totalAmount * (1 + interestRate / 100);
         break;
       case InterestType.MONTHLY:
-        // Compound monthly interest
         totalWithInterest =
           totalAmount * Math.pow(1 + interestRate / 100, numInstallments);
         break;
@@ -231,19 +247,75 @@ export class CreditsService {
         break;
     }
 
-    const baseAmount =
-      Math.floor((totalWithInterest / numInstallments) * 100) / 100;
-    const amounts: number[] = [];
-    let remaining = Math.round(totalWithInterest * 100) / 100;
+    // Banker's rounding: work in cents to avoid floating-point issues
+    const totalCents = Math.round(totalWithInterest * 100);
+    const baseCents = Math.floor(totalCents / numInstallments);
+    const remainder = totalCents - baseCents * numInstallments;
 
-    for (let i = 0; i < numInstallments - 1; i++) {
-      amounts.push(baseAmount);
-      remaining -= baseAmount;
+    const amounts: number[] = [];
+    for (let i = 0; i < numInstallments; i++) {
+      // Distribute remainder cents across the first N installments
+      const cents = baseCents + (i < remainder ? 1 : 0);
+      amounts.push(cents / 100);
     }
-    // Last installment gets the remainder to avoid rounding issues
-    amounts.push(Math.round(remaining * 100) / 100);
 
     return amounts;
+  }
+
+  /**
+   * Marks active credits as DEFAULTED when ALL installments are overdue
+   * and at least one is > 30 days past due.
+   */
+  async markDefaultedCredits(teamId: string): Promise<number> {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
+
+    const credits = await this.creditsRepository.find({
+      where: { teamId, status: CreditStatus.ACTIVE },
+      relations: ['creditInstallments'],
+    });
+
+    let marked = 0;
+    for (const credit of credits) {
+      const unpaid = credit.creditInstallments.filter(
+        (i) => i.status !== InstallmentStatus.PAID,
+      );
+      if (unpaid.length === 0) continue;
+
+      const allOverdue = unpaid.every((i) => i.dueDate < thirtyDaysAgoStr);
+      if (allOverdue) {
+        credit.status = CreditStatus.DEFAULTED;
+        await this.creditsRepository.save(credit);
+        marked++;
+      }
+    }
+    return marked;
+  }
+
+  @Cron('0 7 * * *')
+  async handleDefaultedCron(): Promise<void> {
+    this.logger.log('Running daily defaulted credits check...');
+    try {
+      // Get all team IDs with active credits
+      const activeCredits = await this.creditsRepository
+        .createQueryBuilder('credit')
+        .select('DISTINCT credit.teamId', 'teamId')
+        .where('credit.status = :status', { status: CreditStatus.ACTIVE })
+        .getRawMany();
+
+      let totalMarked = 0;
+      for (const { teamId } of activeCredits) {
+        try {
+          totalMarked += await this.markDefaultedCredits(teamId);
+        } catch (error) {
+          this.logger.error(`Failed to check defaulted credits for team ${teamId}: ${error.message}`);
+        }
+      }
+      this.logger.log(`Defaulted credits check completed. Marked ${totalMarked} as defaulted.`);
+    } catch (error) {
+      this.logger.error(`Defaulted credits cron failed: ${error.message}`);
+    }
   }
 
   private addMonths(dateStr: string, months: number): string {

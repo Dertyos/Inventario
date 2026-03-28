@@ -8,6 +8,7 @@ import {
   Res,
 } from '@nestjs/common';
 import { Response } from 'express';
+import { Throttle } from '@nestjs/throttler';
 import { ExportService } from './export.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TeamRolesGuard } from '../teams/guards/team-roles.guard';
@@ -21,6 +22,7 @@ import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 export class ExportController {
   constructor(private readonly exportService: ExportService) {}
 
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Get('sales')
   @RequirePermission('reports.export')
   async exportSales(
@@ -29,28 +31,30 @@ export class ExportController {
     @Query('endDate') endDate?: string,
     @Res() res?: Response,
   ) {
-    const csv = await this.exportService.exportSales(teamId, startDate, endDate);
+    const stream = await this.exportService.exportSalesStream(teamId, startDate, endDate);
     const now = new Date();
     const filename = `sales-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}.csv`;
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.send(csv);
+    stream.pipe(res);
   }
 
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Get('products')
   @RequirePermission('reports.export')
   async exportProducts(
     @Param('teamId', ParseUUIDPipe) teamId: string,
     @Res() res?: Response,
   ) {
-    const csv = await this.exportService.exportProducts(teamId);
+    const stream = await this.exportService.exportProductsStream(teamId);
     const now = new Date();
     const filename = `products-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}.csv`;
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.send(csv);
+    stream.pipe(res);
   }
 
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Get('inventory')
   @RequirePermission('reports.export')
   async exportInventory(
@@ -59,7 +63,7 @@ export class ExportController {
     @Query('endDate') endDate?: string,
     @Res() res?: Response,
   ) {
-    const csv = await this.exportService.exportInventory(
+    const stream = await this.exportService.exportInventoryStream(
       teamId,
       startDate,
       endDate,
@@ -68,6 +72,6 @@ export class ExportController {
     const filename = `inventory-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}.csv`;
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.send(csv);
+    stream.pipe(res);
   }
 }

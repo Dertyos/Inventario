@@ -27,6 +27,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
+  @Throttle({ short: { ttl: 60000, limit: 5 } })
   @ApiOperation({ summary: 'Registrar nuevo usuario' })
   register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
@@ -103,5 +104,11 @@ export class AuthController {
   @ApiOperation({ summary: 'Restablecer contraseña con token' })
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto.resetToken, dto.newPassword);
+  }
+
+  @Post('refresh')
+  @ApiOperation({ summary: 'Renovar tokens con refresh token' })
+  refreshTokens(@Body('refreshToken') refreshToken: string) {
+    return this.authService.refreshTokens(refreshToken);
   }
 }

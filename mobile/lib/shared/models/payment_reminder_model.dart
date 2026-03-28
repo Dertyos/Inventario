@@ -53,11 +53,11 @@ class PaymentReminderModel {
       status: json['status'] as String? ?? 'pending',
       scheduledDate: json['scheduledDate'] as String,
       sentAt: json['sentAt'] != null
-          ? DateTime.parse(json['sentAt'] as String)
+          ? DateTime.tryParse(json['sentAt']?.toString() ?? '')
           : null,
       message: json['message'] as String?,
       errorMessage: json['errorMessage'] as String?,
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ?? DateTime.now(),
       customerName: customer?['name'] as String?,
       customerPhone: customer?['phone'] as String?,
       installmentAmount: _toDouble(installment?['amount']),

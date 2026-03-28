@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -15,10 +16,85 @@ final pendingSalesCountProvider = FutureProvider<int>((ref) async {
 /// Data is saved as JSON lists in SharedPreferences.
 class PendingSalesService {
   static const _salesKey = 'pending_sales';
+  static const _salesBackupKey = 'pending_sales_backup';
   static const _opsKey = 'pending_operations';
+  static const _opsBackupKey = 'pending_operations_backup';
   static const _productsCacheKey = 'products_cache';
   static const _customersCacheKey = 'customers_cache';
   static const _cacheTimestampKey = 'cache_timestamp';
+
+  /// Saves a backup of the given key before writing.
+  Future<void> _backupBeforeWrite(
+      SharedPreferences prefs, String key, String backupKey) async {
+    try {
+      final current = prefs.getStringList(key);
+      if (current != null) {
+        await prefs.setStringList(backupKey, current);
+      }
+    } catch (e) {
+      developer.log('PendingSalesService: backup failed for $key: $e',
+          name: 'offline');
+    }
+  }
+
+  /// Validates that every entry in the list is valid JSON with a _localId.
+  List<String> _validateQueue(List<String> queue) {
+    final valid = <String>[];
+    for (final entry in queue) {
+      try {
+        final map = jsonDecode(entry) as Map<String, dynamic>;
+        if (map.containsKey('_localId')) {
+          valid.add(entry);
+        } else {
+          developer.log(
+              'PendingSalesService: dropped entry without _localId',
+              name: 'offline');
+        }
+      } catch (e) {
+        developer.log(
+            'PendingSalesService: dropped corrupt entry: $e',
+            name: 'offline');
+      }
+    }
+    return valid;
+  }
+
+  /// Attempts to recover pending data from backup if primary key is corrupt.
+  Future<int> recoverPending() async {
+    final prefs = await SharedPreferences.getInstance();
+    int recovered = 0;
+
+    for (final entry in [
+      (_salesKey, _salesBackupKey),
+      (_opsKey, _opsBackupKey),
+    ]) {
+      final key = entry.$1;
+      final backupKey = entry.$2;
+      try {
+        final queue = prefs.getStringList(key) ?? [];
+        final validated = _validateQueue(queue);
+        if (validated.length < queue.length) {
+          // Some entries were corrupt — try backup
+          final backup = prefs.getStringList(backupKey);
+          if (backup != null) {
+            final validBackup = _validateQueue(backup);
+            if (validBackup.length > validated.length) {
+              await prefs.setStringList(key, validBackup);
+              recovered += validBackup.length - validated.length;
+              developer.log(
+                  'PendingSalesService: recovered ${validBackup.length - validated.length} entries for $key from backup',
+                  name: 'offline');
+            }
+          }
+        }
+      } catch (e) {
+        developer.log(
+            'PendingSalesService: recovery failed for $key: $e',
+            name: 'offline');
+      }
+    }
+    return recovered;
+  }
 
   // ---------------------------------------------------------------------------
   // Pending sales (existing)
@@ -26,41 +102,69 @@ class PendingSalesService {
 
   Future<void> savePendingSale(
       String teamId, Map<String, dynamic> data) async {
-    final prefs = await SharedPreferences.getInstance();
-    final queue = prefs.getStringList(_salesKey) ?? [];
-    final entry = jsonEncode({
-      ...data,
-      '_localId': const Uuid().v4(),
-      '_teamId': teamId,
-      '_createdAt': DateTime.now().toIso8601String(),
-    });
-    queue.add(entry);
-    await prefs.setStringList(_salesKey, queue);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await _backupBeforeWrite(prefs, _salesKey, _salesBackupKey);
+      final queue = _validateQueue(prefs.getStringList(_salesKey) ?? []);
+      final entry = jsonEncode({
+        ...data,
+        '_localId': const Uuid().v4(),
+        '_teamId': teamId,
+        '_createdAt': DateTime.now().toIso8601String(),
+      });
+      queue.add(entry);
+      await prefs.setStringList(_salesKey, queue);
+    } catch (e) {
+      developer.log('PendingSalesService: savePendingSale failed: $e',
+          name: 'offline');
+      rethrow;
+    }
   }
 
   Future<List<Map<String, dynamic>>> getPending() async {
-    final prefs = await SharedPreferences.getInstance();
-    final queue = prefs.getStringList(_salesKey) ?? [];
-    return queue
-        .map((s) => jsonDecode(s) as Map<String, dynamic>)
-        .toList();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final queue = _validateQueue(prefs.getStringList(_salesKey) ?? []);
+      return queue
+          .map((s) => jsonDecode(s) as Map<String, dynamic>)
+          .toList();
+    } catch (e) {
+      developer.log('PendingSalesService: getPending failed: $e',
+          name: 'offline');
+      return [];
+    }
   }
 
   Future<int> getPendingCount() async {
-    final prefs = await SharedPreferences.getInstance();
-    final salesCount = (prefs.getStringList(_salesKey) ?? []).length;
-    final opsCount = (prefs.getStringList(_opsKey) ?? []).length;
-    return salesCount + opsCount;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final salesCount =
+          _validateQueue(prefs.getStringList(_salesKey) ?? []).length;
+      final opsCount =
+          _validateQueue(prefs.getStringList(_opsKey) ?? []).length;
+      return salesCount + opsCount;
+    } catch (e) {
+      developer.log('PendingSalesService: getPendingCount failed: $e',
+          name: 'offline');
+      return 0;
+    }
   }
 
   Future<void> removePendingSale(String localId) async {
-    final prefs = await SharedPreferences.getInstance();
-    final queue = prefs.getStringList(_salesKey) ?? [];
-    queue.removeWhere((s) {
-      final map = jsonDecode(s) as Map<String, dynamic>;
-      return map['_localId'] == localId;
-    });
-    await prefs.setStringList(_salesKey, queue);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await _backupBeforeWrite(prefs, _salesKey, _salesBackupKey);
+      final queue = _validateQueue(prefs.getStringList(_salesKey) ?? []);
+      queue.removeWhere((s) {
+        final map = jsonDecode(s) as Map<String, dynamic>;
+        return map['_localId'] == localId;
+      });
+      await prefs.setStringList(_salesKey, queue);
+    } catch (e) {
+      developer.log('PendingSalesService: removePendingSale failed: $e',
+          name: 'offline');
+      rethrow;
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -73,36 +177,58 @@ class PendingSalesService {
     required String endpoint, // '/teams/$teamId/products'
     required Map<String, dynamic> data,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final queue = prefs.getStringList(_opsKey) ?? [];
-    final entry = jsonEncode({
-      '_localId': const Uuid().v4(),
-      '_teamId': teamId,
-      '_type': type,
-      '_endpoint': endpoint,
-      '_data': data,
-      '_createdAt': DateTime.now().toIso8601String(),
-    });
-    queue.add(entry);
-    await prefs.setStringList(_opsKey, queue);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await _backupBeforeWrite(prefs, _opsKey, _opsBackupKey);
+      final queue = _validateQueue(prefs.getStringList(_opsKey) ?? []);
+      final entry = jsonEncode({
+        '_localId': const Uuid().v4(),
+        '_teamId': teamId,
+        '_type': type,
+        '_endpoint': endpoint,
+        '_data': data,
+        '_createdAt': DateTime.now().toIso8601String(),
+      });
+      queue.add(entry);
+      await prefs.setStringList(_opsKey, queue);
+    } catch (e) {
+      developer.log('PendingSalesService: savePendingOperation failed: $e',
+          name: 'offline');
+      rethrow;
+    }
   }
 
   Future<List<Map<String, dynamic>>> getPendingOperations() async {
-    final prefs = await SharedPreferences.getInstance();
-    final queue = prefs.getStringList(_opsKey) ?? [];
-    return queue
-        .map((s) => jsonDecode(s) as Map<String, dynamic>)
-        .toList();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final queue = _validateQueue(prefs.getStringList(_opsKey) ?? []);
+      return queue
+          .map((s) => jsonDecode(s) as Map<String, dynamic>)
+          .toList();
+    } catch (e) {
+      developer.log(
+          'PendingSalesService: getPendingOperations failed: $e',
+          name: 'offline');
+      return [];
+    }
   }
 
   Future<void> removePendingOperation(String localId) async {
-    final prefs = await SharedPreferences.getInstance();
-    final queue = prefs.getStringList(_opsKey) ?? [];
-    queue.removeWhere((s) {
-      final map = jsonDecode(s) as Map<String, dynamic>;
-      return map['_localId'] == localId;
-    });
-    await prefs.setStringList(_opsKey, queue);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await _backupBeforeWrite(prefs, _opsKey, _opsBackupKey);
+      final queue = _validateQueue(prefs.getStringList(_opsKey) ?? []);
+      queue.removeWhere((s) {
+        final map = jsonDecode(s) as Map<String, dynamic>;
+        return map['_localId'] == localId;
+      });
+      await prefs.setStringList(_opsKey, queue);
+    } catch (e) {
+      developer.log(
+          'PendingSalesService: removePendingOperation failed: $e',
+          name: 'offline');
+      rethrow;
+    }
   }
 
   // ---------------------------------------------------------------------------

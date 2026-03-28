@@ -81,8 +81,9 @@ export class PurchasesController {
   async cancel(
     @Param('teamId', ParseUUIDPipe) teamId: string,
     @Param('id', ParseUUIDPipe) id: string,
+    @Request() req,
   ) {
-    const result = await this.purchasesService.cancel(teamId, id);
+    const result = await this.purchasesService.cancel(teamId, id, req.user.id);
     await this.cacheManager.clear();
     return result;
   }

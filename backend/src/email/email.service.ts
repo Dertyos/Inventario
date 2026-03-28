@@ -80,22 +80,34 @@ export class EmailService {
     to: string,
     subject: string,
     html: string,
+    retries = 3,
   ): Promise<void> {
     if (!this.resend) {
       this.logger.warn(`Email not sent (no API key): to=${to} subject=${subject}`);
       return;
     }
 
-    try {
-      await this.resend.emails.send({
-        from: this.from,
-        to,
-        subject,
-        html,
-      });
-      this.logger.log(`Email sent to ${to}: ${subject}`);
-    } catch (error) {
-      this.logger.error(`Failed to send email to ${to}: ${error.message}`);
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        await this.resend.emails.send({
+          from: this.from,
+          to,
+          subject,
+          html,
+        });
+        this.logger.log(`Email sent to ${to}: ${subject}`);
+        return;
+      } catch (error) {
+        this.logger.error(
+          `Failed to send email to ${to} (attempt ${attempt}/${retries}): ${error.message}`,
+        );
+        if (attempt < retries) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, Math.pow(2, attempt) * 1000),
+          );
+        }
+      }
     }
+    this.logger.error(`Email permanently failed after ${retries} attempts: to=${to} subject=${subject}`);
   }
 }

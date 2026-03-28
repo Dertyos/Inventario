@@ -54,7 +54,9 @@ class CreditsRepository {
         '/teams/$teamId/credits',
         queryParameters: params,
       );
-      return (response.data as List)
+      final data = response.data;
+      final list = data is List ? data : <dynamic>[];
+      return list
           .map((e) =>
               CreditAccountModel.fromJson(e as Map<String, dynamic>))
           .toList();
@@ -66,7 +68,9 @@ class CreditsRepository {
   Future<List<CreditInstallmentModel>> getOverdue(String teamId) async {
     try {
       final response = await _dio.get('/teams/$teamId/credits/overdue');
-      return (response.data as List)
+      final data = response.data;
+      final list = data is List ? data : <dynamic>[];
+      return list
           .map((e) =>
               CreditInstallmentModel.fromJson(e as Map<String, dynamic>))
           .toList();

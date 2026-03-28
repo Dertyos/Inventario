@@ -35,7 +35,9 @@ class RemindersRepository {
         '/teams/$teamId/reminders',
         queryParameters: params,
       );
-      return (response.data as List)
+      final data = response.data;
+      final list = data is List ? data : <dynamic>[];
+      return list
           .map((e) =>
               PaymentReminderModel.fromJson(e as Map<String, dynamic>))
           .toList();

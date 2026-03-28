@@ -30,6 +30,6 @@ class CustomerModel {
         documentNumber: json['documentNumber'] as String?,
         address: json['address'] as String?,
         notes: json['notes'] as String?,
-        createdAt: DateTime.parse(json['createdAt'] as String),
+        createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ?? DateTime.now(),
       );
 }

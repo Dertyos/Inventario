@@ -34,7 +34,9 @@ class PurchasesRepository {
         '/teams/$teamId/purchases',
         queryParameters: params,
       );
-      return (response.data as List)
+      final data = response.data;
+      final list = data is List ? data : <dynamic>[];
+      return list
           .map((e) => PurchaseModel.fromJson(e as Map<String, dynamic>))
           .toList();
     } on DioException catch (e) {

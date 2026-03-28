@@ -448,6 +448,67 @@ export class AiService {
       .trim();
   }
 
+  /**
+   * Levenshtein distance for fuzzy string matching.
+   */
+  private levenshteinDistance(a: string, b: string): number {
+    const matrix: number[][] = [];
+    for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+    for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+
+    for (let i = 1; i <= b.length; i++) {
+      for (let j = 1; j <= a.length; j++) {
+        if (b.charAt(i - 1) === a.charAt(j - 1)) {
+          matrix[i][j] = matrix[i - 1][j - 1];
+        } else {
+          matrix[i][j] = Math.min(
+            matrix[i - 1][j - 1] + 1,
+            matrix[i][j - 1] + 1,
+            matrix[i - 1][j] + 1,
+          );
+        }
+      }
+    }
+    return matrix[b.length][a.length];
+  }
+
+  /**
+   * Find best fuzzy match from a list of items.
+   * Returns the item with the lowest Levenshtein distance if within threshold.
+   */
+  private fuzzyMatch<T extends { name: string }>(
+    input: string,
+    items: T[],
+    maxDistance = 3,
+  ): T | undefined {
+    const normalized = input.toLowerCase().trim();
+
+    // Try exact substring match first
+    const exactMatch = items.find(
+      (item) =>
+        item.name.toLowerCase().includes(normalized) ||
+        normalized.includes(item.name.toLowerCase()),
+    );
+    if (exactMatch) return exactMatch;
+
+    // Fall back to Levenshtein distance
+    let bestMatch: T | undefined;
+    let bestDistance = maxDistance + 1;
+
+    for (const item of items) {
+      const distance = this.levenshteinDistance(
+        normalized,
+        item.name.toLowerCase(),
+      );
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestMatch = item;
+      }
+    }
+
+    return bestDistance <= maxDistance ? bestMatch : undefined;
+  }
+
   /** Match parsed product names against the actual DB catalog. */
   private matchAndValidateItems(
     items: Array<{
@@ -458,21 +519,17 @@ export class AiService {
     products: Array<{ id: string; name: string; price: number; sku: string }>,
   ): ParsedTransactionItem[] {
     return items.map((item) => {
-      // Clamp quantity to reasonable bounds
       const quantity = Math.max(1, Math.min(item.quantity, 10000));
+      const unitPrice = item.unit_price != null && item.unit_price >= 0
+        ? item.unit_price
+        : null;
 
-      // Fuzzy match by substring (case-insensitive)
-      const normalizedInput = item.product_name.toLowerCase();
-      const match = products.find(
-        (p) =>
-          p.name.toLowerCase().includes(normalizedInput) ||
-          normalizedInput.includes(p.name.toLowerCase()),
-      );
+      const match = this.fuzzyMatch(item.product_name, products);
 
       return {
         product_name: item.product_name,
         quantity,
-        unit_price: item.unit_price ?? match?.price ?? null,
+        unit_price: unitPrice ?? match?.price ?? null,
         matchedProductId: match?.id ?? null,
         matchedName: match?.name ?? item.product_name,
       };

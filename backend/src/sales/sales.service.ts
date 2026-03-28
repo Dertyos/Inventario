@@ -16,6 +16,9 @@ import { CreateSaleDto } from './dto/create-sale.dto';
 import { UpdateSaleDto } from './dto/update-sale.dto';
 import { PaymentMethod } from './entities/sale.entity';
 import { CreditsService } from '../credits/credits.service';
+import { CreditAccount, CreditStatus } from '../credits/entities/credit-account.entity';
+import { CreditInstallment } from '../credits/entities/credit-installment.entity';
+import { Customer } from '../customers/entities/customer.entity';
 
 @Injectable()
 export class SalesService {
@@ -101,6 +104,23 @@ export class SalesService {
         await queryRunner.manager.save(movement);
       }
 
+      // Validate customer belongs to team
+      if (createSaleDto.customerId) {
+        const customer = await queryRunner.manager.findOne(Customer, {
+          where: { id: createSaleDto.customerId, teamId },
+        });
+        if (!customer) {
+          throw new BadRequestException('El cliente no pertenece a este equipo');
+        }
+      }
+
+      // Validate creditPaidAmount doesn't exceed subtotal
+      if (createSaleDto.creditPaidAmount != null && createSaleDto.creditPaidAmount > subtotal) {
+        throw new BadRequestException(
+          `El abono (${createSaleDto.creditPaidAmount}) no puede ser mayor al total de la venta (${subtotal})`,
+        );
+      }
+
       // Create sale
       const sale = queryRunner.manager.create(Sale, {
         teamId,
@@ -142,30 +162,60 @@ export class SalesService {
         { referenceId: savedSale.id },
       );
 
-      await queryRunner.commitTransaction();
-
-      // Auto-create credit account if credit sale with customer
+      // Auto-create credit account if credit sale with customer (INSIDE transaction)
       if (createSaleDto.paymentMethod === PaymentMethod.CREDIT && createSaleDto.customerId) {
-        try {
-          const interestRate = createSaleDto.creditInterestRate || 0;
-          let interestType = 'none';
-          if (interestRate > 0) {
-            interestType = createSaleDto.creditFrequency === 'monthly' ? 'monthly' : 'fixed';
-          }
-          await this.creditsService.create(teamId, {
-            saleId: savedSale.id,
-            customerId: createSaleDto.customerId,
-            totalAmount: subtotal,
-            installments: createSaleDto.creditInstallments || 1,
-            interestRate: interestRate,
-            interestType: interestType as any,
-            startDate: new Date().toISOString().split('T')[0],
+        const interestRate = createSaleDto.creditInterestRate || 0;
+        let interestType = 'none';
+        if (interestRate > 0) {
+          interestType = createSaleDto.creditFrequency === 'monthly' ? 'monthly' : 'fixed';
+        }
+
+        const numInstallments = createSaleDto.creditInstallments || 1;
+        const startDate = new Date().toISOString().split('T')[0];
+
+        // Calculate total with interest
+        let totalWithInterest: number;
+        if (interestType === 'fixed') {
+          totalWithInterest = subtotal * (1 + interestRate / 100);
+        } else if (interestType === 'monthly') {
+          totalWithInterest = subtotal * Math.pow(1 + interestRate / 100, numInstallments);
+        } else {
+          totalWithInterest = subtotal;
+        }
+
+        // Banker's rounding for installments
+        const totalCents = Math.round(totalWithInterest * 100);
+        const baseCents = Math.floor(totalCents / numInstallments);
+        const remainder = totalCents - baseCents * numInstallments;
+
+        const creditAccount = queryRunner.manager.create(CreditAccount, {
+          teamId,
+          saleId: savedSale.id,
+          customerId: createSaleDto.customerId,
+          totalAmount: totalWithInterest,
+          interestRate,
+          interestType: interestType as any,
+          installments: numInstallments,
+          startDate,
+        });
+        const savedCredit = await queryRunner.manager.save(creditAccount);
+
+        for (let i = 0; i < numInstallments; i++) {
+          const amount = (baseCents + (i < remainder ? 1 : 0)) / 100;
+          const dueDate = new Date(startDate);
+          dueDate.setMonth(dueDate.getMonth() + i + 1);
+
+          const installment = queryRunner.manager.create(CreditInstallment, {
+            creditAccountId: savedCredit.id,
+            installmentNumber: i + 1,
+            amount,
+            dueDate: dueDate.toISOString().split('T')[0],
           });
-        } catch (error) {
-          // Credit creation is non-blocking - sale is already committed
-          console.error('Failed to create credit account:', error.message);
+          await queryRunner.manager.save(installment);
         }
       }
+
+      await queryRunner.commitTransaction();
 
       return this.findOne(teamId, savedSale.id);
     } catch (error) {
@@ -291,6 +341,15 @@ export class SalesService {
 
       sale.status = SaleStatus.CANCELLED;
       await queryRunner.manager.save(sale);
+
+      // Cancel associated credit account if exists
+      const creditAccount = await queryRunner.manager.findOne(CreditAccount, {
+        where: { saleId: sale.id, teamId },
+      });
+      if (creditAccount && creditAccount.status !== CreditStatus.PAID) {
+        creditAccount.status = CreditStatus.DEFAULTED;
+        await queryRunner.manager.save(creditAccount);
+      }
 
       await queryRunner.commitTransaction();
       return this.findOne(teamId, id);

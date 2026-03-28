@@ -9,6 +9,7 @@ import '../../../../shared/providers/auth_provider.dart';
 import '../../../customers/presentation/screens/customers_screen.dart';
 import '../../../products/presentation/screens/products_screen.dart';
 import '../../data/sales_repository.dart';
+import '../../../dashboard/presentation/screens/dashboard_screen.dart';
 import 'sales_screen.dart';
 
 class CreateSaleScreen extends ConsumerStatefulWidget {
@@ -334,6 +335,19 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
       return;
     }
 
+    // Validate payment amounts for non-credit sales
+    if (!_isCredit && _enteredAmount > 0 && _enteredAmount < _total) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'El monto ingresado (\$${_enteredAmount.toStringAsFixed(0)}) es menor al total (\$${_total.toStringAsFixed(0)})',
+          ),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+      return;
+    }
+
     // Confirmation dialog
     final confirmed = await showDialog<bool>(
       context: context,
@@ -393,6 +407,7 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
 
       ref.invalidate(salesProvider(teamId));
       ref.invalidate(productsProvider(teamId));
+      ref.invalidate(dashboardProvider(teamId));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Venta registrada')),
@@ -687,12 +702,12 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
                         ButtonSegment(
                           value: false,
                           icon: Icon(Icons.payments_outlined),
-                          label: Text('Contado'),
+                          label: Text('Paga hoy'),
                         ),
                         ButtonSegment(
                           value: true,
                           icon: Icon(Icons.calendar_month_outlined),
-                          label: Text('Crédito'),
+                          label: Text('Paga después'),
                         ),
                       ],
                       selected: {_isCredit},

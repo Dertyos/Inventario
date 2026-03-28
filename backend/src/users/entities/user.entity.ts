@@ -54,6 +54,9 @@ export class User {
   @Column({ default: 0 })
   resetAttempts: number;
 
+  @Column({ type: 'timestamp', nullable: true })
+  consentGivenAt: Date;
+
   @Column({ default: true })
   isActive: boolean;
 
