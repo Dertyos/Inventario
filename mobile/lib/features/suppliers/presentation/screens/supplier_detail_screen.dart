@@ -4,26 +4,13 @@ import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/whatsapp_utils.dart';
 import '../../../../shared/models/inventory_movement_model.dart';
-import '../../../../shared/models/purchase_model.dart';
 import '../../../../shared/models/supplier_model.dart';
 import '../../../../shared/providers/auth_provider.dart';
 import '../../../../shared/widgets/app_modal.dart';
-import '../../../../shared/widgets/status_badge.dart';
 import '../../../inventory/data/inventory_repository.dart';
-import '../../../purchases/data/purchases_repository.dart';
 import '../../data/suppliers_repository.dart';
 
-final _currency =
-    NumberFormat.currency(locale: 'es_CO', symbol: '\$', decimalDigits: 0);
 final _date = DateFormat('d MMM yyyy', 'es');
-
-final _supplierPurchasesProvider = FutureProvider.autoDispose
-    .family<List<PurchaseModel>, ({String teamId, String supplierId})>(
-        (ref, params) {
-  return ref
-      .read(purchasesRepositoryProvider)
-      .getPurchases(params.teamId, supplierId: params.supplierId);
-});
 
 final _supplierMovementsProvider = FutureProvider.autoDispose
     .family<List<InventoryMovementModel>, ({String teamId, String supplierId})>(
@@ -187,9 +174,6 @@ class _SupplierBody extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final teamId = ref.watch(authProvider).teamId;
     final teamName = ref.watch(authProvider).activeTeam?.name ?? '';
-    final purchasesAsync = ref.watch(
-      _supplierPurchasesProvider((teamId: teamId, supplierId: supplier.id)),
-    );
     final movementsAsync = ref.watch(
       _supplierMovementsProvider((teamId: teamId, supplierId: supplier.id)),
     );
@@ -200,7 +184,7 @@ class _SupplierBody extends ConsumerWidget {
       onRefresh: () async {
         ref.invalidate(supplierDetailProvider(
             (teamId: teamId, supplierId: supplier.id)));
-        ref.invalidate(_supplierPurchasesProvider(
+        ref.invalidate(_supplierMovementsProvider(
             (teamId: teamId, supplierId: supplier.id)));
       },
       child: ListView(
@@ -313,64 +297,6 @@ class _SupplierBody extends ConsumerWidget {
           ),
           const SizedBox(height: AppSpacing.lg),
 
-          // ── Historial de compras ───────────────────────────────
-          Text('Historial de compras',
-              style:
-                  textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
-          const SizedBox(height: AppSpacing.sm),
-
-          purchasesAsync.when(
-            loading: () => const Center(
-              child: Padding(
-                padding: EdgeInsets.all(AppSpacing.lg),
-                child: CircularProgressIndicator(),
-              ),
-            ),
-            error: (e, _) => Center(
-              child: Text('Error al cargar compras',
-                  style: TextStyle(color: colorScheme.error)),
-            ),
-            data: (purchases) {
-              if (purchases.isEmpty) {
-                return Padding(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-                  child: Center(
-                    child: Text(
-                      'Sin compras registradas',
-                      style: textTheme.bodyMedium
-                          ?.copyWith(color: Colors.grey.shade500),
-                    ),
-                  ),
-                );
-              }
-
-              final totalSpent =
-                  purchases.fold<double>(0, (sum, p) => sum + p.total);
-
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      _StatChip(
-                          label: '${purchases.length} órdenes',
-                          icon: Icons.shopping_bag_outlined),
-                      const SizedBox(width: AppSpacing.sm),
-                      _StatChip(
-                          label: _currency.format(totalSpent),
-                          icon: Icons.attach_money_rounded),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  ...purchases.map((p) => _PurchaseTile(purchase: p)),
-                ],
-              );
-            },
-          ),
-
-          const SizedBox(height: AppSpacing.lg),
-
           // ── Movimientos de inventario ─────────────────────────
           Text('Movimientos de inventario',
               style:
@@ -442,103 +368,6 @@ class _InfoRow extends StatelessWidget {
                     ),
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StatChip extends StatelessWidget {
-  final String label;
-  final IconData icon;
-
-  const _StatChip({required this.label, required this.icon});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon,
-              size: 14,
-              color: Theme.of(context).colorScheme.onSurfaceVariant),
-          const SizedBox(width: 4),
-          Text(label,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  )),
-        ],
-      ),
-    );
-  }
-}
-
-class _PurchaseTile extends StatelessWidget {
-  final PurchaseModel purchase;
-
-  const _PurchaseTile({required this.purchase});
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
-    StatusBadge badge;
-    switch (purchase.status) {
-      case 'received':
-        badge = StatusBadge.success('Recibida');
-        break;
-      case 'cancelled':
-        badge = StatusBadge.danger('Cancelada');
-        break;
-      default:
-        badge = StatusBadge.warning('Pendiente');
-    }
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: ListTile(
-        leading: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.tertiaryContainer,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(Icons.shopping_bag_outlined,
-              size: 18,
-              color: Theme.of(context).colorScheme.onTertiaryContainer),
-        ),
-        title: Text(
-          purchase.purchaseNumber.isNotEmpty
-              ? '#${purchase.purchaseNumber}'
-              : 'Orden',
-          style: textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Text(
-          _date.format(purchase.createdAt),
-          style: textTheme.bodySmall?.copyWith(color: Colors.grey.shade500),
-        ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              _currency.format(purchase.total),
-              style: textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
-            const SizedBox(height: 2),
-            badge,
           ],
         ),
       ),
