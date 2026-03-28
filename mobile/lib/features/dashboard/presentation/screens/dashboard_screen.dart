@@ -333,7 +333,9 @@ class DashboardScreen extends ConsumerWidget {
                 ),
               ],
 
-              const SizedBox(height: AppSpacing.xxl),
+              // Extra bottom padding so content clears the expanded FAB
+              // (3 actions ≈ 48px each + main FAB 56px + margins ≈ 220px)
+              const SizedBox(height: 240),
             ],
           );
           },

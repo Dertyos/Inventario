@@ -101,22 +101,23 @@ class _ExpandableFabState extends State<ExpandableFab>
           ),
         ),
 
-        // Main FAB - always the same widget to keep alignment stable
-        FloatingActionButton.extended(
-          heroTag: 'expandable_fab',
-          onPressed: _toggle,
-          icon: AnimatedRotation(
-            turns: _open ? 0.125 : 0,
-            duration: AppAnimations.normal,
-            child: Icon(_open ? Icons.close : Icons.add),
-          ),
-          label: AnimatedSwitcher(
-            duration: AppAnimations.fast,
-            child: Text(
-              _open ? 'Cerrar' : 'Acciones',
-              key: ValueKey(_open),
-            ),
-          ),
+        // Main FAB — icon-only when collapsed, extended when open
+        AnimatedSwitcher(
+          duration: AppAnimations.fast,
+          child: _open
+              ? FloatingActionButton.extended(
+                  key: const ValueKey(true),
+                  heroTag: null,
+                  onPressed: _toggle,
+                  icon: const Icon(Icons.close),
+                  label: const Text('Cerrar'),
+                )
+              : FloatingActionButton(
+                  key: const ValueKey(false),
+                  heroTag: null,
+                  onPressed: _toggle,
+                  child: const Icon(Icons.add),
+                ),
         ),
       ],
     );
