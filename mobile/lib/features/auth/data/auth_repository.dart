@@ -30,7 +30,7 @@ class AuthRepository {
         'lastName': lastName,
       });
       final auth = AuthResponse.fromJson(response.data);
-      await _storage.saveToken(auth.accessToken);
+      await _saveTokens(auth);
       return auth;
     } on DioException catch (e) {
       throw ApiException.fromDioError(e);
@@ -47,7 +47,7 @@ class AuthRepository {
         'password': password,
       });
       final auth = AuthResponse.fromJson(response.data);
-      await _storage.saveToken(auth.accessToken);
+      await _saveTokens(auth);
       return auth;
     } on DioException catch (e) {
       throw ApiException.fromDioError(e);
@@ -108,7 +108,7 @@ class AuthRepository {
 
       final response = await _dio.post('/auth/apple', data: data);
       final auth = AuthResponse.fromJson(response.data);
-      await _storage.saveToken(auth.accessToken);
+      await _saveTokens(auth);
       return auth;
     } on DioException catch (e) {
       throw ApiException.fromDioError(e);
@@ -121,7 +121,7 @@ class AuthRepository {
         'idToken': idToken,
       });
       final auth = AuthResponse.fromJson(response.data);
-      await _storage.saveToken(auth.accessToken);
+      await _saveTokens(auth);
       return auth;
     } on DioException catch (e) {
       throw ApiException.fromDioError(e);
@@ -142,7 +142,38 @@ class AuthRepository {
     }
   }
 
+  /// Refreshes tokens using the stored refresh token.
+  /// Returns new tokens or null if refresh fails.
+  Future<AuthResponse?> refreshTokens() async {
+    final refreshToken = await _storage.getRefreshToken();
+    if (refreshToken == null) return null;
+
+    try {
+      final response = await _dio.post('/auth/refresh', data: {
+        'refreshToken': refreshToken,
+      });
+      final data = response.data as Map<String, dynamic>;
+      // Refresh endpoint returns tokens only (no user)
+      final accessToken = data['accessToken'] as String;
+      final newRefreshToken = data['refreshToken'] as String?;
+      await _storage.saveToken(accessToken);
+      if (newRefreshToken != null) {
+        await _storage.saveRefreshToken(newRefreshToken);
+      }
+      return null; // Tokens saved, no full AuthResponse needed
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> logout() async {
     await _storage.clearAll();
+  }
+
+  Future<void> _saveTokens(AuthResponse auth) async {
+    await _storage.saveToken(auth.accessToken);
+    if (auth.refreshToken != null) {
+      await _storage.saveRefreshToken(auth.refreshToken!);
+    }
   }
 }

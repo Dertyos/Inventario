@@ -24,6 +24,7 @@ final dioProvider = Provider<Dio>((ref) {
   );
   dio.interceptors.add(AuthInterceptor(
     ref.read(secureStorageProvider),
+    dio,
     onSessionExpired: () => _onSessionExpired?.call(),
   ));
   dio.interceptors.add(RetryInterceptor(dio: dio));

@@ -39,11 +39,17 @@ class UserModel {
 class AuthResponse {
   final UserModel user;
   final String accessToken;
+  final String? refreshToken;
 
-  const AuthResponse({required this.user, required this.accessToken});
+  const AuthResponse({
+    required this.user,
+    required this.accessToken,
+    this.refreshToken,
+  });
 
   factory AuthResponse.fromJson(Map<String, dynamic> json) => AuthResponse(
         user: UserModel.fromJson(json['user'] as Map<String, dynamic>),
         accessToken: json['accessToken'] as String,
+        refreshToken: json['refreshToken'] as String?,
       );
 }
