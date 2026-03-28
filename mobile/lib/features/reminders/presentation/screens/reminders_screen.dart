@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/whatsapp_utils.dart';
 import '../../../../shared/models/payment_reminder_model.dart';
 import '../../../../shared/providers/auth_provider.dart';
 import '../../../../shared/widgets/empty_state.dart';
@@ -128,6 +129,7 @@ class _RemindersScreenState extends ConsumerState<RemindersScreen> {
                           reminder: reminders[index],
                           currencyFormat: _currencyFormat,
                           dateFormat: _dateFormat,
+                          teamName: ref.read(authProvider).activeTeam?.name ?? '',
                         ),
                   ),
                 );
@@ -192,11 +194,13 @@ class _ReminderTile extends StatelessWidget {
   final PaymentReminderModel reminder;
   final NumberFormat currencyFormat;
   final DateFormat dateFormat;
+  final String teamName;
 
   const _ReminderTile({
     required this.reminder,
     required this.currencyFormat,
     required this.dateFormat,
+    required this.teamName,
   });
 
   @override
@@ -294,6 +298,36 @@ class _ReminderTile extends StatelessWidget {
                         ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                if (reminder.channel == 'whatsapp' &&
+                    reminder.status == 'pending' &&
+                    reminder.customerPhone != null) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF25D366),
+                        foregroundColor: Colors.white,
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.sm),
+                      ),
+                      icon: const Icon(Icons.chat_rounded, size: 16),
+                      label: const Text('Abrir en WhatsApp'),
+                      onPressed: () {
+                        final dueDate = reminder.installmentDueDate != null
+                            ? _formatDate(reminder.installmentDueDate!)
+                            : 'próximamente';
+                        final amount =
+                            currencyFormat.format(reminder.remainingAmount);
+                        final msg =
+                            'Hola ${reminder.customerName ?? ''}, tienes una cuota de $amount venciendo el $dueDate. Por favor comunícate con nosotros. — $teamName';
+                        openWhatsApp(
+                            context, reminder.customerPhone!, msg);
+                      },
+                    ),
                   ),
                 ],
               ],

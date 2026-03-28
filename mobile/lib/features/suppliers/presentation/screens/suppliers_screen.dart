@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/models/supplier_model.dart';
 import '../../../../shared/providers/auth_provider.dart';
@@ -7,6 +8,7 @@ import '../../../../shared/widgets/app_list_tile.dart';
 import '../../../../shared/widgets/app_modal.dart';
 import '../../../../shared/widgets/app_search_field.dart';
 import '../../../../shared/widgets/empty_state.dart';
+import '../../../../shared/widgets/wa_icon_button.dart';
 import '../../data/suppliers_repository.dart';
 
 class SuppliersScreen extends ConsumerStatefulWidget {
@@ -116,7 +118,7 @@ class _SuppliersScreenState extends ConsumerState<SuppliersScreen> {
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text('Error: $e')),
               data: (items) {
-                var filtered = items;
+                var filtered = [...items];
                 if (_searchQuery.isNotEmpty) {
                   final q = _searchQuery.toLowerCase();
                   filtered = filtered
@@ -126,6 +128,10 @@ class _SuppliersScreenState extends ConsumerState<SuppliersScreen> {
                           (s.phone?.contains(q) ?? false))
                       .toList();
                 }
+
+                // Orden A-Z
+                filtered.sort((a, b) =>
+                    a.name.toLowerCase().compareTo(b.name.toLowerCase()));
 
                 if (filtered.isEmpty) {
                   return EmptyState(
@@ -138,6 +144,9 @@ class _SuppliersScreenState extends ConsumerState<SuppliersScreen> {
                     onAction: items.isEmpty ? _showAddSupplierDialog : null,
                   );
                 }
+
+                final teamName =
+                    ref.read(authProvider).activeTeam?.name ?? '';
 
                 return RefreshIndicator(
                   onRefresh: () async =>
@@ -158,6 +167,13 @@ class _SuppliersScreenState extends ConsumerState<SuppliersScreen> {
                         ]
                             .where((e) => e != null && e.isNotEmpty)
                             .join(' · '),
+                        onTap: () =>
+                            context.push('/suppliers/${supplier.id}'),
+                        trailing: WaIconButton(
+                          phone: supplier.phone,
+                          message:
+                              'Hola ${supplier.contactName ?? supplier.name}, te escribo de $teamName.',
+                        ),
                       );
                     },
                   ),

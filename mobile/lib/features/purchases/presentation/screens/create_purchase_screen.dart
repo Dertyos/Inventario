@@ -101,6 +101,7 @@ class _CreatePurchaseScreenState extends ConsumerState<CreatePurchaseScreen> {
             return Consumer(
               builder: (ctx, ref, _) {
                 final suppliersAsync = ref.watch(suppliersProvider(teamId));
+                final purchasesAsync = ref.watch(purchasesProvider(teamId));
                 return Column(
                   children: [
                     Padding(
@@ -135,33 +136,88 @@ class _CreatePurchaseScreenState extends ConsumerState<CreatePurchaseScreen> {
                               ),
                             );
                           }
-                          return ListView.builder(
-                            controller: scrollController,
-                            itemCount: suppliers.length,
-                            itemBuilder: (_, i) {
-                              final s = suppliers[i];
-                              final selected =
-                                  _selectedSupplier?.id == s.id;
-                              return ListTile(
-                                leading: Icon(
-                                  selected
-                                      ? Icons.radio_button_checked
-                                      : Icons.radio_button_unchecked,
-                                  color: selected
-                                      ? Theme.of(ctx).colorScheme.primary
-                                      : null,
-                                ),
-                                title: Text(s.name),
-                                subtitle: s.phone != null
-                                    ? Text(s.phone!)
-                                    : null,
-                                onTap: () {
-                                  setState(
-                                      () => _selectedSupplier = s);
-                                  Navigator.pop(ctx);
-                                },
-                              );
+
+                          // Recent supplier IDs from existing purchases
+                          final recentIds = purchasesAsync.when(
+                            data: (purchases) {
+                              final seen = <String>{};
+                              return purchases
+                                  .map((p) => p.supplierId)
+                                  .where(
+                                      (id) => id.isNotEmpty && seen.add(id))
+                                  .take(5)
+                                  .toList();
                             },
+                            loading: () => <String>[],
+                            error: (_, __) => <String>[],
+                          );
+
+                          final recentSuppliers = recentIds
+                              .map((id) => suppliers.firstWhere(
+                                    (s) => s.id == id,
+                                    orElse: () => suppliers.first,
+                                  ))
+                              .where((s) => recentIds.contains(s.id))
+                              .toList();
+
+                          final recentSet = recentIds.toSet();
+                          final otherSuppliers = suppliers
+                              .where((s) => !recentSet.contains(s.id))
+                              .toList()
+                            ..sort((a, b) => a.name
+                                .toLowerCase()
+                                .compareTo(b.name.toLowerCase()));
+
+                          ListTile supplierTile(SupplierModel s) {
+                            final selected = _selectedSupplier?.id == s.id;
+                            return ListTile(
+                              leading: Icon(
+                                selected
+                                    ? Icons.radio_button_checked
+                                    : Icons.radio_button_unchecked,
+                                color: selected
+                                    ? Theme.of(ctx).colorScheme.primary
+                                    : null,
+                              ),
+                              title: Text(s.name),
+                              subtitle: s.phone != null
+                                  ? Text(s.phone!)
+                                  : null,
+                              onTap: () {
+                                setState(() => _selectedSupplier = s);
+                                Navigator.pop(ctx);
+                              },
+                            );
+                          }
+
+                          Widget sectionHeader(String label) => Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                    AppSpacing.md, AppSpacing.sm,
+                                    AppSpacing.md, 2),
+                                child: Text(
+                                  label,
+                                  style: Theme.of(ctx)
+                                      .textTheme
+                                      .labelSmall
+                                      ?.copyWith(
+                                        color: Theme.of(ctx)
+                                            .colorScheme
+                                            .onSurfaceVariant,
+                                        letterSpacing: 0.8,
+                                      ),
+                                ),
+                              );
+
+                          return ListView(
+                            controller: scrollController,
+                            children: [
+                              if (recentSuppliers.isNotEmpty) ...[
+                                sectionHeader('ÚLTIMOS USADOS'),
+                                ...recentSuppliers.map(supplierTile),
+                                sectionHeader('TODOS'),
+                              ],
+                              ...otherSuppliers.map(supplierTile),
+                            ],
                           );
                         },
                       ),
