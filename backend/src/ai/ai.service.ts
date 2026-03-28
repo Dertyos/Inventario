@@ -318,6 +318,13 @@ export class AiService {
     private readonly suppliersService: SuppliersService,
   ) {}
 
+  getStatus(): { configured: boolean; model: string } {
+    return {
+      configured: this.claude !== null,
+      model: 'claude-haiku-4-5-20251001',
+    };
+  }
+
   async parseTransaction(
     teamId: string,
     text: string,
@@ -349,13 +356,7 @@ export class AiService {
         temperature: 0,
         tools: [TRANSACTION_TOOL],
         tool_choice: { type: 'tool', name: 'parse_transaction' },
-        system: [
-          {
-            type: 'text',
-            text: systemPrompt,
-            cache_control: { type: 'ephemeral' },
-          },
-        ],
+        system: systemPrompt,
         messages: [
           {
             role: 'user',
@@ -410,6 +411,7 @@ export class AiService {
       };
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
+      if (error instanceof ServiceUnavailableException) throw error;
 
       if (
         error instanceof Anthropic.RateLimitError ||
@@ -421,7 +423,21 @@ export class AiService {
         );
       }
 
-      this.logger.error(`Failed to parse transaction: ${error.message}`);
+      if (error instanceof Anthropic.AuthenticationError) {
+        this.logger.error(`Anthropic auth error: ${error.message}`);
+        throw new ServiceUnavailableException(
+          'API key de IA inválida. Verifica ANTHROPIC_API_KEY.',
+        );
+      }
+
+      if (error instanceof Anthropic.APIError) {
+        this.logger.error(`Anthropic API error ${error.status}: ${error.message}`);
+        throw new ServiceUnavailableException(
+          `Error del servicio de IA (${error.status}). Intenta de nuevo.`,
+        );
+      }
+
+      this.logger.error(`Failed to parse transaction: ${error.message}`, error.stack);
       throw new BadRequestException('No se pudo procesar la transacción');
     }
   }
@@ -586,13 +602,7 @@ export class AiService {
         temperature: 0,
         tools: [COMMAND_TOOL],
         tool_choice: { type: 'tool', name: 'parse_command' },
-        system: [
-          {
-            type: 'text',
-            text: systemPrompt,
-            cache_control: { type: 'ephemeral' },
-          },
-        ],
+        system: systemPrompt,
         messages: [
           {
             role: 'user',
@@ -779,6 +789,7 @@ export class AiService {
       return result;
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
+      if (error instanceof ServiceUnavailableException) throw error;
 
       if (
         error instanceof Anthropic.RateLimitError ||
@@ -790,7 +801,21 @@ export class AiService {
         );
       }
 
-      this.logger.error(`Failed to parse command: ${error.message}`);
+      if (error instanceof Anthropic.AuthenticationError) {
+        this.logger.error(`Anthropic auth error: ${error.message}`);
+        throw new ServiceUnavailableException(
+          'API key de IA inválida. Verifica ANTHROPIC_API_KEY.',
+        );
+      }
+
+      if (error instanceof Anthropic.APIError) {
+        this.logger.error(`Anthropic API error ${error.status}: ${error.message}`);
+        throw new ServiceUnavailableException(
+          `Error del servicio de IA (${error.status}). Intenta de nuevo.`,
+        );
+      }
+
+      this.logger.error(`Failed to parse command: ${error.message}`, error.stack);
       throw new BadRequestException('No se pudo procesar el comando');
     }
   }
