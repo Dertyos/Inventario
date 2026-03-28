@@ -23,6 +23,16 @@ export class InventoryService {
     createMovementDto: CreateMovementDto,
     userId: string,
   ): Promise<InventoryMovement> {
+    // Large adjustments require approval (threshold: > 100 units)
+    if (
+      createMovementDto.type === MovementType.ADJUSTMENT &&
+      Math.abs(createMovementDto.quantity) > 100
+    ) {
+      throw new BadRequestException(
+        'Ajustes mayores a 100 unidades requieren aprobación de un administrador',
+      );
+    }
+
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();

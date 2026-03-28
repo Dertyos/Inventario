@@ -14,8 +14,8 @@ class AppConfig {
     'GOOGLE_SERVER_CLIENT_ID',
     defaultValue: '',
   );
-  static const Duration connectTimeout = Duration(seconds: 60);
-  static const Duration receiveTimeout = Duration(seconds: 60);
+  static const Duration connectTimeout = Duration(seconds: 15);
+  static const Duration receiveTimeout = Duration(seconds: 15);
 }
 
 /// Holds the current server URL. Initialized from storage, updated from settings.

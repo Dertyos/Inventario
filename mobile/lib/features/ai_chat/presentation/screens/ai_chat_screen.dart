@@ -831,7 +831,7 @@ class _VoiceTransactionScreenState
     return Column(
       children: [
         _detailTile(context, 'Nombre', p.name, Icons.inventory_2_outlined),
-        if (p.sku != null) _detailTile(context, 'SKU', p.sku!, Icons.qr_code),
+        if (p.sku != null) _detailTile(context, 'Código interno', p.sku!, Icons.qr_code),
         _detailTile(
             context, 'Precio', cop.format(p.price), Icons.attach_money),
         if (p.cost != null)

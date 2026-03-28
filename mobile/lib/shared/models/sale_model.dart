@@ -78,7 +78,7 @@ class SaleModel {
                 ?.map((e) => SaleItemModel.fromJson(e as Map<String, dynamic>))
                 .toList() ??
             [],
-        createdAt: DateTime.parse(json['createdAt'] as String),
+        createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ?? DateTime.now(),
       );
 }
 

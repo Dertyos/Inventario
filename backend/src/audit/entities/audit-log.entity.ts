@@ -28,6 +28,12 @@ export class AuditLog {
   @Column('jsonb', { nullable: true })
   changes: Record<string, any>; // request body (new values)
 
+  @Column({ type: 'jsonb', nullable: true })
+  changesBefore: Record<string, any>;
+
+  @Column({ type: 'jsonb', nullable: true })
+  changesAfter: Record<string, any>;
+
   @CreateDateColumn()
   createdAt: Date;
 }

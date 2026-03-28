@@ -27,7 +27,7 @@ class NotificationModel {
         message: json['message'] as String?,
         isRead: json['isRead'] as bool? ?? false,
         metadata: json['metadata'] as Map<String, dynamic>?,
-        createdAt: DateTime.parse(json['createdAt'] as String),
+        createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ?? DateTime.now(),
       );
 
   /// Returns an appropriate icon based on the notification type.

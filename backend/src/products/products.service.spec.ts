@@ -96,7 +96,7 @@ describe('ProductsService', () => {
     it('should filter by search term', async () => {
       await service.findAll(TEAM_ID, { search: 'laptop' });
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        '(product.name ILIKE :search OR product.sku ILIKE :search)',
+        '(product.name ILIKE :search OR product.sku ILIKE :search OR product.barcode ILIKE :search)',
         { search: '%laptop%' },
       );
     });

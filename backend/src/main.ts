@@ -3,7 +3,26 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+function validateEnvironment() {
+  const required = ['DATABASE_URL', 'JWT_SECRET'];
+  const missing = required.filter((key) => !process.env[key]);
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing required environment variables: ${missing.join(', ')}`,
+    );
+  }
+  if (
+    process.env.NODE_ENV === 'production' &&
+    process.env.JWT_SECRET === 'change-this-in-production'
+  ) {
+    throw new Error(
+      'JWT_SECRET must be changed from default value in production',
+    );
+  }
+}
+
 async function bootstrap() {
+  validateEnvironment();
   const app = await NestFactory.create(AppModule);
 
   // Security headers

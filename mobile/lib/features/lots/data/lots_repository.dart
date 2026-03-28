@@ -40,7 +40,9 @@ class LotsRepository {
         '/teams/$teamId/lots',
         queryParameters: params,
       );
-      return (response.data as List)
+      final data = response.data;
+      final list = data is List ? data : <dynamic>[];
+      return list
           .map((e) => ProductLotModel.fromJson(e as Map<String, dynamic>))
           .toList();
     } on DioException catch (e) {
@@ -57,7 +59,9 @@ class LotsRepository {
         '/teams/$teamId/lots/expiring',
         queryParameters: {'days': days},
       );
-      return (response.data as List)
+      final data = response.data;
+      final list = data is List ? data : <dynamic>[];
+      return list
           .map((e) => ProductLotModel.fromJson(e as Map<String, dynamic>))
           .toList();
     } on DioException catch (e) {

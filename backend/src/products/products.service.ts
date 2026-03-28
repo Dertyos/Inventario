@@ -104,6 +104,16 @@ export class ProductsService {
     updateProductDto: UpdateProductDto,
   ): Promise<Product> {
     const product = await this.findOne(teamId, id);
+
+    if (updateProductDto.sku && updateProductDto.sku !== product.sku) {
+      const existing = await this.productsRepository.findOne({
+        where: { teamId, sku: updateProductDto.sku },
+      });
+      if (existing) {
+        throw new ConflictException('Ya existe un producto con ese código en este equipo');
+      }
+    }
+
     Object.assign(product, updateProductDto);
     return this.productsRepository.save(product);
   }

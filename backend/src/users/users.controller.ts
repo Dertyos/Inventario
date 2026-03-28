@@ -7,6 +7,7 @@ import {
   UseGuards,
   ParseUUIDPipe,
   Request,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
@@ -31,7 +32,14 @@ export class UsersController {
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
+  async findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req,
+  ) {
+    // Users can only view their own profile
+    if (req.user.id !== id) {
+      throw new ForbiddenException('No tienes permiso para ver este perfil');
+    }
     return this.usersService.findOne(id);
   }
 }

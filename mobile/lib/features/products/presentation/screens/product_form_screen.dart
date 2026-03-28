@@ -316,7 +316,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
               controller: _skuController,
               textCapitalization: TextCapitalization.characters,
               decoration: const InputDecoration(
-                labelText: 'SKU',
+                labelText: 'Código interno',
                 prefixIcon: Icon(Icons.tag),
                 hintText: 'Se genera automáticamente',
               ),

@@ -39,6 +39,9 @@ export class PurchaseItem {
   @Column({ type: 'decimal', precision: 12, scale: 2 })
   subtotal: number;
 
+  @Column({ type: 'int', default: 0 })
+  receivedQuantity: number;
+
   @CreateDateColumn()
   createdAt: Date;
 }

@@ -40,7 +40,9 @@ class CustomersRepository {
         '/teams/$teamId/customers',
         queryParameters: params,
       );
-      final customers = (response.data as List)
+      final data = response.data;
+      final rawList = data is List ? data : <dynamic>[];
+      final customers = rawList
           .map((e) => CustomerModel.fromJson(e as Map<String, dynamic>))
           .toList();
 
@@ -48,7 +50,7 @@ class CustomersRepository {
       if (search == null || search.isEmpty) {
         _offline.cacheCustomers(
           teamId,
-          (response.data as List).cast<Map<String, dynamic>>(),
+          rawList.cast<Map<String, dynamic>>(),
         );
       }
 

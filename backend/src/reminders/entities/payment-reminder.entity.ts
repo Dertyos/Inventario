@@ -5,6 +5,7 @@ import {
   CreateDateColumn,
   ManyToOne,
   JoinColumn,
+  Unique,
 } from 'typeorm';
 import { Team } from '../../teams/entities/team.entity';
 import { CreditInstallment } from '../../credits/entities/credit-installment.entity';
@@ -30,6 +31,7 @@ export enum ReminderType {
   AFTER_DUE = 'after_due',
 }
 
+@Unique('UQ_reminder_installment_type_date', ['installmentId', 'type', 'scheduledDate'])
 @Entity('payment_reminders')
 export class PaymentReminder {
   @PrimaryGeneratedColumn('uuid')

@@ -10,6 +10,7 @@ import { OAuth2Client } from 'google-auth-library';
 import * as jwksRsa from 'jwks-rsa';
 import * as jwt from 'jsonwebtoken';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { UsersService } from '../users/users.service';
 import { EmailService } from '../email/email.service';
@@ -68,7 +69,7 @@ export class AuthService {
 
     await this.emailService.sendVerificationCode(user.email, code);
 
-    const token = this.generateToken(user.id, user.email);
+    const tokens = this.generateTokens(user.id, user.email);
     return {
       user: {
         id: user.id,
@@ -77,7 +78,7 @@ export class AuthService {
         lastName: user.lastName,
         emailVerified: false,
       },
-      accessToken: token,
+      ...tokens,
     };
   }
 
@@ -99,7 +100,7 @@ export class AuthService {
       throw new UnauthorizedException('Account is deactivated');
     }
 
-    const token = this.generateToken(user.id, user.email);
+    const tokens = this.generateTokens(user.id, user.email);
     return {
       user: {
         id: user.id,
@@ -108,7 +109,7 @@ export class AuthService {
         lastName: user.lastName,
         emailVerified: user.emailVerified,
       },
-      accessToken: token,
+      ...tokens,
     };
   }
 
@@ -372,13 +373,15 @@ export class AuthService {
         lastName: family_name || '',
         emailVerified: true,
       });
+      // Record consent timestamp for data processing
+      await this.usersService.updateConsent(user.id, new Date());
     }
 
     if (!user.isActive) {
       throw new UnauthorizedException('Account is deactivated');
     }
 
-    const token = this.generateToken(user.id, user.email);
+    const tokens = this.generateTokens(user.id, user.email);
     return {
       user: {
         id: user.id,
@@ -387,7 +390,7 @@ export class AuthService {
         lastName: user.lastName,
         emailVerified: user.emailVerified,
       },
-      accessToken: token,
+      ...tokens,
     };
   }
 
@@ -450,13 +453,15 @@ export class AuthService {
         lastName: fullName?.lastName || '',
         emailVerified: true,
       });
+      // Record consent timestamp for data processing
+      await this.usersService.updateConsent(user.id, new Date());
     }
 
     if (!user.isActive) {
       throw new UnauthorizedException('Account is deactivated');
     }
 
-    const token = this.generateToken(user.id, user.email);
+    const tokens = this.generateTokens(user.id, user.email);
     return {
       user: {
         id: user.id,
@@ -465,15 +470,43 @@ export class AuthService {
         lastName: user.lastName,
         emailVerified: user.emailVerified,
       },
-      accessToken: token,
+      ...tokens,
     };
   }
 
-  private generateToken(userId: string, email: string): string {
-    return this.jwtService.sign({ sub: userId, email });
+  private generateTokens(userId: string, email: string): { accessToken: string; refreshToken: string } {
+    const accessToken = this.jwtService.sign(
+      { sub: userId, email, type: 'access' },
+      { expiresIn: '15m' },
+    );
+    const refreshToken = this.jwtService.sign(
+      { sub: userId, email, type: 'refresh', jti: uuidv4() },
+      { expiresIn: '7d' },
+    );
+    return { accessToken, refreshToken };
+  }
+
+  async refreshTokens(refreshToken: string) {
+    let payload: any;
+    try {
+      payload = this.jwtService.verify(refreshToken);
+    } catch {
+      throw new UnauthorizedException('Refresh token inválido o expirado');
+    }
+
+    if (payload.type !== 'refresh') {
+      throw new UnauthorizedException('Token inválido');
+    }
+
+    const user = await this.usersService.findOne(payload.sub);
+    if (!user || !user.isActive) {
+      throw new UnauthorizedException('Usuario no encontrado o desactivado');
+    }
+
+    return this.generateTokens(user.id, user.email);
   }
 
   private generateSixDigitCode(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+    return crypto.randomInt(100000, 999999).toString();
   }
 }

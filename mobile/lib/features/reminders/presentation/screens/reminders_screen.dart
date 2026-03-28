@@ -301,6 +301,26 @@ class _ReminderTile extends StatelessWidget {
                   ),
                 ],
                 if (reminder.channel == 'whatsapp' &&
+                    reminder.customerPhone == null) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded,
+                          size: 16, color: AppColors.warning),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          'Este cliente no tiene teléfono. No se puede enviar por WhatsApp.',
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                color: AppColors.warning,
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                if (reminder.channel == 'whatsapp' &&
                     reminder.status == 'pending' &&
                     reminder.customerPhone != null) ...[
                   const SizedBox(height: AppSpacing.sm),

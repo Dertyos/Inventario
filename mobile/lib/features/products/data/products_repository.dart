@@ -32,7 +32,9 @@ class ProductsRepository {
         '/teams/$teamId/products',
         queryParameters: params,
       );
-      final products = (response.data as List)
+      final data = response.data;
+      final rawList = data is List ? data : <dynamic>[];
+      final products = rawList
           .map((e) => ProductModel.fromJson(e as Map<String, dynamic>))
           .toList();
 
@@ -40,7 +42,7 @@ class ProductsRepository {
       if (categoryId == null && (search == null || search.isEmpty)) {
         _offline.cacheProducts(
           teamId,
-          (response.data as List).cast<Map<String, dynamic>>(),
+          rawList.cast<Map<String, dynamic>>(),
         );
       }
 
@@ -117,7 +119,9 @@ class ProductsRepository {
   Future<List<ProductModel>> getLowStock(String teamId) async {
     try {
       final response = await _dio.get('/teams/$teamId/products/low-stock');
-      return (response.data as List)
+      final data = response.data;
+      final list = data is List ? data : <dynamic>[];
+      return list
           .map((e) => ProductModel.fromJson(e as Map<String, dynamic>))
           .toList();
     } on DioException catch (e) {
@@ -128,7 +132,9 @@ class ProductsRepository {
   Future<List<CategoryModel>> getCategories(String teamId) async {
     try {
       final response = await _dio.get('/teams/$teamId/categories');
-      return (response.data as List)
+      final data = response.data;
+      final list = data is List ? data : <dynamic>[];
+      return list
           .map((e) => CategoryModel.fromJson(e as Map<String, dynamic>))
           .toList();
     } on DioException catch (e) {

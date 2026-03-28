@@ -163,6 +163,30 @@ class _LotsScreenState extends ConsumerState<LotsScreen> {
   }
 
   Future<void> _markExpired(String teamId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 48),
+        title: const Text('\u00bfMarcar lotes expirados?'),
+        content: const Text(
+          'Esta acci\u00f3n marcar\u00e1 todos los lotes vencidos como expirados. '
+          'Los lotes expirados no se pueden usar en ventas.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.orange),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Marcar expirados'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
     try {
       final count =
           await ref.read(lotsRepositoryProvider).markExpired(teamId);

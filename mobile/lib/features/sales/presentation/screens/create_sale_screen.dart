@@ -9,6 +9,7 @@ import '../../../../shared/providers/auth_provider.dart';
 import '../../../customers/presentation/screens/customers_screen.dart';
 import '../../../products/presentation/screens/products_screen.dart';
 import '../../data/sales_repository.dart';
+import '../../../dashboard/presentation/screens/dashboard_screen.dart';
 import 'sales_screen.dart';
 
 class CreateSaleScreen extends ConsumerStatefulWidget {
@@ -206,8 +207,15 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
                       ),
                     ),
                     ListTile(
-                      leading: const Icon(Icons.storefront_outlined),
-                      title: const Text('Venta directa (sin cliente)'),
+                      leading: const CircleAvatar(
+                        backgroundColor: Color(0xFFE8F5E9),
+                        child: Icon(Icons.storefront_outlined, color: Color(0xFF4CAF50)),
+                      ),
+                      title: const Text(
+                        'Venta directa (sin cliente)',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: const Text('No requiere datos del comprador'),
                       onTap: () {
                         setState(() => _selectedCustomer = null);
                         Navigator.pop(ctx);
@@ -334,6 +342,19 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
       return;
     }
 
+    // Validate payment amounts for non-credit sales
+    if (!_isCredit && _enteredAmount > 0 && _enteredAmount < _total) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'El monto ingresado (\$${_enteredAmount.toStringAsFixed(0)}) es menor al total (\$${_total.toStringAsFixed(0)})',
+          ),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+      return;
+    }
+
     // Confirmation dialog
     final confirmed = await showDialog<bool>(
       context: context,
@@ -393,6 +414,7 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
 
       ref.invalidate(salesProvider(teamId));
       ref.invalidate(productsProvider(teamId));
+      ref.invalidate(dashboardProvider(teamId));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Venta registrada')),
@@ -687,12 +709,12 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
                         ButtonSegment(
                           value: false,
                           icon: Icon(Icons.payments_outlined),
-                          label: Text('Contado'),
+                          label: Text('Paga hoy'),
                         ),
                         ButtonSegment(
                           value: true,
                           icon: Icon(Icons.calendar_month_outlined),
-                          label: Text('Crédito'),
+                          label: Text('Paga después'),
                         ),
                       ],
                       selected: {_isCredit},
@@ -801,10 +823,11 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
                               controller: _installmentsController,
                               keyboardType: TextInputType.number,
                               decoration: const InputDecoration(
-                                labelText: 'Cuotas',
+                                labelText: 'Pagos',
                                 prefixIcon: Icon(Icons.calendar_month_outlined),
                                 isDense: true,
                               ),
+                              onChanged: (_) => setState(() {}),
                             ),
                           ),
                           const SizedBox(width: AppSpacing.sm),
@@ -818,6 +841,7 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
                                 prefixIcon: Icon(Icons.percent),
                                 isDense: true,
                               ),
+                              onChanged: (_) => setState(() {}),
                             ),
                           ),
                         ],
@@ -827,7 +851,17 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
                       padding: const EdgeInsets.fromLTRB(
                         AppSpacing.md, AppSpacing.sm, AppSpacing.md, 0,
                       ),
-                      child: Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '\u00bfCada cu\u00e1nto paga?',
+                            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          Row(
                         children: [
                           Expanded(
                             child: SegmentedButton<String>(
@@ -854,6 +888,8 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
                           ),
                         ],
                       ),
+                        ],
+                      ),
                     ),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(
@@ -877,7 +913,7 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
                               },
                               child: InputDecorator(
                                 decoration: const InputDecoration(
-                                  labelText: 'Próxima cuota',
+                                  labelText: 'Próximo pago',
                                   prefixIcon: Icon(Icons.event_outlined),
                                   suffixIcon: Icon(Icons.edit_calendar),
                                   isDense: true,
@@ -899,10 +935,53 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
                                 prefixIcon: const Icon(Icons.payments_outlined),
                                 isDense: true,
                               ),
+                              onChanged: (_) => setState(() {}),
                             ),
                           ),
                         ],
                       ),
+                    ),
+                  ],
+                  if (_isCredit) ...[
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 0),
+                      child: Builder(builder: (context) {
+                        final installments = int.tryParse(_installmentsController.text) ?? 1;
+                        final interest = double.tryParse(_interestController.text) ?? 0;
+                        final paidAmount = double.tryParse(_paidAmountController.text) ?? 0;
+                        final remaining = _total - paidAmount;
+
+                        if (installments <= 0 || remaining <= 0) return const SizedBox.shrink();
+
+                        final totalWithInterest = interest > 0
+                            ? remaining * (1 + interest / 100)
+                            : remaining;
+                        final perInstallment = totalWithInterest / installments;
+
+                        return Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: colorScheme.primaryContainer.withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.info_outline, size: 18, color: colorScheme.primary),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  '$installments pagos de ${cop.format(perInstallment)}'
+                                  '${paidAmount > 0 ? ' (abono: ${cop.format(paidAmount)})' : ''}',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: colorScheme.onSurface,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
                     ),
                   ],
                   Padding(

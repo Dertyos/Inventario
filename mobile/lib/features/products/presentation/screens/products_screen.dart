@@ -196,7 +196,6 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                                           product.barcode!,
                                           style: Theme.of(context).textTheme.labelSmall?.copyWith(
                                                 color: colorScheme.onSurfaceVariant,
-                                                fontFamily: 'monospace',
                                               ),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,

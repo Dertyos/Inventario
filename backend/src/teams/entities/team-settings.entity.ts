@@ -41,6 +41,11 @@ export class TeamSettings {
   @Column({ default: true })
   enableBarcode: boolean;
 
+  // ── Timezone ──────────────────────────────────────
+
+  @Column({ type: 'int', default: 0 })
+  tzOffsetMinutes: number;
+
   // ── Defaults ──────────────────────────────────────
 
   @Column({ type: 'decimal', precision: 5, scale: 2, default: 19.0 })

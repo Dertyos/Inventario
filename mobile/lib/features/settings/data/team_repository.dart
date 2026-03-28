@@ -17,7 +17,9 @@ class TeamRepository {
   Future<List<TeamMemberModel>> getMembers(String teamId) async {
     try {
       final response = await _dio.get('/teams/$teamId/members');
-      return (response.data as List)
+      final data = response.data;
+      final list = data is List ? data : <dynamic>[];
+      return list
           .map((e) => TeamMemberModel.fromJson(e as Map<String, dynamic>))
           .toList();
     } on DioException catch (e) {
@@ -77,7 +79,9 @@ class TeamRepository {
   Future<List<Map<String, dynamic>>> getInvitations(String teamId) async {
     try {
       final response = await _dio.get('/teams/$teamId/invitations');
-      return (response.data as List)
+      final data = response.data;
+      final list = data is List ? data : <dynamic>[];
+      return list
           .map((e) => e as Map<String, dynamic>)
           .toList();
     } on DioException catch (e) {

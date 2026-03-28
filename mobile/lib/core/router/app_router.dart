@@ -116,9 +116,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/invite/:token',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => InvitationScreen(
-          token: state.pathParameters['token']!,
-        ),
+        builder: (context, state) {
+          final token = state.pathParameters['token'];
+          if (token == null || token.isEmpty) {
+            return const _RouteErrorScreen(message: 'Token de invitación no válido');
+          }
+          return InvitationScreen(token: token);
+        },
       ),
       ShellRoute(
         navigatorKey: _shellNavigatorKey,
@@ -146,9 +150,13 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: ':id/edit',
                 parentNavigatorKey: _rootNavigatorKey,
-                builder: (context, state) => ProductFormScreen(
-                  productId: state.pathParameters['id'],
-                ),
+                builder: (context, state) {
+                  final id = state.pathParameters['id'];
+                  if (id == null || id.isEmpty) {
+                    return const _RouteErrorScreen(message: 'ID de producto no válido');
+                  }
+                  return ProductFormScreen(productId: id);
+                },
               ),
             ],
           ),
@@ -166,9 +174,13 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: ':id/edit',
                 parentNavigatorKey: _rootNavigatorKey,
-                builder: (context, state) => EditSaleScreen(
-                  saleId: state.pathParameters['id']!,
-                ),
+                builder: (context, state) {
+                  final id = state.pathParameters['id'];
+                  if (id == null || id.isEmpty) {
+                    return const _RouteErrorScreen(message: 'ID de venta no válido');
+                  }
+                  return EditSaleScreen(saleId: id);
+                },
               ),
             ],
           ),
@@ -205,9 +217,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/role-permissions/:role',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => RolePermissionsScreen(
-          role: state.pathParameters['role']!,
-        ),
+        builder: (context, state) {
+          final role = state.pathParameters['role'];
+          if (role == null || role.isEmpty) {
+            return const _RouteErrorScreen(message: 'Rol no válido');
+          }
+          return RolePermissionsScreen(role: role);
+        },
       ),
       GoRoute(
         path: '/voice-transaction',
@@ -227,9 +243,13 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: ':id',
             parentNavigatorKey: _rootNavigatorKey,
-            builder: (context, state) => CreditDetailScreen(
-              creditId: state.pathParameters['id']!,
-            ),
+            builder: (context, state) {
+              final id = state.pathParameters['id'];
+              if (id == null || id.isEmpty) {
+                return const _RouteErrorScreen(message: 'ID de crédito no válido');
+              }
+              return CreditDetailScreen(creditId: id);
+            },
           ),
         ],
       ),
@@ -270,18 +290,26 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: ':id',
             parentNavigatorKey: _rootNavigatorKey,
-            builder: (context, state) => SupplierDetailScreen(
-              supplierId: state.pathParameters['id']!,
-            ),
+            builder: (context, state) {
+              final id = state.pathParameters['id'];
+              if (id == null || id.isEmpty) {
+                return const _RouteErrorScreen(message: 'ID de proveedor no válido');
+              }
+              return SupplierDetailScreen(supplierId: id);
+            },
           ),
         ],
       ),
       GoRoute(
         path: '/customers/:id',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => CustomerDetailScreen(
-          customerId: state.pathParameters['id']!,
-        ),
+        builder: (context, state) {
+          final id = state.pathParameters['id'];
+          if (id == null || id.isEmpty) {
+            return const _RouteErrorScreen(message: 'ID de cliente no válido');
+          }
+          return CustomerDetailScreen(customerId: id);
+        },
       ),
       GoRoute(
         path: '/reminders',
@@ -301,3 +329,37 @@ final routerProvider = Provider<GoRouter>((ref) {
     ],
   );
 });
+
+class _RouteErrorScreen extends StatelessWidget {
+  final String message;
+  const _RouteErrorScreen({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Error')),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              const SizedBox(height: 16),
+              Text(
+                message,
+                style: Theme.of(context).textTheme.titleMedium,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: () => context.go('/dashboard'),
+                child: const Text('Volver al inicio'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

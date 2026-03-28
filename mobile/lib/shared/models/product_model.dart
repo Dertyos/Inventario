@@ -51,7 +51,7 @@ class ProductModel {
         isActive: json['isActive'] as bool? ?? true,
         categoryId: json['categoryId'] as String? ?? json['category']?['id'] as String?,
         categoryName: json['category']?['name'] as String?,
-        createdAt: DateTime.parse(json['createdAt'] as String),
+        createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ?? DateTime.now(),
       );
 }
 

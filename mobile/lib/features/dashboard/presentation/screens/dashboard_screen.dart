@@ -64,7 +64,7 @@ class DashboardScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '¡Hola, ${auth.user?.firstName ?? ''}!',
+              '\u00a1Hola${auth.user?.firstName != null && auth.user!.firstName.isNotEmpty ? ', ${auth.user!.firstName}' : ''}!',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),

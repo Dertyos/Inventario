@@ -6,6 +6,7 @@ import {
   UpdateDateColumn,
   ManyToOne,
   OneToMany,
+  OneToOne,
   JoinColumn,
 } from 'typeorm';
 import { Team } from '../../teams/entities/team.entity';
@@ -13,6 +14,7 @@ import { Customer } from '../../customers/entities/customer.entity';
 import { User } from '../../users/entities/user.entity';
 import { SaleItem } from './sale-item.entity';
 import { Payment } from '../../payments/entities/payment.entity';
+import { CreditAccount } from '../../credits/entities/credit-account.entity';
 
 export enum PaymentMethod {
   CASH = 'cash',
@@ -85,20 +87,28 @@ export class Sale {
   })
   status: SaleStatus;
 
+  /** @deprecated Use creditAccount.installments instead */
   @Column({ type: 'int', nullable: true })
   creditInstallments: number;
 
+  /** @deprecated Use creditAccount.paidAmount instead */
   @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
   creditPaidAmount: number;
 
+  /** @deprecated Use creditAccount.interestRate instead */
   @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
   creditInterestRate: number;
 
+  /** @deprecated Use creditAccount for frequency info */
   @Column({ nullable: true })
   creditFrequency: string;
 
+  /** @deprecated Use creditAccount installments for payment schedule */
   @Column({ type: 'date', nullable: true })
   creditNextPayment: Date;
+
+  @OneToOne(() => CreditAccount, (credit) => credit.sale, { nullable: true })
+  creditAccount: CreditAccount;
 
   @Column({ nullable: true })
   notes: string;

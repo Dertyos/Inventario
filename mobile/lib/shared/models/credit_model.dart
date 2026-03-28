@@ -99,8 +99,8 @@ class CreditAccountModel {
                   CreditInstallmentModel.fromJson(e as Map<String, dynamic>))
               .toList()
           : [],
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: DateTime.parse(json['updatedAt'] as String),
+      createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ?? DateTime.now(),
+      updatedAt: DateTime.tryParse(json['updatedAt']?.toString() ?? '') ?? DateTime.now(),
     );
   }
 
@@ -182,7 +182,7 @@ class CreditInstallmentModel {
           ? DateTime.tryParse(json['paidAt'] as String)
           : null,
       status: _parseInstallmentStatus(json['status'] as String?),
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ?? DateTime.now(),
     );
   }
 

@@ -66,7 +66,9 @@ class AuthRepository {
   Future<List<TeamModel>> getTeams() async {
     try {
       final response = await _dio.get('/teams');
-      return (response.data as List)
+      final data = response.data;
+      final list = data is List ? data : <dynamic>[];
+      return list
           .map((e) => TeamModel.fromJson(e as Map<String, dynamic>))
           .toList();
     } on DioException catch (e) {

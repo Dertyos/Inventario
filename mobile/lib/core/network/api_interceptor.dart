@@ -8,6 +8,10 @@ class AuthInterceptor extends Interceptor {
   final SecureStorage _storage;
   final OnSessionExpired? onSessionExpired;
 
+  /// Prevents multiple concurrent 401 responses from triggering
+  /// session expiration logic more than once.
+  bool _isHandlingExpiration = false;
+
   AuthInterceptor(this._storage, {this.onSessionExpired});
 
   @override
@@ -24,9 +28,15 @@ class AuthInterceptor extends Interceptor {
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
-    if (err.response?.statusCode == 401) {
-      _storage.deleteToken();
-      onSessionExpired?.call();
+    if (err.response?.statusCode == 401 && !_isHandlingExpiration) {
+      _isHandlingExpiration = true;
+      _storage.deleteToken().then((_) {
+        onSessionExpired?.call();
+        // Reset after a short delay to allow re-login flow to complete
+        Future.delayed(const Duration(seconds: 2), () {
+          _isHandlingExpiration = false;
+        });
+      });
     }
     handler.next(err);
   }
