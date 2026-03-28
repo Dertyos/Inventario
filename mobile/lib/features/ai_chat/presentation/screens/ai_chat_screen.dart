@@ -144,13 +144,17 @@ class _VoiceTransactionScreenState
           msg.contains('Connection')) {
         errorMsg =
             'No se pudo conectar al servidor. Verifica la URL en Configuracion > Servidor.';
-      } else if (msg.contains('503') || msg.contains('unavailable')) {
+      } else if (msg.contains('503') ||
+          msg.contains('unavailable') ||
+          msg.contains('no configurado') ||
+          msg.contains('API key')) {
         errorMsg =
             'El servicio de IA no esta disponible. Verifica que ANTHROPIC_API_KEY este configurada en el backend.';
-      } else if (msg.contains('403') || msg.contains('permisos')) {
+      } else if (msg.contains('403') || msg.contains('permisos') || msg.contains('permission')) {
         errorMsg = 'No tienes permisos para usar esta funcion.';
       } else {
-        errorMsg = 'No pude procesar: $msg';
+        // Show the actual error from the backend for debugging
+        errorMsg = msg;
       }
       setState(() {
         _error = errorMsg;

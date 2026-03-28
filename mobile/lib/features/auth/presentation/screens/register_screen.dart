@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -53,6 +54,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         );
         ref.read(authProvider.notifier).clearError();
       }
+      if (prev?.status != AuthStatus.authenticated &&
+          next.status == AuthStatus.authenticated) {
+        TextInput.finishAutofillContext();
+      }
     });
 
     return Scaffold(
@@ -66,9 +71,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Form(
-              key: _formKey,
-              child: Column(
+            child: AutofillGroup(
+              child: Form(
+                key: _formKey,
+                child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -93,6 +99,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           controller: _firstNameController,
                           textInputAction: TextInputAction.next,
                           textCapitalization: TextCapitalization.words,
+                          autofillHints: const [AutofillHints.givenName],
                           decoration: const InputDecoration(
                             labelText: 'Nombre',
                             prefixIcon: Icon(Icons.person_outlined),
@@ -107,6 +114,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           controller: _lastNameController,
                           textInputAction: TextInputAction.next,
                           textCapitalization: TextCapitalization.words,
+                          autofillHints: const [AutofillHints.familyName],
                           decoration: const InputDecoration(
                             labelText: 'Apellido',
                           ),
@@ -139,6 +147,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     controller: _passwordController,
                     obscureText: _obscurePassword,
                     textInputAction: TextInputAction.done,
+                    autofillHints: const [AutofillHints.newPassword],
                     decoration: InputDecoration(
                       labelText: 'Contraseña',
                       prefixIcon: const Icon(Icons.lock_outlined),
@@ -235,6 +244,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                 ],
               ),
+            ),
             ),
           ),
         ),

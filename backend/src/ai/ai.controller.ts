@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   Param,
   ParseUUIDPipe,
   Post,
@@ -26,6 +27,13 @@ export class AiController {
   private readonly logger = new Logger(AiController.name);
 
   constructor(private readonly aiService: AiService) {}
+
+  @Get('status')
+  @RequirePermission('admin.ai')
+  @ApiOperation({ summary: 'Check AI service health' })
+  status() {
+    return this.aiService.getStatus();
+  }
 
   @Post('parse-transaction')
   @RequirePermission('admin.ai')

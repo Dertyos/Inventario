@@ -103,7 +103,7 @@ class _CreditDetailBody extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              credit.customer?.name ?? 'Cliente',
+                              credit.customer?.name ?? 'Venta directa',
                               style: textTheme.titleMedium,
                             ),
                             Text(

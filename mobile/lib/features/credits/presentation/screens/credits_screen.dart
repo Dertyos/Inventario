@@ -196,7 +196,7 @@ class _CreditCard extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          credit.customer?.name ?? 'Cliente',
+                          credit.customer?.name ?? 'Venta directa',
                           style: textTheme.titleSmall,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,

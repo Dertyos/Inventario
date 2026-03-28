@@ -475,13 +475,14 @@ export class AuthService {
   }
 
   private generateTokens(userId: string, email: string): { accessToken: string; refreshToken: string } {
+    const accessExpiry = `${this.configService.get('JWT_EXPIRATION', '2592000')}s`;
     const accessToken = this.jwtService.sign(
       { sub: userId, email, type: 'access' },
-      { expiresIn: '15m' },
+      { expiresIn: accessExpiry },
     );
     const refreshToken = this.jwtService.sign(
       { sub: userId, email, type: 'refresh', jti: uuidv4() },
-      { expiresIn: '7d' },
+      { expiresIn: '30d' },
     );
     return { accessToken, refreshToken };
   }

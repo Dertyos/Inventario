@@ -11,7 +11,7 @@ class CreditAccountModel {
   final String id;
   final String teamId;
   final String saleId;
-  final String customerId;
+  final String? customerId;
   final CustomerModel? customer;
   final double totalAmount;
   final double paidAmount;
@@ -28,7 +28,7 @@ class CreditAccountModel {
     required this.id,
     required this.teamId,
     required this.saleId,
-    required this.customerId,
+    this.customerId,
     this.customer,
     required this.totalAmount,
     required this.paidAmount,
@@ -82,7 +82,7 @@ class CreditAccountModel {
       id: json['id'] as String,
       teamId: json['teamId'] as String,
       saleId: json['saleId'] as String,
-      customerId: json['customerId'] as String,
+      customerId: json['customerId'] as String?,
       customer: json['customer'] != null
           ? CustomerModel.fromJson(json['customer'] as Map<String, dynamic>)
           : null,

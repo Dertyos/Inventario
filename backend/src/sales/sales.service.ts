@@ -162,8 +162,8 @@ export class SalesService {
         { referenceId: savedSale.id },
       );
 
-      // Auto-create credit account if credit sale with customer (INSIDE transaction)
-      if (createSaleDto.paymentMethod === PaymentMethod.CREDIT && createSaleDto.customerId) {
+      // Auto-create credit account for all credit sales (INSIDE transaction)
+      if (createSaleDto.paymentMethod === PaymentMethod.CREDIT) {
         const interestRate = createSaleDto.creditInterestRate || 0;
         let interestType = 'none';
         if (interestRate > 0) {
@@ -191,7 +191,7 @@ export class SalesService {
         const creditAccount = queryRunner.manager.create(CreditAccount, {
           teamId,
           saleId: savedSale.id,
-          customerId: createSaleDto.customerId,
+          customerId: createSaleDto.customerId || null,
           totalAmount: totalWithInterest,
           interestRate,
           interestType: interestType as any,
@@ -200,10 +200,18 @@ export class SalesService {
         });
         const savedCredit = await queryRunner.manager.save(creditAccount);
 
+        const frequency = createSaleDto.creditFrequency || 'monthly';
+
         for (let i = 0; i < numInstallments; i++) {
           const amount = (baseCents + (i < remainder ? 1 : 0)) / 100;
           const dueDate = new Date(startDate);
-          dueDate.setMonth(dueDate.getMonth() + i + 1);
+          if (frequency === 'daily') {
+            dueDate.setDate(dueDate.getDate() + i + 1);
+          } else if (frequency === 'weekly') {
+            dueDate.setDate(dueDate.getDate() + (i + 1) * 7);
+          } else {
+            dueDate.setMonth(dueDate.getMonth() + i + 1);
+          }
 
           const installment = queryRunner.manager.create(CreditInstallment, {
             creditAccountId: savedCredit.id,
