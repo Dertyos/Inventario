@@ -1,10 +1,13 @@
 import {
   IsEnum,
   IsInt,
+  IsNumber,
   IsString,
   IsOptional,
   IsUUID,
+  IsBoolean,
   Min,
+  Max,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { MovementType } from '../entities/inventory-movement.entity';
@@ -22,6 +25,15 @@ export class CreateMovementDto {
   @IsInt()
   @Min(1)
   quantity: number;
+
+  @ApiPropertyOptional({
+    example: 2000,
+    description: 'Costo unitario de compra (COP)',
+  })
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  unitCost?: number;
 
   @ApiPropertyOptional({
     example: 'Reposición semanal',
@@ -45,4 +57,21 @@ export class CreateMovementDto {
   @IsUUID()
   @IsOptional()
   supplierId?: string;
+
+  @ApiPropertyOptional({ description: 'Compra a crédito' })
+  @IsBoolean()
+  @IsOptional()
+  isCredit?: boolean;
+
+  @ApiPropertyOptional({ description: 'Número de cuotas (1-60)' })
+  @IsInt()
+  @Min(1)
+  @Max(60)
+  @IsOptional()
+  creditInstallments?: number;
+
+  @ApiPropertyOptional({ description: 'Frecuencia de pago: daily/weekly/monthly' })
+  @IsString()
+  @IsOptional()
+  creditFrequency?: string;
 }

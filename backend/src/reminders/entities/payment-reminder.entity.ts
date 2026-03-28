@@ -10,6 +10,7 @@ import {
 import { Team } from '../../teams/entities/team.entity';
 import { CreditInstallment } from '../../credits/entities/credit-installment.entity';
 import { Customer } from '../../customers/entities/customer.entity';
+import { Supplier } from '../../suppliers/entities/supplier.entity';
 
 export enum ReminderChannel {
   SMS = 'sms',
@@ -51,12 +52,19 @@ export class PaymentReminder {
   @JoinColumn({ name: 'installmentId' })
   installment: CreditInstallment;
 
-  @Column()
-  customerId: string;
+  @Column({ nullable: true })
+  customerId: string | null;
 
-  @ManyToOne(() => Customer)
+  @ManyToOne(() => Customer, { nullable: true })
   @JoinColumn({ name: 'customerId' })
-  customer: Customer;
+  customer: Customer | null;
+
+  @Column({ nullable: true })
+  supplierId: string | null;
+
+  @ManyToOne(() => Supplier, { nullable: true })
+  @JoinColumn({ name: 'supplierId' })
+  supplier: Supplier | null;
 
   @Column({
     type: 'enum',

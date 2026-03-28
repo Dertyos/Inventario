@@ -4,6 +4,8 @@ class InventoryMovementModel {
   final String id;
   final String type;
   final int quantity;
+  final double? unitCost;
+  final double? totalCost;
   final String? reason;
   final String productId;
   final String? productName;
@@ -15,6 +17,8 @@ class InventoryMovementModel {
     required this.id,
     required this.type,
     required this.quantity,
+    this.unitCost,
+    this.totalCost,
     this.reason,
     required this.productId,
     this.productName,
@@ -28,6 +32,8 @@ class InventoryMovementModel {
         id: json['id'] as String,
         type: json['type'] as String,
         quantity: JsonParse.toInt(json['quantity']) ?? 0,
+        unitCost: JsonParse.toDouble(json['unitCost']),
+        totalCost: JsonParse.toDouble(json['totalCost']),
         reason: json['reason'] as String?,
         productId: json['productId'] as String? ??
             json['product']?['id'] as String? ??

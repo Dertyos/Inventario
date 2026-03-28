@@ -16,11 +16,13 @@ class InventoryRepository {
   Future<List<InventoryMovementModel>> getMovements(
     String teamId, {
     String? productId,
+    String? supplierId,
     String? type,
   }) async {
     try {
       final params = <String, dynamic>{};
       if (productId != null) params['productId'] = productId;
+      if (supplierId != null) params['supplierId'] = supplierId;
       if (type != null) params['type'] = type;
 
       final response = await _dio.get(

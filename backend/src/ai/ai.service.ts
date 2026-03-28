@@ -438,7 +438,9 @@ export class AiService {
       }
 
       this.logger.error(`Failed to parse transaction: ${error.message}`, error.stack);
-      throw new BadRequestException('No se pudo procesar la transacción');
+      throw new BadRequestException(
+        `Error de IA: ${error.name || 'Unknown'} — ${error.message || 'sin detalle'}`,
+      );
     }
   }
 
@@ -566,6 +568,7 @@ export class AiService {
     }
 
     // --- Layer 2: Build context with catalog, categories, customers, suppliers ---
+    try {
     const [products, categories, customers, suppliers] = await Promise.all([
       this.productsService.findAll(teamId, { isActive: true }) as Promise<Product[]>,
       this.categoriesService.findAll(teamId),
@@ -577,13 +580,13 @@ export class AiService {
       .map((p) => `- ${p.name} (SKU: ${p.sku}, precio: $${p.price})`)
       .join('\n');
 
-    const categoriesList = categories.map((c) => `- ${c.name}`).join('\n');
+    const categoriesList = (categories as any[]).map((c) => `- ${c.name}`).join('\n');
 
-    const customersList = customers
+    const customersList = (customers as any[])
       .map((c) => `- ${c.name}`)
       .join('\n');
 
-    const suppliersList = suppliers
+    const suppliersList = (suppliers as any[])
       .map((s) => `- ${s.name}`)
       .join('\n');
 
@@ -595,7 +598,6 @@ export class AiService {
     );
 
     // --- Layer 3: Call Claude with tool_use (constrained decoding) ---
-    try {
       const response = await this.claude.messages.create({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 1024,
@@ -816,7 +818,9 @@ export class AiService {
       }
 
       this.logger.error(`Failed to parse command: ${error.message}`, error.stack);
-      throw new BadRequestException('No se pudo procesar el comando');
+      throw new BadRequestException(
+        `Error de IA: ${error.name || 'Unknown'} — ${error.message || 'sin detalle'}`,
+      );
     }
   }
 

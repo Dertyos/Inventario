@@ -50,12 +50,14 @@ export class InventoryController {
   findAllMovements(
     @Param('teamId', ParseUUIDPipe) teamId: string,
     @Query('productId') productId?: string,
+    @Query('supplierId') supplierId?: string,
     @Query('type') type?: MovementType,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
     return this.inventoryService.findAll(teamId, {
       productId,
+      supplierId,
       type,
       page: page ? parseInt(page, 10) : undefined,
       limit: limit ? parseInt(limit, 10) : undefined,
