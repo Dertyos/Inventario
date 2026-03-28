@@ -55,11 +55,12 @@ export class RemindersService {
     const threeDaysStr = threeDaysAhead.toISOString().split('T')[0];
     const oneDayAgoStr = oneDayAgo.toISOString().split('T')[0];
 
-    // Find installments needing reminders
+    // Find installments needing reminders (both sale and purchase credits)
     const installments = await this.installmentsRepository
       .createQueryBuilder('installment')
       .leftJoinAndSelect('installment.creditAccount', 'credit')
       .leftJoinAndSelect('credit.customer', 'customer')
+      .leftJoinAndSelect('credit.supplier', 'supplier')
       .where('credit.teamId = :teamId', { teamId })
       .andWhere('installment.status IN (:...statuses)', {
         statuses: [InstallmentStatus.PENDING, InstallmentStatus.PARTIAL],
@@ -100,16 +101,20 @@ export class RemindersService {
 
       const remaining =
         Number(installment.amount) - Number(installment.paidAmount);
-      const message = this.buildReminderMessage(
-        reminderType,
-        remaining,
-        installment.dueDate,
-      );
+      const isPurchaseCredit = credit.movementId != null;
+      const contactName = isPurchaseCredit
+        ? (credit as any).supplier?.name ?? 'proveedor'
+        : credit.customer?.name ?? 'cliente';
+
+      const message = isPurchaseCredit
+        ? this.buildPurchaseReminderMessage(reminderType, remaining, installment.dueDate, contactName)
+        : this.buildReminderMessage(reminderType, remaining, installment.dueDate);
 
       const reminder = this.remindersRepository.create({
         teamId,
         installmentId: installment.id,
-        customerId: credit.customerId,
+        customerId: credit.customerId ?? null,
+        supplierId: isPurchaseCredit ? credit.supplierId : null,
         type: reminderType,
         channel: ReminderChannel.INTERNAL,
         scheduledDate: todayStr,
@@ -118,17 +123,23 @@ export class RemindersService {
       await this.remindersRepository.save(reminder);
 
       // Also create an internal notification
+      const title = isPurchaseCredit
+        ? `Pago a ${contactName} ${reminderType === ReminderType.AFTER_DUE ? 'vencido' : 'próximo'}`
+        : `Cuota ${reminderType === ReminderType.AFTER_DUE ? 'vencida' : 'próxima'}`;
+
       const notification = this.notificationsRepository.create({
         teamId,
         type: NotificationType.PAYMENT_DUE,
-        title: `Cuota ${reminderType === ReminderType.AFTER_DUE ? 'vencida' : 'próxima'}`,
+        title,
         message,
         metadata: {
           installmentId: installment.id,
           creditAccountId: credit.id,
           customerId: credit.customerId,
+          supplierId: credit.supplierId,
           dueDate: installment.dueDate,
           amount: remaining,
+          isPurchaseCredit,
         },
       });
       await this.notificationsRepository.save(notification);
@@ -146,6 +157,7 @@ export class RemindersService {
     const query = this.remindersRepository
       .createQueryBuilder('reminder')
       .leftJoinAndSelect('reminder.customer', 'customer')
+      .leftJoinAndSelect('reminder.supplier', 'supplier')
       .leftJoinAndSelect('reminder.installment', 'installment')
       .where('reminder.teamId = :teamId', { teamId });
 
@@ -229,6 +241,28 @@ export class RemindersService {
       this.logger.log(`Daily reminders cron completed. Created ${totalCreated} reminders.`);
     } catch (error) {
       this.logger.error(`Reminders cron job failed: ${error.message}`);
+    }
+  }
+
+  private buildPurchaseReminderMessage(
+    type: ReminderType,
+    amount: number,
+    dueDate: string,
+    supplierName: string,
+  ): string {
+    const formattedAmount = new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      minimumFractionDigits: 0,
+    }).format(amount);
+
+    switch (type) {
+      case ReminderType.BEFORE_DUE:
+        return `Pago de ${formattedAmount} a ${supplierName} vence el ${dueDate}.`;
+      case ReminderType.ON_DUE:
+        return `Pago de ${formattedAmount} a ${supplierName} vence hoy (${dueDate}).`;
+      case ReminderType.AFTER_DUE:
+        return `Pago de ${formattedAmount} a ${supplierName} venció el ${dueDate}. Ponte al día.`;
     }
   }
 

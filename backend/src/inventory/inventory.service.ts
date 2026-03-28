@@ -108,6 +108,7 @@ export class InventoryService {
           saleId: null,
           customerId: null,
           movementId: savedMovement.id,
+          supplierId: createMovementDto.supplierId || null,
           totalAmount: totalCost,
           interestRate: 0,
           interestType: InterestType.NONE,

@@ -11,6 +11,7 @@ import {
 import { Team } from '../../teams/entities/team.entity';
 import { Sale } from '../../sales/entities/sale.entity';
 import { Customer } from '../../customers/entities/customer.entity';
+import { Supplier } from '../../suppliers/entities/supplier.entity';
 import { CreditInstallment } from './credit-installment.entity';
 
 export enum InterestType {
@@ -46,6 +47,13 @@ export class CreditAccount {
 
   @Column({ nullable: true })
   movementId: string | null;
+
+  @Column({ nullable: true })
+  supplierId: string | null;
+
+  @ManyToOne(() => Supplier, { nullable: true })
+  @JoinColumn({ name: 'supplierId' })
+  supplier: Supplier | null;
 
   @Column({ nullable: true })
   customerId: string | null;
