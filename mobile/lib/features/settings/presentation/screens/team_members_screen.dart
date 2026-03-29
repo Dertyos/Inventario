@@ -6,6 +6,7 @@ import '../../../../core/ai/ai_service.dart';
 import '../../../../shared/models/team_member_model.dart';
 import '../../../../shared/providers/auth_provider.dart';
 import '../../../../core/providers/cache_for.dart';
+import '../../../../shared/widgets/ai_prefill_banner.dart';
 import '../../data/team_repository.dart';
 
 final teamMembersProvider = FutureProvider.autoDispose
@@ -25,8 +26,9 @@ const _roleLabels = {
 
 class TeamMembersScreen extends ConsumerStatefulWidget {
   final MemberData? initialData;
+  final AiPrefill<MemberData>? aiPrefill;
 
-  const TeamMembersScreen({super.key, this.initialData});
+  const TeamMembersScreen({super.key, this.initialData, this.aiPrefill});
 
   @override
   ConsumerState<TeamMembersScreen> createState() => _TeamMembersScreenState();
@@ -36,29 +38,46 @@ class _TeamMembersScreenState extends ConsumerState<TeamMembersScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.initialData != null) {
+    if (widget.initialData != null || widget.aiPrefill != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _showInviteDialog(prefill: widget.initialData);
+        if (mounted) _showInviteDialog(
+          prefill: widget.initialData ?? widget.aiPrefill?.data,
+          aiPrefill: widget.aiPrefill,
+        );
       });
     }
   }
 
-  void _showInviteDialog({MemberData? prefill}) {
-    final emailController = TextEditingController(text: prefill?.email ?? '');
+  void _showInviteDialog({MemberData? prefill, AiPrefill<MemberData>? aiPrefill}) {
+    final actPrefill = prefill ?? aiPrefill?.data;
+    final emailController = TextEditingController(text: actPrefill?.email ?? '');
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Invitar miembro'),
-        content: TextField(
-          controller: emailController,
-          autofocus: true,
-          keyboardType: TextInputType.emailAddress,
-          decoration: const InputDecoration(
-            labelText: 'Email',
-            prefixIcon: Icon(Icons.email_outlined),
-            hintText: 'usuario@ejemplo.com',
-          ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (aiPrefill != null) ...[
+              AiPrefillBanner(
+                confidence: aiPrefill.confidence,
+                rawText: aiPrefill.rawText,
+              ),
+              const SizedBox(height: AppSpacing.md),
+            ],
+            TextField(
+              controller: emailController,
+              autofocus: true,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(
+                labelText: 'Email',
+                prefixIcon: Icon(Icons.email_outlined),
+                hintText: 'usuario@ejemplo.com',
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(

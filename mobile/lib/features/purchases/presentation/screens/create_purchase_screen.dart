@@ -7,6 +7,7 @@ import '../../../../core/ai/ai_service.dart';
 import '../../../../shared/models/product_model.dart';
 import '../../../../shared/models/supplier_model.dart';
 import '../../../../shared/providers/auth_provider.dart';
+import '../../../../shared/widgets/ai_prefill_banner.dart';
 import '../../../products/presentation/screens/products_screen.dart';
 import '../../../suppliers/data/suppliers_repository.dart';
 import '../../../dashboard/presentation/screens/dashboard_screen.dart';
@@ -14,8 +15,9 @@ import '../../data/purchases_repository.dart';
 
 class CreatePurchaseScreen extends ConsumerStatefulWidget {
   final TransactionData? initialData;
+  final AiPrefill<TransactionData>? aiPrefill;
 
-  const CreatePurchaseScreen({super.key, this.initialData});
+  const CreatePurchaseScreen({super.key, this.initialData, this.aiPrefill});
 
   @override
   ConsumerState<CreatePurchaseScreen> createState() =>
@@ -448,6 +450,11 @@ class _CreatePurchaseScreenState extends ConsumerState<CreatePurchaseScreen> {
       ),
       body: Column(
         children: [
+          if (widget.aiPrefill != null)
+            AiPrefillBanner(
+              confidence: widget.aiPrefill!.confidence,
+              rawText: widget.aiPrefill!.rawText,
+            ),
           // Supplier selector
           Padding(
             padding: const EdgeInsets.symmetric(

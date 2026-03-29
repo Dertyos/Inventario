@@ -2,7 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/ai/ai_service.dart';
@@ -26,7 +25,6 @@ class _VoiceTransactionScreenState
   bool _speechAvailable = false;
   double _soundLevel = 0.0;
   String _localeId = 'es_CO';
-  ParsedCommand? _parsed;
   String? _error;
   String? _successMsg;
 
@@ -113,7 +111,6 @@ class _VoiceTransactionScreenState
     if (text.trim().isEmpty) return;
     setState(() {
       _isProcessing = true;
-      _parsed = null;
       _error = null;
       _successMsg = null;
     });
@@ -163,10 +160,8 @@ class _VoiceTransactionScreenState
         });
         return;
       }
-      setState(() {
-        _parsed = result;
-        _isProcessing = false;
-      });
+
+      await _handleParsedResult(result);
     } catch (e) {
       final msg = e.toString();
       String errorMsg;
@@ -217,16 +212,13 @@ class _VoiceTransactionScreenState
 
   bool _isTabRoute(String route) => _goRoutes.contains(route);
 
-  Future<void> _confirmAction() async {
-    if (_parsed == null) return;
-
+  Future<void> _handleParsedResult(ParsedCommand parsed) async {
     final teamId = ref.read(authProvider).teamId;
 
     // For categories, keep direct API call (no dedicated form)
-    if (_parsed!.action == CommandAction.createCategory) {
-      setState(() => _isProcessing = true);
+    if (parsed.action == CommandAction.createCategory) {
       try {
-        final c = _parsed!.category!;
+        final c = parsed.category!;
         final dio = ref.read(dioProvider);
         await dio.post('/teams/$teamId/categories', data: {
           'name': c.name,
@@ -235,6 +227,7 @@ class _VoiceTransactionScreenState
         if (mounted) {
           _showSnack('Categoria "${c.name}" creada');
           _reset();
+          setState(() => _isProcessing = false);
         }
       } on DioException catch (e) {
         final data = e.response?.data;
@@ -254,33 +247,41 @@ class _VoiceTransactionScreenState
       return;
     }
 
-    // Navigate to the corresponding form with pre-filled data
-    switch (_parsed!.action) {
+    // Navigate to the corresponding form with pre-filled AI data
+    switch (parsed.action) {
       case CommandAction.createProduct:
-        context.push('/products/new', extra: _parsed!.product);
+        context.push('/products/new', extra: AiPrefill(data: parsed.product!, confidence: parsed.confidence, rawText: parsed.rawText));
+        break;
       case CommandAction.createSale:
-        context.push('/sales/new', extra: _parsed!.transaction);
+        context.push('/sales/new', extra: AiPrefill(data: parsed.transaction!, confidence: parsed.confidence, rawText: parsed.rawText));
+        break;
       case CommandAction.createPurchase:
-        context.push('/purchases/new', extra: _parsed!.transaction);
+        context.push('/purchases/new', extra: AiPrefill(data: parsed.transaction!, confidence: parsed.confidence, rawText: parsed.rawText));
+        break;
       case CommandAction.addStock:
       case CommandAction.removeStock:
-        context.push('/inventory', extra: _parsed!.inventory);
+        context.push('/inventory', extra: AiPrefill(data: parsed.inventory!, confidence: parsed.confidence, rawText: parsed.rawText));
+        break;
       case CommandAction.createCustomer:
-        context.push('/customers', extra: _parsed!.customer);
+        context.push('/customers', extra: AiPrefill(data: parsed.customer!, confidence: parsed.confidence, rawText: parsed.rawText));
+        break;
       case CommandAction.createSupplier:
-        context.push('/suppliers', extra: _parsed!.supplier);
+        context.push('/suppliers', extra: AiPrefill(data: parsed.supplier!, confidence: parsed.confidence, rawText: parsed.rawText));
+        break;
       case CommandAction.inviteMember:
-        context.push('/team-members', extra: _parsed!.member);
+        context.push('/team-members', extra: AiPrefill(data: parsed.member!, confidence: parsed.confidence, rawText: parsed.rawText));
+        break;
       case CommandAction.createCategory:
-        break; // Handled above
+        break;
     }
+    
     _reset();
+    setState(() => _isProcessing = false);
   }
 
   void _reset() {
     setState(() {
       _controller.clear();
-      _parsed = null;
       _error = null;
       _successMsg = null;
     });
@@ -314,9 +315,7 @@ class _VoiceTransactionScreenState
       body: Column(
         children: [
           Expanded(
-            child: _parsed != null
-                ? _buildParsedResult(context)
-                : _buildInputArea(context),
+            child: _buildInputArea(context),
           ),
 
           // Input bar
@@ -560,405 +559,4 @@ class _VoiceTransactionScreenState
     return Icons.chat_outlined;
   }
 
-  // ---------------------------------------------------------------------------
-  // Parsed result display
-  // ---------------------------------------------------------------------------
-
-  Widget _buildParsedResult(BuildContext context) {
-    final parsed = _parsed!;
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildActionHeader(context, parsed),
-          const SizedBox(height: AppSpacing.md),
-
-          // Action-specific content
-          switch (parsed.action) {
-            CommandAction.createSale ||
-            CommandAction.createPurchase =>
-              _buildTransactionResult(context, parsed),
-            CommandAction.createProduct =>
-              _buildProductResult(context, parsed.product!),
-            CommandAction.createCategory =>
-              _buildCategoryResult(context, parsed.category!),
-            CommandAction.createCustomer =>
-              _buildCustomerResult(context, parsed.customer!),
-            CommandAction.createSupplier =>
-              _buildSupplierResult(context, parsed.supplier!),
-            CommandAction.addStock ||
-            CommandAction.removeStock =>
-              _buildInventoryResult(context, parsed),
-            CommandAction.inviteMember =>
-              _buildMemberResult(context, parsed.member!),
-          },
-
-          const SizedBox(height: AppSpacing.lg),
-
-          // Actions row
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _reset,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Otra vez'),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                flex: 2,
-                child: FilledButton.icon(
-                  onPressed: _isProcessing ? null : _confirmAction,
-                  icon: _isProcessing
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Icon(Icons.check),
-                  label: Text(_confirmLabel(parsed.action)),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _confirmLabel(CommandAction action) {
-    switch (action) {
-      case CommandAction.createSale:
-        return 'Ir a nueva venta';
-      case CommandAction.createPurchase:
-        return 'Ir a nueva compra';
-      case CommandAction.createProduct:
-        return 'Ir a crear producto';
-      case CommandAction.createCategory:
-        return 'Crear categoria';
-      case CommandAction.createCustomer:
-        return 'Ir a crear cliente';
-      case CommandAction.createSupplier:
-        return 'Ir a crear proveedor';
-      case CommandAction.addStock:
-        return 'Ir a registrar entrada';
-      case CommandAction.removeStock:
-        return 'Ir a registrar salida';
-      case CommandAction.inviteMember:
-        return 'Ir a invitar miembro';
-    }
-  }
-
-  Widget _buildActionHeader(BuildContext context, ParsedCommand parsed) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final (icon, label, color) = _actionMeta(parsed.action);
-
-    return Card(
-      color: color.withValues(alpha: 0.1),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, color: color),
-                const SizedBox(width: AppSpacing.sm),
-                Text(
-                  label,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: color,
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                const Spacer(),
-                _confidenceBadge(parsed.confidence),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              '"${parsed.rawText}"',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontStyle: FontStyle.italic,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  (IconData, String, Color) _actionMeta(CommandAction action) {
-    switch (action) {
-      case CommandAction.createSale:
-        return (Icons.sell_rounded, 'Venta', Colors.green);
-      case CommandAction.createPurchase:
-        return (Icons.shopping_cart_rounded, 'Compra', Colors.blue);
-      case CommandAction.createProduct:
-        return (Icons.inventory_2_rounded, 'Nuevo producto', Colors.purple);
-      case CommandAction.createCategory:
-        return (Icons.category_rounded, 'Nueva categoria', Colors.teal);
-      case CommandAction.createCustomer:
-        return (Icons.person_add_rounded, 'Nuevo cliente', Colors.indigo);
-      case CommandAction.createSupplier:
-        return (Icons.business_rounded, 'Nuevo proveedor', Colors.orange);
-      case CommandAction.addStock:
-        return (Icons.add_box_rounded, 'Entrada de stock', Colors.green);
-      case CommandAction.removeStock:
-        return (Icons.outbox_rounded, 'Salida de stock', Colors.red);
-      case CommandAction.inviteMember:
-        return (Icons.group_add_rounded, 'Invitar miembro', Colors.cyan);
-    }
-  }
-
-  Widget _confidenceBadge(double confidence) {
-    final isHigh = confidence >= 0.8;
-    return Chip(
-      label: Text(isHigh ? 'Alta confianza' : 'Verificar datos'),
-      labelStyle: const TextStyle(fontSize: 10),
-      backgroundColor: isHigh
-          ? Colors.green.withValues(alpha: 0.1)
-          : Colors.orange.withValues(alpha: 0.1),
-      side: BorderSide.none,
-      padding: EdgeInsets.zero,
-      visualDensity: VisualDensity.compact,
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Action-specific result builders
-  // ---------------------------------------------------------------------------
-
-  Widget _buildTransactionResult(BuildContext context, ParsedCommand parsed) {
-    final t = parsed.transaction!;
-    final cop =
-        NumberFormat.currency(locale: 'es_CO', symbol: '\$', decimalDigits: 0);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Productos', style: Theme.of(context).textTheme.titleSmall),
-        const SizedBox(height: AppSpacing.xs),
-        ...t.items.map((item) => _itemTile(context, item, cop)),
-        if (t.customerOrSupplier != null) ...[
-          const SizedBox(height: AppSpacing.md),
-          Card(
-            child: ListTile(
-              leading: Icon(
-                parsed.action == CommandAction.createSale
-                    ? Icons.person_outline
-                    : Icons.business_outlined,
-              ),
-              title: Text(t.customerOrSupplier!),
-              subtitle: Text(parsed.action == CommandAction.createSale
-                  ? 'Cliente'
-                  : 'Proveedor'),
-            ),
-          ),
-        ],
-        if (t.totalAmount != null) ...[
-          const SizedBox(height: AppSpacing.md),
-          _totalCard(context, cop.format(t.totalAmount)),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildProductResult(BuildContext context, ProductData p) {
-    final cop =
-        NumberFormat.currency(locale: 'es_CO', symbol: '\$', decimalDigits: 0);
-    return Column(
-      children: [
-        _detailTile(context, 'Nombre', p.name, Icons.inventory_2_outlined),
-        if (p.sku != null) _detailTile(context, 'Código interno', p.sku!, Icons.qr_code),
-        _detailTile(
-            context, 'Precio', cop.format(p.price), Icons.attach_money),
-        if (p.cost != null)
-          _detailTile(context, 'Costo', cop.format(p.cost), Icons.money_off),
-        if (p.categoryName != null)
-          _detailTile(context, 'Categoria', p.categoryName!,
-              Icons.category_outlined),
-        _detailTile(context, 'Stock minimo', '${p.minStock ?? 5}',
-            Icons.warning_amber),
-      ],
-    );
-  }
-
-  Widget _buildCategoryResult(BuildContext context, CategoryData c) {
-    return Column(
-      children: [
-        _detailTile(context, 'Nombre', c.name, Icons.category_outlined),
-        if (c.description != null)
-          _detailTile(
-              context, 'Descripcion', c.description!, Icons.description),
-      ],
-    );
-  }
-
-  Widget _buildCustomerResult(BuildContext context, CustomerData c) {
-    return Column(
-      children: [
-        _detailTile(context, 'Nombre', c.name, Icons.person_outline),
-        if (c.phone != null)
-          _detailTile(context, 'Telefono', c.phone!, Icons.phone),
-        if (c.email != null)
-          _detailTile(context, 'Email', c.email!, Icons.email_outlined),
-        if (c.documentType != null)
-          _detailTile(
-              context,
-              'Documento',
-              '${c.documentType} ${c.documentNumber ?? ''}',
-              Icons.badge_outlined),
-        if (c.address != null)
-          _detailTile(
-              context, 'Direccion', c.address!, Icons.location_on_outlined),
-      ],
-    );
-  }
-
-  Widget _buildSupplierResult(BuildContext context, SupplierData s) {
-    return Column(
-      children: [
-        _detailTile(context, 'Nombre', s.name, Icons.business_outlined),
-        if (s.nit != null)
-          _detailTile(context, 'NIT', s.nit!, Icons.badge_outlined),
-        if (s.contactName != null)
-          _detailTile(
-              context, 'Contacto', s.contactName!, Icons.person_outline),
-        if (s.phone != null)
-          _detailTile(context, 'Telefono', s.phone!, Icons.phone),
-        if (s.email != null)
-          _detailTile(context, 'Email', s.email!, Icons.email_outlined),
-        if (s.address != null)
-          _detailTile(
-              context, 'Direccion', s.address!, Icons.location_on_outlined),
-      ],
-    );
-  }
-
-  Widget _buildInventoryResult(BuildContext context, ParsedCommand parsed) {
-    final inv = parsed.inventory!;
-    final isEntry = parsed.action == CommandAction.addStock;
-    return Column(
-      children: [
-        _detailTile(context, 'Producto', inv.productName,
-            Icons.inventory_2_outlined),
-        _detailTile(context, 'Cantidad', '${inv.quantity}',
-            isEntry ? Icons.add_box_outlined : Icons.outbox_outlined),
-        _detailTile(
-            context, 'Tipo', isEntry ? 'Entrada' : 'Salida', Icons.swap_vert),
-        if (inv.reason != null)
-          _detailTile(context, 'Razon', inv.reason!, Icons.notes),
-        if (inv.productId == null)
-          Card(
-            color: Colors.orange.withValues(alpha: 0.1),
-            child: const Padding(
-              padding: EdgeInsets.all(AppSpacing.sm),
-              child: Row(
-                children: [
-                  Icon(Icons.warning_amber, color: Colors.orange, size: 18),
-                  SizedBox(width: AppSpacing.xs),
-                  Expanded(
-                    child: Text(
-                      'Producto no encontrado en el catalogo. Crealo primero.',
-                      style: TextStyle(color: Colors.orange, fontSize: 12),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildMemberResult(BuildContext context, MemberData m) {
-    return Column(
-      children: [
-        _detailTile(context, 'Email', m.email, Icons.email_outlined),
-        _detailTile(context, 'Rol', m.role ?? 'STAFF', Icons.shield_outlined),
-      ],
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Shared widgets
-  // ---------------------------------------------------------------------------
-
-  Widget _detailTile(
-      BuildContext context, String label, String value, IconData icon) {
-    return Card(
-      child: ListTile(
-        leading: Icon(icon),
-        title: Text(value),
-        subtitle: Text(label),
-      ),
-    );
-  }
-
-  Widget _itemTile(BuildContext context, ParsedItem item, NumberFormat cop) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Card(
-      child: ListTile(
-        leading: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: colorScheme.primaryContainer,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Center(
-            child: Text(
-              '${item.quantity}',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: colorScheme.onPrimaryContainer,
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-          ),
-        ),
-        title: Text(item.name),
-        subtitle: item.unitPrice != null
-            ? Text('${cop.format(item.unitPrice)} c/u')
-            : null,
-        trailing: item.unitPrice != null
-            ? Text(
-                cop.format(item.unitPrice! * item.quantity),
-                style: Theme.of(context)
-                    .textTheme
-                    .titleSmall
-                    ?.copyWith(fontWeight: FontWeight.bold),
-              )
-            : null,
-      ),
-    );
-  }
-
-  Widget _totalCard(BuildContext context, String formatted) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Card(
-      color: colorScheme.primaryContainer.withValues(alpha: 0.3),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('Total', style: Theme.of(context).textTheme.titleMedium),
-            Text(
-              formatted,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.primary,
-                  ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

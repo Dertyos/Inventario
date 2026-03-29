@@ -11,6 +11,7 @@ import '../../../../shared/widgets/app_search_field.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/wa_icon_button.dart';
 import '../../../../core/providers/cache_for.dart';
+import '../../../../shared/widgets/ai_prefill_banner.dart';
 import '../../data/customers_repository.dart';
 
 final customersProvider = FutureProvider.autoDispose
@@ -21,8 +22,9 @@ final customersProvider = FutureProvider.autoDispose
 
 class CustomersScreen extends ConsumerStatefulWidget {
   final CustomerData? initialData;
+  final AiPrefill<CustomerData>? aiPrefill;
 
-  const CustomersScreen({super.key, this.initialData});
+  const CustomersScreen({super.key, this.initialData, this.aiPrefill});
 
   @override
   ConsumerState<CustomersScreen> createState() => _CustomersScreenState();
@@ -34,14 +36,17 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.initialData != null) {
+    if (widget.initialData != null || widget.aiPrefill != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _showAddCustomerDialog(prefill: widget.initialData);
+        if (mounted) _showAddCustomerDialog(
+            prefill: widget.initialData ?? widget.aiPrefill?.data,
+            aiPrefill: widget.aiPrefill,
+        );
       });
     }
   }
 
-  void _showAddCustomerDialog({CustomerData? prefill}) {
+  void _showAddCustomerDialog({CustomerData? prefill, AiPrefill<CustomerData>? aiPrefill}) {
     final nameController = TextEditingController(text: prefill?.name ?? '');
     final phoneController = TextEditingController(text: prefill?.phone ?? '');
     final emailController = TextEditingController(text: prefill?.email ?? '');
@@ -50,6 +55,13 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
       context: context,
       title: 'Nuevo cliente',
       children: [
+        if (aiPrefill != null) ...[
+          AiPrefillBanner(
+            confidence: aiPrefill.confidence,
+            rawText: aiPrefill.rawText,
+          ),
+          const SizedBox(height: AppSpacing.md),
+        ],
         TextField(
           controller: nameController,
           textCapitalization: TextCapitalization.words,

@@ -481,3 +481,19 @@ class ParsedItem {
         matchedProductId: json['matchedProductId'] as String?,
       );
 }
+
+// ---------------------------------------------------------------------------
+// AI Prefill wrapper
+// ---------------------------------------------------------------------------
+
+class AiPrefill<T> {
+  final T data;
+  final double confidence;
+  final String rawText;
+
+  const AiPrefill({
+    required this.data,
+    required this.confidence,
+    required this.rawText,
+  });
+}

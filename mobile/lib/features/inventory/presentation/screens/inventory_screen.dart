@@ -7,6 +7,7 @@ import '../../../../core/ai/ai_service.dart';
 import '../../../../shared/models/product_model.dart';
 import '../../../../shared/models/supplier_model.dart';
 import '../../../../shared/providers/auth_provider.dart';
+import '../../../../shared/widgets/ai_prefill_banner.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../products/data/products_repository.dart';
 import '../../../products/presentation/screens/products_screen.dart';
@@ -33,8 +34,9 @@ final lowStockProvider =
 
 class InventoryScreen extends ConsumerStatefulWidget {
   final InventoryData? initialMovement;
+  final AiPrefill<InventoryData>? aiPrefill;
 
-  const InventoryScreen({super.key, this.initialMovement});
+  const InventoryScreen({super.key, this.initialMovement, this.aiPrefill});
 
   @override
   ConsumerState<InventoryScreen> createState() => _InventoryScreenState();
@@ -89,15 +91,26 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
+      body: Column(
         children: [
-          _MovementsTab(teamId: teamId),
-          _LowStockTab(
-            teamId: teamId,
-            onAddStock: (product) => _showAddMovementDialog(
-              context, ref, teamId,
-              preselectedProduct: product,
+          if (widget.aiPrefill != null)
+            AiPrefillBanner(
+              confidence: widget.aiPrefill!.confidence,
+              rawText: widget.aiPrefill!.rawText,
+            ),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _MovementsTab(teamId: teamId),
+                _LowStockTab(
+                  teamId: teamId,
+                  onAddStock: (product) => _showAddMovementDialog(
+                    context, ref, teamId,
+                    preselectedProduct: product,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

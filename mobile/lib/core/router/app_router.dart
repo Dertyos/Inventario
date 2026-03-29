@@ -146,6 +146,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                 parentNavigatorKey: _rootNavigatorKey,
                 builder: (context, state) {
                   final extra = state.extra;
+                  if (extra is AiPrefill<ProductData>) {
+                    return ProductFormScreen(initialData: extra.data, aiPrefill: extra);
+                  }
                   if (extra is ProductData) {
                     return ProductFormScreen(initialData: extra);
                   }
@@ -176,11 +179,15 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'new',
                 parentNavigatorKey: _rootNavigatorKey,
-                builder: (context, state) => CreateSaleScreen(
-                  initialData: state.extra is TransactionData
-                      ? state.extra as TransactionData
-                      : null,
-                ),
+                builder: (context, state) {
+                  final extra = state.extra;
+                  if (extra is AiPrefill<TransactionData>) {
+                    return CreateSaleScreen(initialData: extra.data, aiPrefill: extra);
+                  }
+                  return CreateSaleScreen(
+                    initialData: extra is TransactionData ? extra : null,
+                  );
+                },
               ),
               GoRoute(
                 path: ':id/edit',
@@ -197,23 +204,35 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/inventory',
-            pageBuilder: (context, state) => NoTransitionPage(
-              child: InventoryScreen(
-                initialMovement: state.extra is InventoryData
-                    ? state.extra as InventoryData
-                    : null,
-              ),
-            ),
+            pageBuilder: (context, state) {
+              final extra = state.extra;
+              if (extra is AiPrefill<InventoryData>) {
+                return NoTransitionPage(
+                  child: InventoryScreen(initialMovement: extra.data, aiPrefill: extra),
+                );
+              }
+              return NoTransitionPage(
+                child: InventoryScreen(
+                  initialMovement: extra is InventoryData ? extra : null,
+                ),
+              );
+            },
           ),
           GoRoute(
             path: '/customers',
-            pageBuilder: (context, state) => NoTransitionPage(
-              child: CustomersScreen(
-                initialData: state.extra is CustomerData
-                    ? state.extra as CustomerData
-                    : null,
-              ),
-            ),
+            pageBuilder: (context, state) {
+              final extra = state.extra;
+              if (extra is AiPrefill<CustomerData>) {
+                return NoTransitionPage(
+                  child: CustomersScreen(initialData: extra.data, aiPrefill: extra),
+                );
+              }
+              return NoTransitionPage(
+                child: CustomersScreen(
+                  initialData: extra is CustomerData ? extra : null,
+                ),
+              );
+            },
           ),
           GoRoute(
             path: '/settings',
@@ -231,11 +250,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/team-members',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => TeamMembersScreen(
-          initialData: state.extra is MemberData
-              ? state.extra as MemberData
-              : null,
-        ),
+        builder: (context, state) {
+          final extra = state.extra;
+          if (extra is AiPrefill<MemberData>) {
+            return TeamMembersScreen(initialData: extra.data, aiPrefill: extra);
+          }
+          return TeamMembersScreen(
+            initialData: extra is MemberData ? extra : null,
+          );
+        },
       ),
       GoRoute(
         path: '/role-permissions/:role',
@@ -289,11 +312,15 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'new',
             parentNavigatorKey: _rootNavigatorKey,
-            builder: (context, state) => CreatePurchaseScreen(
-              initialData: state.extra is TransactionData
-                  ? state.extra as TransactionData
-                  : null,
-            ),
+            builder: (context, state) {
+              final extra = state.extra;
+              if (extra is AiPrefill<TransactionData>) {
+                return CreatePurchaseScreen(initialData: extra.data, aiPrefill: extra);
+              }
+              return CreatePurchaseScreen(
+                initialData: extra is TransactionData ? extra : null,
+              );
+            },
           ),
         ],
       ),
@@ -317,11 +344,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/suppliers',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => SuppliersScreen(
-          initialData: state.extra is SupplierData
-              ? state.extra as SupplierData
-              : null,
-        ),
+        builder: (context, state) {
+          final extra = state.extra;
+          if (extra is AiPrefill<SupplierData>) {
+            return SuppliersScreen(initialData: extra.data, aiPrefill: extra);
+          }
+          return SuppliersScreen(
+            initialData: extra is SupplierData ? extra : null,
+          );
+        },
         routes: [
           GoRoute(
             path: ':id',

@@ -7,6 +7,7 @@ import '../../../../core/ai/ai_service.dart';
 import '../../../../shared/models/customer_model.dart';
 import '../../../../shared/models/product_model.dart';
 import '../../../../shared/providers/auth_provider.dart';
+import '../../../../shared/widgets/ai_prefill_banner.dart';
 import '../../../customers/presentation/screens/customers_screen.dart';
 import '../../../products/presentation/screens/products_screen.dart';
 import '../../data/sales_repository.dart';
@@ -15,8 +16,9 @@ import 'sales_screen.dart';
 
 class CreateSaleScreen extends ConsumerStatefulWidget {
   final TransactionData? initialData;
+  final AiPrefill<TransactionData>? aiPrefill;
 
-  const CreateSaleScreen({super.key, this.initialData});
+  const CreateSaleScreen({super.key, this.initialData, this.aiPrefill});
 
   @override
   ConsumerState<CreateSaleScreen> createState() => _CreateSaleScreenState();
@@ -521,6 +523,11 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
       ),
       body: Column(
         children: [
+          if (widget.aiPrefill != null)
+            AiPrefillBanner(
+              confidence: widget.aiPrefill!.confidence,
+              rawText: widget.aiPrefill!.rawText,
+            ),
           // Customer selector
           Padding(
             padding: const EdgeInsets.symmetric(

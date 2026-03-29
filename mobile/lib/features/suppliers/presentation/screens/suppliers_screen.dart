@@ -3,19 +3,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/ai/ai_service.dart';
-import '../../../../shared/models/supplier_model.dart';
+
 import '../../../../shared/providers/auth_provider.dart';
 import '../../../../shared/widgets/app_list_tile.dart';
 import '../../../../shared/widgets/app_modal.dart';
 import '../../../../shared/widgets/app_search_field.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/wa_icon_button.dart';
+import '../../../../shared/widgets/ai_prefill_banner.dart';
 import '../../data/suppliers_repository.dart';
 
 class SuppliersScreen extends ConsumerStatefulWidget {
   final SupplierData? initialData;
+  final AiPrefill<SupplierData>? aiPrefill;
 
-  const SuppliersScreen({super.key, this.initialData});
+  const SuppliersScreen({super.key, this.initialData, this.aiPrefill});
 
   @override
   ConsumerState<SuppliersScreen> createState() => _SuppliersScreenState();
@@ -27,23 +29,34 @@ class _SuppliersScreenState extends ConsumerState<SuppliersScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.initialData != null) {
+    if (widget.initialData != null || widget.aiPrefill != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _showAddSupplierDialog(prefill: widget.initialData);
+        if (mounted) _showAddSupplierDialog(
+          prefill: widget.initialData ?? widget.aiPrefill?.data,
+          aiPrefill: widget.aiPrefill,
+        );
       });
     }
   }
 
-  void _showAddSupplierDialog({SupplierData? prefill}) {
-    final nameController = TextEditingController(text: prefill?.name ?? '');
-    final phoneController = TextEditingController(text: prefill?.phone ?? '');
-    final nitController = TextEditingController(text: prefill?.nit ?? '');
-    final contactController = TextEditingController(text: prefill?.contactName ?? '');
+  void _showAddSupplierDialog({SupplierData? prefill, AiPrefill<SupplierData>? aiPrefill}) {
+    final actPrefill = prefill ?? aiPrefill?.data;
+    final nameController = TextEditingController(text: actPrefill?.name ?? '');
+    final phoneController = TextEditingController(text: actPrefill?.phone ?? '');
+    final nitController = TextEditingController(text: actPrefill?.nit ?? '');
+    final contactController = TextEditingController(text: actPrefill?.contactName ?? '');
 
     showAppModal(
       context: context,
       title: 'Nuevo proveedor',
       children: [
+        if (aiPrefill != null) ...[
+          AiPrefillBanner(
+            confidence: aiPrefill.confidence,
+            rawText: aiPrefill.rawText,
+          ),
+          const SizedBox(height: AppSpacing.md),
+        ],
         TextField(
           controller: nameController,
           textCapitalization: TextCapitalization.words,

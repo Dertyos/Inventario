@@ -5,6 +5,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/ai/ai_service.dart';
 import '../../../../shared/models/product_model.dart';
 import '../../../../shared/providers/auth_provider.dart';
+import '../../../../shared/widgets/ai_prefill_banner.dart';
 import '../../data/products_repository.dart';
 import 'products_screen.dart';
 
@@ -12,12 +13,14 @@ class ProductFormScreen extends ConsumerStatefulWidget {
   final String? productId;
   final String? initialBarcode;
   final ProductData? initialData;
+  final AiPrefill<ProductData>? aiPrefill;
 
   const ProductFormScreen({
     super.key,
     this.productId,
     this.initialBarcode,
     this.initialData,
+    this.aiPrefill,
   });
 
   @override
@@ -326,6 +329,13 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         child: ListView(
           padding: const EdgeInsets.all(AppSpacing.md),
           children: [
+            if (widget.aiPrefill != null) ...[
+              AiPrefillBanner(
+                confidence: widget.aiPrefill!.confidence,
+                rawText: widget.aiPrefill!.rawText,
+              ),
+              const SizedBox(height: AppSpacing.md),
+            ],
             TextFormField(
               controller: _nameController,
               textCapitalization: TextCapitalization.sentences,
