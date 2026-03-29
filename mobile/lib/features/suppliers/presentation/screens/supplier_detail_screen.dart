@@ -406,7 +406,7 @@ class _MovementTile extends StatelessWidget {
           ),
         ),
         title: Text(
-          movement.productName,
+          movement.productName ?? 'Producto',
           style: textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
