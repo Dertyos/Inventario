@@ -11,6 +11,10 @@ class InventoryMovementModel {
   final String? productName;
   final String? supplierId;
   final String? supplierName;
+  final String? lotId;
+  final String? lotNumber;
+  final int stockBefore;
+  final int stockAfter;
   final DateTime createdAt;
 
   const InventoryMovementModel({
@@ -24,8 +28,14 @@ class InventoryMovementModel {
     this.productName,
     this.supplierId,
     this.supplierName,
+    this.lotId,
+    this.lotNumber,
+    this.stockBefore = 0,
+    this.stockAfter = 0,
     required this.createdAt,
   });
+
+  bool get canDelete => type == 'in' || type == 'out';
 
   factory InventoryMovementModel.fromJson(Map<String, dynamic> json) =>
       InventoryMovementModel(
@@ -41,6 +51,10 @@ class InventoryMovementModel {
         productName: json['product']?['name'] as String?,
         supplierId: json['supplierId'] as String?,
         supplierName: json['supplier']?['name'] as String?,
+        lotId: json['lotId'] as String?,
+        lotNumber: json['lot']?['lotNumber'] as String?,
+        stockBefore: JsonParse.toInt(json['stockBefore']) ?? 0,
+        stockAfter: JsonParse.toInt(json['stockAfter']) ?? 0,
         createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ?? DateTime.now(),
       );
 

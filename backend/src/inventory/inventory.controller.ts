@@ -1,5 +1,6 @@
 import {
   Controller,
+  Delete,
   Get,
   Post,
   Param,
@@ -70,5 +71,16 @@ export class InventoryController {
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     return this.inventoryService.findOne(teamId, id);
+  }
+
+  @Delete('movements/:id')
+  @RequirePermission('inventory.movements')
+  async deleteMovement(
+    @Param('teamId', ParseUUIDPipe) teamId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    await this.inventoryService.deleteMovement(teamId, id);
+    await this.cacheManager.clear();
+    return { message: 'Movimiento eliminado' };
   }
 }

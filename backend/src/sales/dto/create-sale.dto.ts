@@ -63,6 +63,24 @@ export class CreateSaleDto {
   @IsOptional()
   paymentMethod?: PaymentMethod;
 
+  @ApiPropertyOptional({ description: 'Monto en efectivo (pago mixto)' })
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  cashAmount?: number;
+
+  @ApiPropertyOptional({ description: 'Monto en tarjeta (pago mixto)' })
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  cardAmount?: number;
+
+  @ApiPropertyOptional({ description: 'Monto en transferencia (pago mixto)' })
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  transferAmount?: number;
+
   @ApiPropertyOptional({
     example: 3,
     description: 'Número de cuotas (solo para crédito)',

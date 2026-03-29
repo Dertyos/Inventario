@@ -11,6 +11,7 @@ import {
 } from 'typeorm';
 import { Category } from '../../categories/entities/category.entity';
 import { InventoryMovement } from '../../inventory/entities/inventory-movement.entity';
+import { ProductLot } from '../../lots/entities/product-lot.entity';
 import { Team } from '../../teams/entities/team.entity';
 
 @Entity('products')
@@ -68,6 +69,9 @@ export class Product {
 
   @OneToMany(() => InventoryMovement, (movement) => movement.product)
   inventoryMovements: InventoryMovement[];
+
+  @OneToMany(() => ProductLot, (lot) => lot.product)
+  lots: ProductLot[];
 
   @Column({ default: true })
   isActive: boolean;

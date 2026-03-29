@@ -54,4 +54,12 @@ class InventoryRepository {
       throw ApiException.fromDioError(e);
     }
   }
+
+  Future<void> deleteMovement(String teamId, String movementId) async {
+    try {
+      await _dio.delete('/teams/$teamId/inventory/movements/$movementId');
+    } on DioException catch (e) {
+      throw ApiException.fromDioError(e);
+    }
+  }
 }

@@ -58,6 +58,14 @@ export class CreateMovementDto {
   @IsOptional()
   supplierId?: string;
 
+  @ApiPropertyOptional({
+    example: '550e8400-e29b-41d4-a716-446655440000',
+    description: 'UUID del lote (obligatorio si producto tiene trackLots y enableLots activo)',
+  })
+  @IsUUID()
+  @IsOptional()
+  lotId?: string;
+
   @ApiPropertyOptional({ description: 'Compra a crédito' })
   @IsBoolean()
   @IsOptional()
