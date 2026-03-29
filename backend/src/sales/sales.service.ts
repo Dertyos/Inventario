@@ -251,6 +251,8 @@ export class SalesService {
       .leftJoinAndSelect('sale.user', 'user')
       .leftJoinAndSelect('sale.items', 'items')
       .leftJoinAndSelect('items.product', 'product')
+      .leftJoin('sale.creditAccount', 'creditAccount')
+      .addSelect(['creditAccount.id'])
       .where('sale.teamId = :teamId', { teamId });
 
     if (options?.customerId) {

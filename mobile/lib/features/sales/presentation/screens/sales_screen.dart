@@ -7,6 +7,7 @@ import '../../../../shared/models/sale_model.dart';
 import '../../../../shared/providers/auth_provider.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../../core/providers/cache_for.dart';
+import '../../../credits/data/credits_repository.dart';
 import '../../data/sales_repository.dart';
 
 final salesProvider =
@@ -120,6 +121,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                         onDelete: canDelete && sale.isCancelled
                             ? () => _confirmDelete(context, ref, teamId, sale)
                             : null,
+                        onPaymentRegistered: () =>
+                            ref.invalidate(salesProvider(teamId)),
                         cop: cop,
                       ),
                     ),
@@ -244,6 +247,7 @@ class _SaleCard extends StatelessWidget {
   final VoidCallback? onEdit;
   final VoidCallback? onCancel;
   final VoidCallback? onDelete;
+  final VoidCallback? onPaymentRegistered;
   final NumberFormat cop;
 
   const _SaleCard({
@@ -256,6 +260,7 @@ class _SaleCard extends StatelessWidget {
     this.onEdit,
     this.onCancel,
     this.onDelete,
+    this.onPaymentRegistered,
     required this.cop,
   });
 
@@ -509,6 +514,30 @@ class _SaleCard extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ],
+          // Quick pay button for credit sales
+          if (sale.isCredit &&
+              !sale.isCancelled &&
+              sale.creditBalance > 0 &&
+              sale.creditAccountId != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () async {
+                  await context.push('/credits/${sale.creditAccountId}');
+                  onPaymentRegistered?.call();
+                },
+                icon: const Icon(Icons.payment_outlined, size: 18),
+                label: Text(
+                  'Registrar Abono · Debe ${cop.format(sale.creditBalance)}',
+                ),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.warning,
+                  foregroundColor: Colors.white,
+                ),
+              ),
             ),
           ],
           // Action buttons
