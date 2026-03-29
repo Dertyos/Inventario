@@ -15,33 +15,69 @@ import { SuppliersModule } from '../suppliers/suppliers.module';
 
 const logger = new Logger('AiModule');
 
-function createProvider(name: string, config: ConfigService): IAiProvider | null {
+/**
+ * Config:
+ *   AI_PROVIDER=anthropic|openai|gemini|groq  (required)
+ *   AI_API_KEY=sk-...                         (required)
+ *
+ * Also supports legacy per-provider keys (ANTHROPIC_API_KEY, etc.)
+ * for backward compatibility.
+ */
+function createFromConfig(config: ConfigService): IAiProvider | null {
+  const provider = config.get<string>('AI_PROVIDER');
+  // Unified key first, fallback to legacy per-provider keys
+  const apiKey = config.get<string>('AI_API_KEY');
+
+  if (!provider && !apiKey) {
+    // Legacy auto-detect: check individual keys
+    const legacy: [string, string][] = [
+      ['anthropic', 'ANTHROPIC_API_KEY'],
+      ['openai', 'OPENAI_API_KEY'],
+      ['gemini', 'GEMINI_API_KEY'],
+      ['groq', 'GROQ_API_KEY'],
+    ];
+    for (const [name, envVar] of legacy) {
+      const key = config.get<string>(envVar);
+      if (key) {
+        logger.log(`AI provider: ${name} (auto-detected from ${envVar})`);
+        return buildProvider(name, key);
+      }
+    }
+    logger.warn('No AI configured. Set AI_PROVIDER + AI_API_KEY.');
+    return null;
+  }
+
+  if (!provider) {
+    logger.warn('AI_API_KEY is set but AI_PROVIDER is missing. Set AI_PROVIDER=anthropic|openai|gemini|groq');
+    return null;
+  }
+
+  const key = apiKey
+    || config.get<string>('ANTHROPIC_API_KEY')
+    || config.get<string>('OPENAI_API_KEY')
+    || config.get<string>('GEMINI_API_KEY')
+    || config.get<string>('GROQ_API_KEY');
+
+  if (!key) {
+    logger.warn(`AI_PROVIDER=${provider} but no AI_API_KEY set.`);
+    return null;
+  }
+
+  logger.log(`AI provider: ${provider}`);
+  return buildProvider(provider, key);
+}
+
+function buildProvider(name: string, apiKey: string): IAiProvider {
   switch (name) {
-    case 'openai': {
-      const key = config.get<string>('OPENAI_API_KEY');
-      if (!key) { logger.warn('OPENAI_API_KEY not set'); return null; }
-      logger.log('AI provider: OpenAI');
-      return new OpenAiProvider(key);
-    }
-    case 'gemini': {
-      const key = config.get<string>('GEMINI_API_KEY');
-      if (!key) { logger.warn('GEMINI_API_KEY not set'); return null; }
-      logger.log('AI provider: Google Gemini');
-      return new GeminiProvider(key);
-    }
-    case 'groq': {
-      const key = config.get<string>('GROQ_API_KEY');
-      if (!key) { logger.warn('GROQ_API_KEY not set'); return null; }
-      logger.log('AI provider: Groq');
-      return new GroqProvider(key);
-    }
+    case 'openai':
+      return new OpenAiProvider(apiKey);
+    case 'gemini':
+      return new GeminiProvider(apiKey);
+    case 'groq':
+      return new GroqProvider(apiKey);
     case 'anthropic':
-    default: {
-      const key = config.get<string>('ANTHROPIC_API_KEY');
-      if (!key) { logger.warn('ANTHROPIC_API_KEY not set'); return null; }
-      logger.log('AI provider: Anthropic (Claude)');
-      return new AnthropicProvider(key);
-    }
+    default:
+      return new AnthropicProvider(apiKey);
   }
 }
 
@@ -58,34 +94,8 @@ function createProvider(name: string, config: ConfigService): IAiProvider | null
   providers: [
     {
       provide: AI_PROVIDER,
-      useFactory: (config: ConfigService): IAiProvider | null => {
-        const explicit = config.get<string>('AI_PROVIDER');
-
-        // If AI_PROVIDER is set explicitly, use that
-        if (explicit) {
-          return createProvider(explicit, config);
-        }
-
-        // Auto-detect: use whichever API key is configured
-        const autoDetect: [string, string][] = [
-          ['anthropic', 'ANTHROPIC_API_KEY'],
-          ['openai', 'OPENAI_API_KEY'],
-          ['gemini', 'GEMINI_API_KEY'],
-          ['groq', 'GROQ_API_KEY'],
-        ];
-
-        for (const [name, envVar] of autoDetect) {
-          if (config.get<string>(envVar)) {
-            logger.log(`Auto-detected AI provider from ${envVar}`);
-            return createProvider(name, config);
-          }
-        }
-
-        logger.warn(
-          'No AI provider configured. Set any API key: ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, or GROQ_API_KEY',
-        );
-        return null;
-      },
+      useFactory: (config: ConfigService): IAiProvider | null =>
+        createFromConfig(config),
       inject: [ConfigService],
     },
     AiService,
