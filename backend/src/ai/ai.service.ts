@@ -5,8 +5,7 @@ import {
   ServiceUnavailableException,
   BadRequestException,
 } from '@nestjs/common';
-import Anthropic from '@anthropic-ai/sdk';
-import { ANTHROPIC_CLIENT } from './claude.provider';
+import { AI_PROVIDER, IAiProvider, AiTool } from './ai-provider.interface';
 import { ProductsService } from '../products/products.service';
 import { Product } from '../products/entities/product.entity';
 import { Customer } from '../customers/entities/customer.entity';
@@ -14,13 +13,12 @@ import { CategoriesService } from '../categories/categories.service';
 import { CustomersService } from '../customers/customers.service';
 import { SuppliersService } from '../suppliers/suppliers.service';
 
-/** Tool schema for structured transaction extraction via constrained decoding. */
-const TRANSACTION_TOOL: Anthropic.Tool = {
+/** Provider-agnostic tool schema for transaction parsing. */
+const TRANSACTION_TOOL: AiTool = {
   name: 'parse_transaction',
   description:
     'Extract structured transaction data from a natural language voice command',
-  input_schema: {
-    type: 'object' as const,
+  parameters: {
     properties: {
       transaction_type: {
         type: 'string',
@@ -76,13 +74,12 @@ const TRANSACTION_TOOL: Anthropic.Tool = {
   },
 };
 
-/** Tool schema for general command extraction via constrained decoding. */
-const COMMAND_TOOL: Anthropic.Tool = {
+/** Provider-agnostic tool schema for general command parsing. */
+const COMMAND_TOOL: AiTool = {
   name: 'parse_command',
   description:
     'Extract structured command data from natural language input about inventory management operations',
-  input_schema: {
-    type: 'object' as const,
+  parameters: {
     properties: {
       action: {
         type: 'string',
@@ -108,63 +105,32 @@ const COMMAND_TOOL: Anthropic.Tool = {
               type: 'object',
               properties: {
                 product_name: { type: 'string' },
-                quantity: {
-                  type: 'integer',
-                  description: '>= 1, <= 10000',
-                },
-                unit_price: {
-                  type: 'number',
-                  description: 'Price per unit in COP, null if not mentioned',
-                },
+                quantity: { type: 'integer', description: '>= 1, <= 10000' },
+                unit_price: { type: 'number', description: 'Price per unit in COP, null if not mentioned' },
               },
               required: ['product_name', 'quantity'],
             },
           },
-          customer_name: {
-            type: 'string',
-            description: 'Customer name for sales',
-          },
-          supplier_name: {
-            type: 'string',
-            description: 'Supplier name for purchases',
-          },
-          payment_method: {
-            type: 'string',
-            enum: ['cash', 'card', 'transfer', 'credit'],
-          },
+          customer_name: { type: 'string', description: 'Customer name for sales' },
+          supplier_name: { type: 'string', description: 'Supplier name for purchases' },
+          payment_method: { type: 'string', enum: ['cash', 'card', 'transfer', 'credit'] },
         },
       },
       product: {
         type: 'object',
         properties: {
           name: { type: 'string' },
-          sku: {
-            type: 'string',
-            description:
-              'Product code. Generate one if not specified (e.g. first 3 letters uppercase + -001)',
-          },
+          sku: { type: 'string', description: 'Product code. Generate one if not specified' },
           price: { type: 'number', description: 'Sale price in COP' },
-          cost: {
-            type: 'number',
-            description: 'Cost price in COP, null if not mentioned',
-          },
-          category_name: {
-            type: 'string',
-            description: 'Category name if mentioned',
-          },
-          min_stock: {
-            type: 'integer',
-            description: 'Minimum stock threshold, default 5',
-          },
+          cost: { type: 'number', description: 'Cost price in COP, null if not mentioned' },
+          category_name: { type: 'string', description: 'Category name if mentioned' },
+          min_stock: { type: 'integer', description: 'Minimum stock threshold, default 5' },
         },
         required: ['name', 'price'],
       },
       category: {
         type: 'object',
-        properties: {
-          name: { type: 'string' },
-          description: { type: 'string' },
-        },
+        properties: { name: { type: 'string' }, description: { type: 'string' } },
         required: ['name'],
       },
       customer: {
@@ -173,10 +139,7 @@ const COMMAND_TOOL: Anthropic.Tool = {
           name: { type: 'string' },
           phone: { type: 'string' },
           email: { type: 'string' },
-          document_type: {
-            type: 'string',
-            enum: ['CC', 'NIT', 'CE', 'PASSPORT'],
-          },
+          document_type: { type: 'string', enum: ['CC', 'NIT', 'CE', 'PASSPORT'] },
           document_number: { type: 'string' },
           address: { type: 'string' },
         },
@@ -211,10 +174,7 @@ const COMMAND_TOOL: Anthropic.Tool = {
         },
         required: ['email'],
       },
-      confidence: {
-        type: 'number',
-        description: '0.0-1.0 confidence score',
-      },
+      confidence: { type: 'number', description: '0.0-1.0 confidence score' },
     },
     required: ['action', 'confidence'],
   },
@@ -271,10 +231,7 @@ export interface ParsedCommandResult {
     categoryId?: string;
     minStock?: number;
   };
-  category?: {
-    name: string;
-    description?: string;
-  };
+  category?: { name: string; description?: string };
   customer?: {
     name: string;
     phone?: string;
@@ -298,10 +255,7 @@ export interface ParsedCommandResult {
     type: string;
     reason?: string;
   };
-  member?: {
-    email: string;
-    role?: string;
-  };
+  member?: { email: string; role?: string };
   rawText: string;
   confidence: number;
 }
@@ -311,17 +265,17 @@ export class AiService {
   private readonly logger = new Logger(AiService.name);
 
   constructor(
-    @Inject(ANTHROPIC_CLIENT) private readonly claude: Anthropic | null,
+    @Inject(AI_PROVIDER) private readonly provider: IAiProvider | null,
     private readonly productsService: ProductsService,
     private readonly categoriesService: CategoriesService,
     private readonly customersService: CustomersService,
     private readonly suppliersService: SuppliersService,
   ) {}
 
-  getStatus(): { configured: boolean; model: string } {
+  getStatus(): { configured: boolean; provider: string } {
     return {
-      configured: this.claude !== null,
-      model: 'claude-haiku-4-5-20251001',
+      configured: this.provider !== null,
+      provider: this.provider?.name ?? 'none',
     };
   }
 
@@ -329,16 +283,9 @@ export class AiService {
     teamId: string,
     text: string,
   ): Promise<ParsedTransactionResult> {
-    // --- Layer 1: Input sanitization ---
     const sanitized = this.sanitizeInput(text);
+    this.ensureConfigured();
 
-    if (!this.claude) {
-      throw new ServiceUnavailableException(
-        'Servicio de IA no configurado (falta ANTHROPIC_API_KEY)',
-      );
-    }
-
-    // --- Layer 2: Build prompt with product catalog ---
     const products = await this.productsService.findAll(teamId, {
       isActive: true,
     }) as Product[];
@@ -348,328 +295,74 @@ export class AiService {
 
     const systemPrompt = this.buildSystemPrompt(catalog);
 
-    // --- Layer 3: Call Claude with tool_use (constrained decoding) ---
     try {
-      const response = await this.claude.messages.create({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 512,
-        temperature: 0,
-        tools: [TRANSACTION_TOOL],
-        tool_choice: { type: 'tool', name: 'parse_transaction' },
-        system: systemPrompt,
-        messages: [
-          {
-            role: 'user',
-            content: `Parsea este comando de inventario dictado por voz:\n\n---\n${sanitized}\n---`,
-          },
-        ],
+      const response = await this.provider!.callWithTool({
+        systemPrompt,
+        userMessage: `Parsea este comando de inventario dictado por voz:\n\n---\n${sanitized}\n---`,
+        tool: TRANSACTION_TOOL,
+        maxTokens: 512,
       });
 
-      const toolBlock = response.content.find(
-        (b): b is Anthropic.ContentBlock & { type: 'tool_use' } =>
-          b.type === 'tool_use',
-      );
-
-      if (!toolBlock) {
-        this.logger.error('Claude did not return tool_use block', { text });
-        throw new BadRequestException('No se pudo interpretar la transacción');
-      }
-
-      const parsed = toolBlock.input as {
+      const parsed = response.toolInput as {
         transaction_type: 'sale' | 'purchase';
-        items: Array<{
-          product_name: string;
-          quantity: number;
-          unit_price?: number;
-        }>;
+        items: Array<{ product_name: string; quantity: number; unit_price?: number }>;
         customer_name?: string;
         supplier_name?: string;
         payment_method?: string;
         confidence: number;
       };
 
-      // --- Layer 4: Validate and match products ---
       const validatedItems = this.matchAndValidateItems(parsed.items, products);
-
-      // Calculate total if possible
       const totalAmount = validatedItems.reduce((sum, item) => {
-        if (item.unit_price != null) {
-          return sum + item.unit_price * item.quantity;
-        }
+        if (item.unit_price != null) return sum + item.unit_price * item.quantity;
         return sum;
       }, 0);
 
       return {
         type: parsed.transaction_type,
         items: validatedItems,
-        customerOrSupplier:
-          parsed.customer_name || parsed.supplier_name || undefined,
+        customerOrSupplier: parsed.customer_name || parsed.supplier_name || undefined,
         totalAmount: totalAmount > 0 ? totalAmount : undefined,
         paymentMethod: parsed.payment_method,
         rawText: text,
         confidence: parsed.confidence,
       };
     } catch (error) {
-      if (error instanceof BadRequestException) throw error;
-      if (error instanceof ServiceUnavailableException) throw error;
-
-      if (
-        error instanceof Anthropic.RateLimitError ||
-        error instanceof Anthropic.APIConnectionError
-      ) {
-        this.logger.error(`Anthropic API error: ${error.message}`);
-        throw new ServiceUnavailableException(
-          'Servicio de IA temporalmente no disponible',
-        );
-      }
-
-      if (error instanceof Anthropic.AuthenticationError) {
-        this.logger.error(`Anthropic auth error: ${error.message}`);
-        throw new ServiceUnavailableException(
-          'API key de IA inválida. Verifica ANTHROPIC_API_KEY.',
-        );
-      }
-
-      if (error instanceof Anthropic.APIError) {
-        this.logger.error(`Anthropic API error ${error.status}: ${error.message}`);
-        throw new ServiceUnavailableException(
-          `Error del servicio de IA (${error.status}). Intenta de nuevo.`,
-        );
-      }
-
-      this.logger.error(`Failed to parse transaction: ${error.message}`, error.stack);
-      throw new BadRequestException(
-        `Error de IA: ${error.name || 'Unknown'} — ${error.message || 'sin detalle'}`,
-      );
+      return this.handleError(error, 'parse transaction');
     }
-  }
-
-  /** Sanitize input: max length, strip dangerous chars, check for injection. */
-  private sanitizeInput(text: string): string {
-    if (text.length > 500) {
-      throw new BadRequestException(
-        'El texto es demasiado largo (máximo 500 caracteres)',
-      );
-    }
-
-    for (const pattern of INJECTION_PATTERNS) {
-      if (pattern.test(text)) {
-        this.logger.warn(`Prompt injection attempt blocked: "${text}"`);
-        throw new BadRequestException('Entrada no válida');
-      }
-    }
-
-    // Strip anything that looks like prompt markup
-    return text
-      .replace(/```[\s\S]*?```/g, '')
-      .replace(/<[^>]+>/g, '')
-      .trim();
-  }
-
-  /**
-   * Levenshtein distance for fuzzy string matching.
-   */
-  private levenshteinDistance(a: string, b: string): number {
-    const matrix: number[][] = [];
-    for (let i = 0; i <= b.length; i++) matrix[i] = [i];
-    for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
-
-    for (let i = 1; i <= b.length; i++) {
-      for (let j = 1; j <= a.length; j++) {
-        if (b.charAt(i - 1) === a.charAt(j - 1)) {
-          matrix[i][j] = matrix[i - 1][j - 1];
-        } else {
-          matrix[i][j] = Math.min(
-            matrix[i - 1][j - 1] + 1,
-            matrix[i][j - 1] + 1,
-            matrix[i - 1][j] + 1,
-          );
-        }
-      }
-    }
-    return matrix[b.length][a.length];
-  }
-
-  /**
-   * Find best fuzzy match from a list of items.
-   * Returns the item with the lowest Levenshtein distance if within threshold.
-   */
-  private fuzzyMatch<T extends { name: string }>(
-    input: string,
-    items: T[],
-    maxDistance = 3,
-  ): T | undefined {
-    const normalized = input.toLowerCase().trim();
-
-    // Try exact substring match first
-    const exactMatch = items.find(
-      (item) =>
-        item.name.toLowerCase().includes(normalized) ||
-        normalized.includes(item.name.toLowerCase()),
-    );
-    if (exactMatch) return exactMatch;
-
-    // Fall back to Levenshtein distance
-    let bestMatch: T | undefined;
-    let bestDistance = maxDistance + 1;
-
-    for (const item of items) {
-      const distance = this.levenshteinDistance(
-        normalized,
-        item.name.toLowerCase(),
-      );
-      if (distance < bestDistance) {
-        bestDistance = distance;
-        bestMatch = item;
-      }
-    }
-
-    return bestDistance <= maxDistance ? bestMatch : undefined;
-  }
-
-  /** Match parsed product names against the actual DB catalog. */
-  private matchAndValidateItems(
-    items: Array<{
-      product_name: string;
-      quantity: number;
-      unit_price?: number;
-    }>,
-    products: Array<{ id: string; name: string; price: number; sku: string }>,
-  ): ParsedTransactionItem[] {
-    return items.map((item) => {
-      const quantity = Math.max(1, Math.min(item.quantity, 10000));
-      const unitPrice = item.unit_price != null && item.unit_price >= 0
-        ? item.unit_price
-        : null;
-
-      const match = this.fuzzyMatch(item.product_name, products);
-
-      return {
-        product_name: item.product_name,
-        quantity,
-        unit_price: unitPrice ?? match?.price ?? null,
-        matchedProductId: match?.id ?? null,
-        matchedName: match?.name ?? item.product_name,
-      };
-    });
   }
 
   async parseCommand(
     teamId: string,
     text: string,
   ): Promise<ParsedCommandResult> {
-    // --- Layer 1: Input sanitization ---
     const sanitized = this.sanitizeInput(text);
+    this.ensureConfigured();
 
-    if (!this.claude) {
-      throw new ServiceUnavailableException(
-        'Servicio de IA no configurado (falta ANTHROPIC_API_KEY)',
-      );
-    }
-
-    // --- Layer 2: Build context with catalog, categories, customers, suppliers ---
     try {
-    const [products, categories, customers, suppliers] = await Promise.all([
-      this.productsService.findAll(teamId, { isActive: true }) as Promise<Product[]>,
-      this.categoriesService.findAll(teamId),
-      this.customersService.findAll(teamId, {}) as Promise<Customer[]>,
-      this.suppliersService.findAll(teamId, {}),
-    ]);
+      const [products, categories, customers, suppliers] = await Promise.all([
+        this.productsService.findAll(teamId, { isActive: true }) as Promise<Product[]>,
+        this.categoriesService.findAll(teamId),
+        this.customersService.findAll(teamId, {}) as Promise<Customer[]>,
+        this.suppliersService.findAll(teamId, {}),
+      ]);
 
-    const catalog = products
-      .map((p) => `- ${p.name} (SKU: ${p.sku}, precio: $${p.price})`)
-      .join('\n');
+      const catalog = products.map((p) => `- ${p.name} (SKU: ${p.sku}, precio: $${p.price})`).join('\n');
+      const categoriesList = (categories as any[]).map((c) => `- ${c.name}`).join('\n');
+      const customersList = (customers as any[]).map((c) => `- ${c.name}`).join('\n');
+      const suppliersList = (suppliers as any[]).map((s) => `- ${s.name}`).join('\n');
 
-    const categoriesList = (categories as any[]).map((c) => `- ${c.name}`).join('\n');
+      const systemPrompt = this.buildCommandSystemPrompt(catalog, categoriesList, customersList, suppliersList);
 
-    const customersList = (customers as any[])
-      .map((c) => `- ${c.name}`)
-      .join('\n');
-
-    const suppliersList = (suppliers as any[])
-      .map((s) => `- ${s.name}`)
-      .join('\n');
-
-    const systemPrompt = this.buildCommandSystemPrompt(
-      catalog,
-      categoriesList,
-      customersList,
-      suppliersList,
-    );
-
-    // --- Layer 3: Call Claude with tool_use (constrained decoding) ---
-      const response = await this.claude.messages.create({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1024,
-        temperature: 0,
-        tools: [COMMAND_TOOL],
-        tool_choice: { type: 'tool', name: 'parse_command' },
-        system: systemPrompt,
-        messages: [
-          {
-            role: 'user',
-            content: `Parsea este comando de inventario:\n\n---\n${sanitized}\n---`,
-          },
-        ],
+      const response = await this.provider!.callWithTool({
+        systemPrompt,
+        userMessage: `Parsea este comando de inventario:\n\n---\n${sanitized}\n---`,
+        tool: COMMAND_TOOL,
+        maxTokens: 1024,
       });
 
-      const toolBlock = response.content.find(
-        (b): b is Anthropic.ContentBlock & { type: 'tool_use' } =>
-          b.type === 'tool_use',
-      );
+      const parsed = response.toolInput as any;
 
-      if (!toolBlock) {
-        this.logger.error('Claude did not return tool_use block', { text });
-        throw new BadRequestException('No se pudo interpretar el comando');
-      }
-
-      const parsed = toolBlock.input as {
-        action: string;
-        transaction?: {
-          items?: Array<{
-            product_name: string;
-            quantity: number;
-            unit_price?: number;
-          }>;
-          customer_name?: string;
-          supplier_name?: string;
-          payment_method?: string;
-        };
-        product?: {
-          name: string;
-          sku?: string;
-          price: number;
-          cost?: number;
-          category_name?: string;
-          min_stock?: number;
-        };
-        category?: { name: string; description?: string };
-        customer?: {
-          name: string;
-          phone?: string;
-          email?: string;
-          document_type?: string;
-          document_number?: string;
-          address?: string;
-        };
-        supplier?: {
-          name: string;
-          nit?: string;
-          contact_name?: string;
-          phone?: string;
-          email?: string;
-          address?: string;
-        };
-        inventory?: {
-          product_name: string;
-          quantity: number;
-          reason?: string;
-        };
-        member?: { email: string; role?: string };
-        confidence: number;
-      };
-
-      // --- Layer 4: Build result based on action ---
       const result: ParsedCommandResult = {
         action: parsed.action,
         rawText: text,
@@ -677,65 +370,41 @@ export class AiService {
       };
 
       // Handle transaction actions
-      if (
-        (parsed.action === 'create_sale' ||
-          parsed.action === 'create_purchase') &&
-        parsed.transaction?.items
-      ) {
-        const validatedItems = this.matchAndValidateItems(
-          parsed.transaction.items,
-          products,
-        );
+      if ((parsed.action === 'create_sale' || parsed.action === 'create_purchase') && parsed.transaction?.items) {
+        const validatedItems = this.matchAndValidateItems(parsed.transaction.items, products);
         const totalAmount = validatedItems.reduce((sum, item) => {
-          if (item.unit_price != null) {
-            return sum + item.unit_price * item.quantity;
-          }
+          if (item.unit_price != null) return sum + item.unit_price * item.quantity;
           return sum;
         }, 0);
 
         result.transaction = {
           items: validatedItems,
-          customerOrSupplier:
-            parsed.transaction.customer_name ||
-            parsed.transaction.supplier_name ||
-            undefined,
+          customerOrSupplier: parsed.transaction.customer_name || parsed.transaction.supplier_name || undefined,
           totalAmount: totalAmount > 0 ? totalAmount : undefined,
           paymentMethod: parsed.transaction.payment_method,
         };
       }
 
-      // Handle product creation
       if (parsed.action === 'create_product' && parsed.product) {
         const categoryMatch = parsed.product.category_name
-          ? categories.find(
-              (c) =>
-                c.name.toLowerCase() ===
-                parsed.product!.category_name!.toLowerCase(),
-            )
+          ? categories.find((c: any) => c.name.toLowerCase() === parsed.product.category_name.toLowerCase())
           : undefined;
 
         result.product = {
           name: parsed.product.name,
-          sku:
-            parsed.product.sku ||
-            parsed.product.name.substring(0, 3).toUpperCase() + '-001',
+          sku: parsed.product.sku || parsed.product.name.substring(0, 3).toUpperCase() + '-001',
           price: parsed.product.price,
           cost: parsed.product.cost,
           categoryName: parsed.product.category_name,
-          categoryId: categoryMatch?.id,
+          categoryId: (categoryMatch as any)?.id,
           minStock: parsed.product.min_stock ?? 5,
         };
       }
 
-      // Handle category creation
       if (parsed.action === 'create_category' && parsed.category) {
-        result.category = {
-          name: parsed.category.name,
-          description: parsed.category.description,
-        };
+        result.category = { name: parsed.category.name, description: parsed.category.description };
       }
 
-      // Handle customer creation
       if (parsed.action === 'create_customer' && parsed.customer) {
         result.customer = {
           name: parsed.customer.name,
@@ -747,7 +416,6 @@ export class AiService {
         };
       }
 
-      // Handle supplier creation
       if (parsed.action === 'create_supplier' && parsed.supplier) {
         result.supplier = {
           name: parsed.supplier.name,
@@ -759,16 +427,10 @@ export class AiService {
         };
       }
 
-      // Handle inventory actions
-      if (
-        (parsed.action === 'add_stock' || parsed.action === 'remove_stock') &&
-        parsed.inventory
-      ) {
-        const normalizedInput = parsed.inventory.product_name.toLowerCase();
-        const match = products.find(
-          (p) =>
-            p.name.toLowerCase().includes(normalizedInput) ||
-            normalizedInput.includes(p.name.toLowerCase()),
+      if ((parsed.action === 'add_stock' || parsed.action === 'remove_stock') && parsed.inventory) {
+        const match = products.find((p) =>
+          p.name.toLowerCase().includes(parsed.inventory.product_name.toLowerCase()) ||
+          parsed.inventory.product_name.toLowerCase().includes(p.name.toLowerCase()),
         );
 
         result.inventory = {
@@ -780,56 +442,116 @@ export class AiService {
         };
       }
 
-      // Handle member invitation
       if (parsed.action === 'invite_member' && parsed.member) {
-        result.member = {
-          email: parsed.member.email,
-          role: parsed.member.role,
-        };
+        result.member = { email: parsed.member.email, role: parsed.member.role };
       }
 
       return result;
     } catch (error) {
-      if (error instanceof BadRequestException) throw error;
-      if (error instanceof ServiceUnavailableException) throw error;
+      return this.handleError(error, 'parse command');
+    }
+  }
 
-      if (
-        error instanceof Anthropic.RateLimitError ||
-        error instanceof Anthropic.APIConnectionError
-      ) {
-        this.logger.error(`Anthropic API error: ${error.message}`);
-        throw new ServiceUnavailableException(
-          'Servicio de IA temporalmente no disponible',
-        );
-      }
+  // ─── Private helpers ─────────────────────────────────────────
 
-      if (error instanceof Anthropic.AuthenticationError) {
-        this.logger.error(`Anthropic auth error: ${error.message}`);
-        throw new ServiceUnavailableException(
-          'API key de IA inválida. Verifica ANTHROPIC_API_KEY.',
-        );
-      }
-
-      if (error instanceof Anthropic.APIError) {
-        this.logger.error(`Anthropic API error ${error.status}: ${error.message}`);
-        throw new ServiceUnavailableException(
-          `Error del servicio de IA (${error.status}). Intenta de nuevo.`,
-        );
-      }
-
-      this.logger.error(`Failed to parse command: ${error.message}`, error.stack);
-      throw new BadRequestException(
-        `Error de IA: ${error.name || 'Unknown'} — ${error.message || 'sin detalle'}`,
+  private ensureConfigured(): void {
+    if (!this.provider) {
+      throw new ServiceUnavailableException(
+        'Servicio de IA no configurado. Configura AI_PROVIDER y la API key correspondiente.',
       );
     }
   }
 
-  private buildCommandSystemPrompt(
-    catalog: string,
-    categories: string,
-    customers: string,
-    suppliers: string,
-  ): string {
+  private handleError(error: any, context: string): never {
+    if (error instanceof BadRequestException) throw error;
+    if (error instanceof ServiceUnavailableException) throw error;
+
+    this.logger.error(`Failed to ${context}: ${error.message}`, error.stack);
+
+    // Check for common error patterns across providers
+    const msg = error.message?.toLowerCase() || '';
+    if (msg.includes('rate') || msg.includes('429')) {
+      throw new ServiceUnavailableException('Servicio de IA temporalmente no disponible (rate limit)');
+    }
+    if (msg.includes('auth') || msg.includes('401') || msg.includes('invalid api key')) {
+      throw new ServiceUnavailableException('API key de IA inválida. Verifica la configuración.');
+    }
+    if (msg.includes('timeout') || msg.includes('connect')) {
+      throw new ServiceUnavailableException('No se pudo conectar al servicio de IA. Intenta de nuevo.');
+    }
+
+    throw new BadRequestException(
+      `Error de IA (${this.provider?.name ?? 'unknown'}): ${error.message || 'sin detalle'}`,
+    );
+  }
+
+  private sanitizeInput(text: string): string {
+    if (text.length > 500) {
+      throw new BadRequestException('El texto es demasiado largo (máximo 500 caracteres)');
+    }
+    for (const pattern of INJECTION_PATTERNS) {
+      if (pattern.test(text)) {
+        this.logger.warn(`Prompt injection attempt blocked: "${text}"`);
+        throw new BadRequestException('Entrada no válida');
+      }
+    }
+    return text.replace(/```[\s\S]*?```/g, '').replace(/<[^>]+>/g, '').trim();
+  }
+
+  private levenshteinDistance(a: string, b: string): number {
+    const matrix: number[][] = [];
+    for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+    for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+    for (let i = 1; i <= b.length; i++) {
+      for (let j = 1; j <= a.length; j++) {
+        if (b.charAt(i - 1) === a.charAt(j - 1)) {
+          matrix[i][j] = matrix[i - 1][j - 1];
+        } else {
+          matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j] + 1);
+        }
+      }
+    }
+    return matrix[b.length][a.length];
+  }
+
+  private fuzzyMatch<T extends { name: string }>(input: string, items: T[], maxDistance = 3): T | undefined {
+    const normalized = input.toLowerCase().trim();
+    const exactMatch = items.find(
+      (item) => item.name.toLowerCase().includes(normalized) || normalized.includes(item.name.toLowerCase()),
+    );
+    if (exactMatch) return exactMatch;
+
+    let bestMatch: T | undefined;
+    let bestDistance = maxDistance + 1;
+    for (const item of items) {
+      const distance = this.levenshteinDistance(normalized, item.name.toLowerCase());
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestMatch = item;
+      }
+    }
+    return bestDistance <= maxDistance ? bestMatch : undefined;
+  }
+
+  private matchAndValidateItems(
+    items: Array<{ product_name: string; quantity: number; unit_price?: number }>,
+    products: Array<{ id: string; name: string; price: number; sku: string }>,
+  ): ParsedTransactionItem[] {
+    return items.map((item) => {
+      const quantity = Math.max(1, Math.min(item.quantity, 10000));
+      const unitPrice = item.unit_price != null && item.unit_price >= 0 ? item.unit_price : null;
+      const match = this.fuzzyMatch(item.product_name, products);
+      return {
+        product_name: item.product_name,
+        quantity,
+        unit_price: unitPrice ?? match?.price ?? null,
+        matchedProductId: match?.id ?? null,
+        matchedName: match?.name ?? item.product_name,
+      };
+    });
+  }
+
+  private buildCommandSystemPrompt(catalog: string, categories: string, customers: string, suppliers: string): string {
     return `Eres un asistente de inventario para una tienda en Colombia. Tu tarea es entender comandos en español colombiano informal y extraer datos estructurados.
 
 REGLAS:

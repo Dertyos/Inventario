@@ -9,7 +9,6 @@ workflows:
       groups:
         - google_play_credentials
         - android_keystore
-        - google_auth
       vars:
         PACKAGE_NAME: "com.inventario.app"
     triggering:
@@ -30,12 +29,6 @@ workflows:
           keyAlias=$CM_KEY_ALIAS
           storeFile=$CM_BUILD_DIR/keystore.jks
           EOF
-
-      - name: Set up Google Services
-        script: |
-          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
-            echo $GOOGLE_SERVICES_JSON | base64 --decode > $CM_BUILD_DIR/mobile/android/app/google-services.json
-          fi
 
       - name: Install dependencies
         script: |

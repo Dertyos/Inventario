@@ -66,8 +66,3 @@ dependencies {
 flutter {
     source = "../.."
 }
-
-// Apply Google Services plugin only when google-services.json is present
-if (file("google-services.json").exists()) {
-    apply(plugin = "com.google.gms.google-services")
-}

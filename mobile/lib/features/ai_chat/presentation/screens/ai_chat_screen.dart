@@ -149,7 +149,7 @@ class _VoiceTransactionScreenState
           msg.contains('no configurado') ||
           msg.contains('API key')) {
         errorMsg =
-            'El servicio de IA no esta disponible. Verifica que ANTHROPIC_API_KEY este configurada en el backend.';
+            'El servicio de IA no esta disponible. Verifica que AI_PROVIDER y su API key esten configurados en el backend.';
       } else if (msg.contains('403') || msg.contains('permisos') || msg.contains('permission')) {
         errorMsg = 'No tienes permisos para usar esta funcion.';
       } else {
