@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../ai/ai_service.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/auth/presentation/screens/create_team_screen.dart';
@@ -143,9 +144,15 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'new',
                 parentNavigatorKey: _rootNavigatorKey,
-                builder: (context, state) => ProductFormScreen(
-                  initialBarcode: state.extra as String?,
-                ),
+                builder: (context, state) {
+                  final extra = state.extra;
+                  if (extra is ProductData) {
+                    return ProductFormScreen(initialData: extra);
+                  }
+                  return ProductFormScreen(
+                    initialBarcode: extra as String?,
+                  );
+                },
               ),
               GoRoute(
                 path: ':id/edit',
@@ -169,7 +176,11 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'new',
                 parentNavigatorKey: _rootNavigatorKey,
-                builder: (context, state) => const CreateSaleScreen(),
+                builder: (context, state) => CreateSaleScreen(
+                  initialData: state.extra is TransactionData
+                      ? state.extra as TransactionData
+                      : null,
+                ),
               ),
               GoRoute(
                 path: ':id/edit',
@@ -186,14 +197,22 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/inventory',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: InventoryScreen(),
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: InventoryScreen(
+                initialMovement: state.extra is InventoryData
+                    ? state.extra as InventoryData
+                    : null,
+              ),
             ),
           ),
           GoRoute(
             path: '/customers',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: CustomersScreen(),
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: CustomersScreen(
+                initialData: state.extra is CustomerData
+                    ? state.extra as CustomerData
+                    : null,
+              ),
             ),
           ),
           GoRoute(
@@ -212,7 +231,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/team-members',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const TeamMembersScreen(),
+        builder: (context, state) => TeamMembersScreen(
+          initialData: state.extra is MemberData
+              ? state.extra as MemberData
+              : null,
+        ),
       ),
       GoRoute(
         path: '/role-permissions/:role',
@@ -234,6 +257,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/scanner',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const BarcodeScannerScreen(),
+      ),
+      GoRoute(
+        path: '/scanner/pick',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const BarcodeScannerScreen(returnMode: true),
       ),
       GoRoute(
         path: '/credits',
@@ -261,7 +289,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'new',
             parentNavigatorKey: _rootNavigatorKey,
-            builder: (context, state) => const CreatePurchaseScreen(),
+            builder: (context, state) => CreatePurchaseScreen(
+              initialData: state.extra is TransactionData
+                  ? state.extra as TransactionData
+                  : null,
+            ),
           ),
         ],
       ),
@@ -285,7 +317,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/suppliers',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const SuppliersScreen(),
+        builder: (context, state) => SuppliersScreen(
+          initialData: state.extra is SupplierData
+              ? state.extra as SupplierData
+              : null,
+        ),
         routes: [
           GoRoute(
             path: ':id',

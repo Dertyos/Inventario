@@ -8,7 +8,6 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/ai/ai_service.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../shared/providers/auth_provider.dart';
-import '../../../suppliers/data/suppliers_repository.dart';
 
 class VoiceTransactionScreen extends ConsumerStatefulWidget {
   const VoiceTransactionScreen({super.key});
@@ -222,168 +221,60 @@ class _VoiceTransactionScreenState
     if (_parsed == null) return;
 
     final teamId = ref.read(authProvider).teamId;
-    final dio = ref.read(dioProvider);
 
-    // For sales, navigate to the sales screen
-    if (_parsed!.action == CommandAction.createSale) {
-      context.push('/sales/new');
+    // For categories, keep direct API call (no dedicated form)
+    if (_parsed!.action == CommandAction.createCategory) {
+      setState(() => _isProcessing = true);
+      try {
+        final c = _parsed!.category!;
+        final dio = ref.read(dioProvider);
+        await dio.post('/teams/$teamId/categories', data: {
+          'name': c.name,
+          if (c.description != null) 'description': c.description,
+        });
+        if (mounted) {
+          _showSnack('Categoria "${c.name}" creada');
+          _reset();
+        }
+      } on DioException catch (e) {
+        final data = e.response?.data;
+        final msg = data is Map && data.containsKey('message')
+            ? data['message'].toString()
+            : 'Error del servidor';
+        if (mounted) {
+          setState(() => _isProcessing = false);
+          _showSnack('Error: $msg');
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isProcessing = false);
+          _showSnack('Error: $e');
+        }
+      }
       return;
     }
 
-    setState(() => _isProcessing = true);
-
-    try {
-      String successMsg;
-
-      switch (_parsed!.action) {
-        case CommandAction.createProduct:
-          final p = _parsed!.product!;
-          await dio.post('/teams/$teamId/products', data: {
-            'name': p.name,
-            'sku': p.sku ?? '${p.name.substring(0, 3).toUpperCase()}-001',
-            'price': p.price,
-            if (p.cost != null) 'cost': p.cost,
-            if (p.categoryId != null) 'categoryId': p.categoryId,
-            'minStock': p.minStock ?? 5,
-          });
-          successMsg = 'Producto "${p.name}" creado';
-
-        case CommandAction.createCategory:
-          final c = _parsed!.category!;
-          await dio.post('/teams/$teamId/categories', data: {
-            'name': c.name,
-            if (c.description != null) 'description': c.description,
-          });
-          successMsg = 'Categoria "${c.name}" creada';
-
-        case CommandAction.createCustomer:
-          final c = _parsed!.customer!;
-          await dio.post('/teams/$teamId/customers', data: {
-            'name': c.name,
-            if (c.phone != null) 'phone': c.phone,
-            if (c.email != null) 'email': c.email,
-            if (c.documentType != null) 'documentType': c.documentType,
-            if (c.documentNumber != null) 'documentNumber': c.documentNumber,
-            if (c.address != null) 'address': c.address,
-          });
-          successMsg = 'Cliente "${c.name}" creado';
-
-        case CommandAction.createSupplier:
-          final s = _parsed!.supplier!;
-          await dio.post('/teams/$teamId/suppliers', data: {
-            'name': s.name,
-            if (s.nit != null) 'nit': s.nit,
-            if (s.contactName != null) 'contactName': s.contactName,
-            if (s.phone != null) 'phone': s.phone,
-            if (s.email != null) 'email': s.email,
-            if (s.address != null) 'address': s.address,
-          });
-          successMsg = 'Proveedor "${s.name}" creado';
-
-        case CommandAction.addStock:
-          final inv = _parsed!.inventory!;
-          if (inv.productId == null) {
-            throw Exception(
-                'Producto "${inv.productName}" no encontrado en el catalogo');
-          }
-          await dio.post('/teams/$teamId/inventory/movements', data: {
-            'type': 'in',
-            'productId': inv.productId,
-            'quantity': inv.quantity,
-            if (inv.reason != null) 'reason': inv.reason,
-          });
-          successMsg = 'Entrada de ${inv.quantity}x ${inv.productName}';
-
-        case CommandAction.removeStock:
-          final inv = _parsed!.inventory!;
-          if (inv.productId == null) {
-            throw Exception(
-                'Producto "${inv.productName}" no encontrado en el catalogo');
-          }
-          await dio.post('/teams/$teamId/inventory/movements', data: {
-            'type': 'out',
-            'productId': inv.productId,
-            'quantity': inv.quantity,
-            if (inv.reason != null) 'reason': inv.reason,
-          });
-          successMsg = 'Salida de ${inv.quantity}x ${inv.productName}';
-
-        case CommandAction.inviteMember:
-          final m = _parsed!.member!;
-          await dio.post('/teams/$teamId/members', data: {
-            'email': m.email,
-            if (m.role != null) 'role': m.role,
-          });
-          successMsg = 'Invitacion enviada a ${m.email}';
-
-        case CommandAction.createPurchase:
-          final t = _parsed!.transaction!;
-          // Resolve supplier by name from cached list
-          String? supplierId;
-          if (t.customerOrSupplier != null) {
-            final suppliers =
-                await ref.read(suppliersProvider(teamId).future);
-            final normalizedInput = t.customerOrSupplier!.toLowerCase();
-            try {
-              final match = suppliers.firstWhere(
-                (s) =>
-                    s.name.toLowerCase().contains(normalizedInput) ||
-                    normalizedInput.contains(s.name.toLowerCase()),
-              );
-              supplierId = match.id;
-            } catch (_) {
-              // No match found
-            }
-          }
-          if (supplierId == null) {
-            throw Exception(
-              t.customerOrSupplier != null
-                  ? 'Proveedor "${t.customerOrSupplier}" no encontrado. Créalo primero en Proveedores.'
-                  : 'Indica el proveedor para registrar la compra.',
-            );
-          }
-          await dio.post('/teams/$teamId/purchases', data: {
-            'supplierId': supplierId,
-            'items': t.items
-                .where((i) => i.matchedProductId != null)
-                .map((i) => {
-                      'productId': i.matchedProductId,
-                      'quantity': i.quantity,
-                      'unitCost': i.unitPrice ?? 0,
-                    })
-                .toList(),
-            if (t.customerOrSupplier != null)
-              'notes': 'Proveedor: ${t.customerOrSupplier}',
-          });
-          successMsg = 'Compra registrada';
-
-        case CommandAction.createSale:
-          successMsg = '';
-      }
-
-      if (mounted) {
-        setState(() {
-          _isProcessing = false;
-          _successMsg = successMsg;
-          _parsed = null;
-        });
-        _showSnack(successMsg);
-      }
-    } on DioException catch (e) {
-      final data = e.response?.data;
-      final msg = data is Map && data.containsKey('message')
-          ? data['message'].toString()
-          : 'Error del servidor';
-      if (mounted) {
-        setState(() => _isProcessing = false);
-        _showSnack('Error: $msg');
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isProcessing = false);
-        _showSnack('Error: $e');
-      }
+    // Navigate to the corresponding form with pre-filled data
+    switch (_parsed!.action) {
+      case CommandAction.createProduct:
+        context.push('/products/new', extra: _parsed!.product);
+      case CommandAction.createSale:
+        context.push('/sales/new', extra: _parsed!.transaction);
+      case CommandAction.createPurchase:
+        context.push('/purchases/new', extra: _parsed!.transaction);
+      case CommandAction.addStock:
+      case CommandAction.removeStock:
+        context.push('/inventory', extra: _parsed!.inventory);
+      case CommandAction.createCustomer:
+        context.push('/customers', extra: _parsed!.customer);
+      case CommandAction.createSupplier:
+        context.push('/suppliers', extra: _parsed!.supplier);
+      case CommandAction.inviteMember:
+        context.push('/team-members', extra: _parsed!.member);
+      case CommandAction.createCategory:
+        break; // Handled above
     }
+    _reset();
   }
 
   void _reset() {
@@ -744,21 +635,21 @@ class _VoiceTransactionScreenState
       case CommandAction.createSale:
         return 'Ir a nueva venta';
       case CommandAction.createPurchase:
-        return 'Confirmar compra';
+        return 'Ir a nueva compra';
       case CommandAction.createProduct:
-        return 'Crear producto';
+        return 'Ir a crear producto';
       case CommandAction.createCategory:
         return 'Crear categoria';
       case CommandAction.createCustomer:
-        return 'Crear cliente';
+        return 'Ir a crear cliente';
       case CommandAction.createSupplier:
-        return 'Crear proveedor';
+        return 'Ir a crear proveedor';
       case CommandAction.addStock:
-        return 'Registrar entrada';
+        return 'Ir a registrar entrada';
       case CommandAction.removeStock:
-        return 'Registrar salida';
+        return 'Ir a registrar salida';
       case CommandAction.inviteMember:
-        return 'Enviar invitacion';
+        return 'Ir a invitar miembro';
     }
   }
 

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/ai/ai_service.dart';
 import '../../../../shared/models/customer_model.dart';
 import '../../../../shared/models/product_model.dart';
 import '../../../../shared/providers/auth_provider.dart';
@@ -13,7 +14,9 @@ import '../../../dashboard/presentation/screens/dashboard_screen.dart';
 import 'sales_screen.dart';
 
 class CreateSaleScreen extends ConsumerStatefulWidget {
-  const CreateSaleScreen({super.key});
+  final TransactionData? initialData;
+
+  const CreateSaleScreen({super.key, this.initialData});
 
   @override
   ConsumerState<CreateSaleScreen> createState() => _CreateSaleScreenState();
@@ -32,6 +35,8 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
   final _interestController = TextEditingController();
   String _creditFrequency = 'monthly';
   late DateTime _creditNextPayment = DateTime.now().add(const Duration(days: 30));
+
+  bool _prefillApplied = false;
 
   double get _total =>
       _cart.fold(0, (sum, item) => sum + item.subtotal);
@@ -451,12 +456,64 @@ class _CreateSaleScreenState extends ConsumerState<CreateSaleScreen> {
     super.dispose();
   }
 
+  void _applyPrefill(List<ProductModel> productList) {
+    if (_prefillApplied || widget.initialData == null) return;
+    _prefillApplied = true;
+    final data = widget.initialData!;
+
+    // Match AI items to real products and add to cart
+    for (final item in data.items) {
+      ProductModel? match;
+      if (item.matchedProductId != null) {
+        match = productList.where((p) => p.id == item.matchedProductId).firstOrNull;
+      }
+      if (match == null) {
+        match = productList.where(
+          (p) => p.name.toLowerCase().contains(item.name.toLowerCase()) ||
+              item.name.toLowerCase().contains(p.name.toLowerCase()),
+        ).firstOrNull;
+      }
+      if (match != null) {
+        final cartItem = _CartItem(product: match);
+        cartItem.quantity = item.quantity;
+        if (item.unitPrice != null && item.unitPrice != match.price) {
+          cartItem.overrideUnitPrice = item.unitPrice;
+        }
+        _cart.add(cartItem);
+      }
+    }
+
+    // Match customer by name
+    if (data.customerOrSupplier != null) {
+      final teamId = ref.read(authProvider).teamId;
+      ref.read(customersProvider(teamId).future).then((customers) {
+        final normalizedInput = data.customerOrSupplier!.toLowerCase();
+        final match = customers.where(
+          (c) => c.name.toLowerCase().contains(normalizedInput) ||
+              normalizedInput.contains(c.name.toLowerCase()),
+        ).firstOrNull;
+        if (match != null && mounted) {
+          setState(() => _selectedCustomer = match);
+        }
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final teamId = ref.watch(authProvider).teamId;
     final products = ref.watch(productsProvider(teamId));
     final colorScheme = Theme.of(context).colorScheme;
     final cop = NumberFormat.currency(locale: 'es_CO', symbol: '\$', decimalDigits: 0);
+
+    // Apply AI pre-fill once products are loaded
+    if (!_prefillApplied && widget.initialData != null) {
+      products.whenData((list) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) setState(() => _applyPrefill(list));
+        });
+      });
+    }
 
     return Scaffold(
       appBar: AppBar(

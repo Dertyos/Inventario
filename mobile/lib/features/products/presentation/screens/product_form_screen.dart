@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/ai/ai_service.dart';
 import '../../../../shared/models/product_model.dart';
 import '../../../../shared/providers/auth_provider.dart';
 import '../../data/products_repository.dart';
@@ -10,8 +11,14 @@ import 'products_screen.dart';
 class ProductFormScreen extends ConsumerStatefulWidget {
   final String? productId;
   final String? initialBarcode;
+  final ProductData? initialData;
 
-  const ProductFormScreen({super.key, this.productId, this.initialBarcode});
+  const ProductFormScreen({
+    super.key,
+    this.productId,
+    this.initialBarcode,
+    this.initialData,
+  });
 
   @override
   ConsumerState<ProductFormScreen> createState() => _ProductFormScreenState();
@@ -37,9 +44,27 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     super.initState();
     if (isEditing) {
       _loadProduct();
+    } else if (widget.initialData != null) {
+      _prefillFromAI(widget.initialData!);
     } else if (widget.initialBarcode != null) {
       _barcodeController.text = widget.initialBarcode!;
     }
+  }
+
+  Future<void> _scanBarcode() async {
+    final result = await context.push<String>('/scanner/pick');
+    if (result != null && mounted) {
+      setState(() => _barcodeController.text = result);
+    }
+  }
+
+  void _prefillFromAI(ProductData data) {
+    _nameController.text = data.name;
+    if (data.sku != null) _skuController.text = data.sku!;
+    _priceController.text = data.price.toStringAsFixed(0);
+    if (data.cost != null) _costController.text = data.cost!.toStringAsFixed(0);
+    _minStockController.text = '${data.minStock ?? 5}';
+    _selectedCategoryId = data.categoryId;
   }
 
   Future<void> _loadProduct() async {
@@ -324,9 +349,14 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
             const SizedBox(height: AppSpacing.md),
             TextFormField(
               controller: _barcodeController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Código de barras',
-                prefixIcon: Icon(Icons.qr_code),
+                prefixIcon: const Icon(Icons.qr_code),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.qr_code_scanner),
+                  tooltip: 'Escanear código',
+                  onPressed: _scanBarcode,
+                ),
               ),
             ),
             const SizedBox(height: AppSpacing.md),

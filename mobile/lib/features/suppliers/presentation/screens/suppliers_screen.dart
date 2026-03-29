@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/ai/ai_service.dart';
 import '../../../../shared/models/supplier_model.dart';
 import '../../../../shared/providers/auth_provider.dart';
 import '../../../../shared/widgets/app_list_tile.dart';
@@ -12,7 +13,9 @@ import '../../../../shared/widgets/wa_icon_button.dart';
 import '../../data/suppliers_repository.dart';
 
 class SuppliersScreen extends ConsumerStatefulWidget {
-  const SuppliersScreen({super.key});
+  final SupplierData? initialData;
+
+  const SuppliersScreen({super.key, this.initialData});
 
   @override
   ConsumerState<SuppliersScreen> createState() => _SuppliersScreenState();
@@ -21,11 +24,21 @@ class SuppliersScreen extends ConsumerStatefulWidget {
 class _SuppliersScreenState extends ConsumerState<SuppliersScreen> {
   String _searchQuery = '';
 
-  void _showAddSupplierDialog() {
-    final nameController = TextEditingController();
-    final phoneController = TextEditingController();
-    final nitController = TextEditingController();
-    final contactController = TextEditingController();
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialData != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showAddSupplierDialog(prefill: widget.initialData);
+      });
+    }
+  }
+
+  void _showAddSupplierDialog({SupplierData? prefill}) {
+    final nameController = TextEditingController(text: prefill?.name ?? '');
+    final phoneController = TextEditingController(text: prefill?.phone ?? '');
+    final nitController = TextEditingController(text: prefill?.nit ?? '');
+    final contactController = TextEditingController(text: prefill?.contactName ?? '');
 
     showAppModal(
       context: context,

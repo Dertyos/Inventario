@@ -9,7 +9,11 @@ import '../../../../shared/providers/auth_provider.dart';
 import '../../../products/data/products_repository.dart';
 
 class BarcodeScannerScreen extends ConsumerStatefulWidget {
-  const BarcodeScannerScreen({super.key});
+  /// When true, the scanner pops with the scanned barcode value instead of
+  /// looking up products. Used by the product form to fill the barcode field.
+  final bool returnMode;
+
+  const BarcodeScannerScreen({super.key, this.returnMode = false});
 
   @override
   ConsumerState<BarcodeScannerScreen> createState() =>
@@ -44,6 +48,12 @@ class _BarcodeScannerScreenState extends ConsumerState<BarcodeScannerScreen> {
     await _controller.stop();
 
     final barcodeValue = barcode.rawValue!;
+
+    if (widget.returnMode) {
+      if (mounted) context.pop(barcodeValue);
+      return;
+    }
+
     await _lookupProduct(barcodeValue);
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/ai/ai_service.dart';
 import '../../../../shared/models/team_member_model.dart';
 import '../../../../shared/providers/auth_provider.dart';
 import '../../../../core/providers/cache_for.dart';
@@ -23,15 +24,27 @@ const _roleLabels = {
 };
 
 class TeamMembersScreen extends ConsumerStatefulWidget {
-  const TeamMembersScreen({super.key});
+  final MemberData? initialData;
+
+  const TeamMembersScreen({super.key, this.initialData});
 
   @override
   ConsumerState<TeamMembersScreen> createState() => _TeamMembersScreenState();
 }
 
 class _TeamMembersScreenState extends ConsumerState<TeamMembersScreen> {
-  void _showInviteDialog() {
-    final emailController = TextEditingController();
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialData != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showInviteDialog(prefill: widget.initialData);
+      });
+    }
+  }
+
+  void _showInviteDialog({MemberData? prefill}) {
+    final emailController = TextEditingController(text: prefill?.email ?? '');
 
     showDialog(
       context: context,

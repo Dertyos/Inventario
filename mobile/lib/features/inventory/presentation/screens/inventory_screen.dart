@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/ai/ai_service.dart';
 import '../../../../shared/models/product_model.dart';
 import '../../../../shared/models/supplier_model.dart';
 import '../../../../shared/providers/auth_provider.dart';
@@ -31,7 +32,9 @@ final lowStockProvider =
 });
 
 class InventoryScreen extends ConsumerStatefulWidget {
-  const InventoryScreen({super.key});
+  final InventoryData? initialMovement;
+
+  const InventoryScreen({super.key, this.initialMovement});
 
   @override
   ConsumerState<InventoryScreen> createState() => _InventoryScreenState();
@@ -45,6 +48,17 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    if (widget.initialMovement != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          final teamId = ref.read(authProvider).teamId;
+          _showAddMovementDialog(
+            context, ref, teamId,
+            initialMovement: widget.initialMovement,
+          );
+        }
+      });
+    }
   }
 
   @override
@@ -100,6 +114,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
     WidgetRef ref,
     String teamId, {
     ProductModel? preselectedProduct,
+    InventoryData? initialMovement,
   }) async {
     final List<ProductModel> products;
     final List<SupplierModel> suppliers;
@@ -117,12 +132,27 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
       return;
     }
 
+    // Resolve preselectedProduct from initialMovement if needed
+    if (initialMovement != null && preselectedProduct == null) {
+      if (initialMovement.productId != null) {
+        preselectedProduct = products.where((p) => p.id == initialMovement.productId).firstOrNull;
+      }
+      preselectedProduct ??= products.where(
+        (p) => p.name.toLowerCase().contains(initialMovement.productName.toLowerCase()) ||
+            initialMovement.productName.toLowerCase().contains(p.name.toLowerCase()),
+      ).firstOrNull;
+    }
+
     String? selectedProductId = preselectedProduct?.id;
-    String type = 'in';
-    final quantityController = TextEditingController();
+    String type = initialMovement?.type ?? 'in';
+    final quantityController = TextEditingController(
+      text: initialMovement != null ? '${initialMovement.quantity}' : '',
+    );
     final unitCostController = TextEditingController();
     final totalCostController = TextEditingController();
-    final reasonController = TextEditingController();
+    final reasonController = TextEditingController(
+      text: initialMovement?.reason ?? '',
+    );
     SupplierModel? selectedSupplier;
     ProductLotModel? selectedLot;
     List<ProductLotModel> availableLots = [];

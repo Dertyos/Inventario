@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/ai/ai_service.dart';
 import '../../../../shared/models/customer_model.dart';
 import '../../../../shared/providers/auth_provider.dart';
 import '../../../../shared/widgets/app_list_tile.dart';
@@ -19,7 +20,9 @@ final customersProvider = FutureProvider.autoDispose
 });
 
 class CustomersScreen extends ConsumerStatefulWidget {
-  const CustomersScreen({super.key});
+  final CustomerData? initialData;
+
+  const CustomersScreen({super.key, this.initialData});
 
   @override
   ConsumerState<CustomersScreen> createState() => _CustomersScreenState();
@@ -28,10 +31,20 @@ class CustomersScreen extends ConsumerStatefulWidget {
 class _CustomersScreenState extends ConsumerState<CustomersScreen> {
   String _searchQuery = '';
 
-  void _showAddCustomerDialog() {
-    final nameController = TextEditingController();
-    final phoneController = TextEditingController();
-    final emailController = TextEditingController();
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialData != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showAddCustomerDialog(prefill: widget.initialData);
+      });
+    }
+  }
+
+  void _showAddCustomerDialog({CustomerData? prefill}) {
+    final nameController = TextEditingController(text: prefill?.name ?? '');
+    final phoneController = TextEditingController(text: prefill?.phone ?? '');
+    final emailController = TextEditingController(text: prefill?.email ?? '');
 
     showAppModal(
       context: context,
