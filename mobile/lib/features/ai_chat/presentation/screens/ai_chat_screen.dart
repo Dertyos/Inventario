@@ -273,6 +273,8 @@ class _VoiceTransactionScreenState
         break;
       case CommandAction.createCategory:
         break;
+      default:
+        break;
     }
     
     _reset();
