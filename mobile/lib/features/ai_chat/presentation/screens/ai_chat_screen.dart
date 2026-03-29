@@ -131,6 +131,14 @@ class _VoiceTransactionScreenState
     try {
       final result =
           await ref.read(aiServiceProvider).parseCommand(teamId, text);
+      if (result.action == CommandAction.unsupported) {
+        setState(() {
+          _error = result.unsupportedMessage ??
+              'No puedo hacer eso. Puedo crear ventas, productos, clientes, proveedores, o registrar movimientos de inventario.';
+          _isProcessing = false;
+        });
+        return;
+      }
       setState(() {
         _parsed = result;
         _isProcessing = false;

@@ -93,8 +93,13 @@ const COMMAND_TOOL: AiTool = {
           'add_stock',
           'remove_stock',
           'invite_member',
+          'unsupported',
         ],
-        description: 'The action the user wants to perform',
+        description: 'The action the user wants to perform. Use "unsupported" if the request is a query, question, or anything that is not one of the supported creation/action commands.',
+      },
+      unsupported_message: {
+        type: 'string',
+        description: 'If action is "unsupported", a friendly message in Spanish explaining what the assistant CAN do. Example: "No puedo mostrar productos, pero puedo crear ventas, productos, clientes, proveedores, o registrar movimientos de inventario."',
       },
       transaction: {
         type: 'object',
@@ -256,6 +261,7 @@ export interface ParsedCommandResult {
     reason?: string;
   };
   member?: { email: string; role?: string };
+  unsupportedMessage?: string;
   rawText: string;
   confidence: number;
 }
@@ -368,6 +374,13 @@ export class AiService {
         rawText: text,
         confidence: parsed.confidence,
       };
+
+      // Handle unsupported commands
+      if (parsed.action === 'unsupported') {
+        result.unsupportedMessage = parsed.unsupported_message ||
+          'No puedo hacer eso. Puedo crear ventas, productos, clientes, proveedores, o registrar movimientos de inventario.';
+        return result;
+      }
 
       // Handle transaction actions
       if ((parsed.action === 'create_sale' || parsed.action === 'create_purchase') && parsed.transaction?.items) {

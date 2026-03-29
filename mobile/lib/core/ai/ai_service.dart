@@ -111,6 +111,7 @@ enum CommandAction {
   addStock,
   removeStock,
   inviteMember,
+  unsupported,
 }
 
 // ---------------------------------------------------------------------------
@@ -126,6 +127,7 @@ class ParsedCommand {
   final SupplierData? supplier;
   final InventoryData? inventory;
   final MemberData? member;
+  final String? unsupportedMessage;
   final String rawText;
   final double confidence;
 
@@ -138,6 +140,7 @@ class ParsedCommand {
     this.supplier,
     this.inventory,
     this.member,
+    this.unsupportedMessage,
     required this.rawText,
     required this.confidence,
   });
@@ -169,6 +172,7 @@ class ParsedCommand {
       member: json['member'] != null
           ? MemberData.fromJson(json['member'] as Map<String, dynamic>)
           : null,
+      unsupportedMessage: json['unsupportedMessage'] as String?,
       rawText: json['rawText'] as String? ?? '',
       confidence: (json['confidence'] as num?)?.toDouble() ?? 0.0,
     );
@@ -194,8 +198,10 @@ class ParsedCommand {
         return CommandAction.removeStock;
       case 'invite_member':
         return CommandAction.inviteMember;
+      case 'unsupported':
+        return CommandAction.unsupported;
       default:
-        return CommandAction.createSale;
+        return CommandAction.unsupported;
     }
   }
 }
