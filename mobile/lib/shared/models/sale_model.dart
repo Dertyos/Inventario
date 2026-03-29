@@ -14,6 +14,7 @@ class SaleModel {
   final double? creditInterestRate;
   final String? creditFrequency;
   final DateTime? creditNextPayment;
+  final String? creditAccountId;
   final List<SaleItemModel> items;
   final DateTime createdAt;
 
@@ -31,6 +32,7 @@ class SaleModel {
     this.creditInterestRate,
     this.creditFrequency,
     this.creditNextPayment,
+    this.creditAccountId,
     this.items = const [],
     required this.createdAt,
   });
@@ -74,6 +76,7 @@ class SaleModel {
         creditNextPayment: json['creditNextPayment'] != null
             ? DateTime.tryParse(json['creditNextPayment'] as String)
             : null,
+        creditAccountId: json['creditAccount']?['id'] as String?,
         items: (json['items'] as List<dynamic>?)
                 ?.map((e) => SaleItemModel.fromJson(e as Map<String, dynamic>))
                 .toList() ??
