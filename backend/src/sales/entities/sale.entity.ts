@@ -21,6 +21,7 @@ export enum PaymentMethod {
   CARD = 'card',
   TRANSFER = 'transfer',
   CREDIT = 'credit',
+  MIXED = 'mixed',
 }
 
 export enum SaleStatus {
@@ -86,6 +87,15 @@ export class Sale {
     default: SaleStatus.COMPLETED,
   })
   status: SaleStatus;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  cashAmount: number;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  cardAmount: number;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  transferAmount: number;
 
   /** @deprecated Use creditAccount.installments instead */
   @Column({ type: 'int', nullable: true })

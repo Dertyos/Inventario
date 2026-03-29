@@ -131,6 +131,9 @@ export class SalesService {
         subtotal,
         tax: 0, // Tax calculation done in Phase with enableTax
         total: subtotal,
+        cashAmount: createSaleDto.cashAmount ?? null,
+        cardAmount: createSaleDto.cardAmount ?? null,
+        transferAmount: createSaleDto.transferAmount ?? null,
         creditInstallments: createSaleDto.creditInstallments || null,
         creditPaidAmount: createSaleDto.creditPaidAmount ?? null,
         creditInterestRate: createSaleDto.creditInterestRate ?? null,
