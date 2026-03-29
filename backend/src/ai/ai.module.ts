@@ -7,6 +7,7 @@ import { AnthropicProvider } from './providers/anthropic.provider';
 import { OpenAiProvider } from './providers/openai.provider';
 import { GeminiProvider } from './providers/gemini.provider';
 import { GroqProvider } from './providers/groq.provider';
+import { DeepSeekProvider } from './providers/deepseek.provider';
 import { ProductsModule } from '../products/products.module';
 import { TeamsModule } from '../teams/teams.module';
 import { CategoriesModule } from '../categories/categories.module';
@@ -35,6 +36,7 @@ function createFromConfig(config: ConfigService): IAiProvider | null {
       ['openai', 'OPENAI_API_KEY'],
       ['gemini', 'GEMINI_API_KEY'],
       ['groq', 'GROQ_API_KEY'],
+      ['deepseek', 'DEEPSEEK_API_KEY'],
     ];
     for (const [name, envVar] of legacy) {
       const key = config.get<string>(envVar);
@@ -75,6 +77,8 @@ function buildProvider(name: string, apiKey: string): IAiProvider {
       return new GeminiProvider(apiKey);
     case 'groq':
       return new GroqProvider(apiKey);
+    case 'deepseek':
+      return new DeepSeekProvider(apiKey);
     case 'anthropic':
     default:
       return new AnthropicProvider(apiKey);
