@@ -69,19 +69,38 @@ function createFromConfig(config: ConfigService): IAiProvider | null {
   return buildProvider(provider, key);
 }
 
-function buildProvider(name: string, apiKey: string): IAiProvider {
+function buildProvider(name: string, apiKey: string): IAiProvider | null {
+  try {
+    switch (name) {
+      case 'openai':
+        return new OpenAiProvider(apiKey);
+      case 'gemini':
+        return new GeminiProvider(apiKey);
+      case 'groq':
+        return new GroqProvider(apiKey);
+      case 'deepseek':
+        return new DeepSeekProvider(apiKey);
+      case 'anthropic':
+      default:
+        return new AnthropicProvider(apiKey);
+    }
+  } catch (error) {
+    logger.error(
+      `Failed to initialize AI provider "${name}": ${error.message}. ` +
+      `Install the required SDK: npm install ${sdkForProvider(name)}`,
+    );
+    return null;
+  }
+}
+
+function sdkForProvider(name: string): string {
   switch (name) {
-    case 'openai':
-      return new OpenAiProvider(apiKey);
-    case 'gemini':
-      return new GeminiProvider(apiKey);
-    case 'groq':
-      return new GroqProvider(apiKey);
-    case 'deepseek':
-      return new DeepSeekProvider(apiKey);
-    case 'anthropic':
-    default:
-      return new AnthropicProvider(apiKey);
+    case 'openai': return 'openai';
+    case 'gemini': return '@google/generative-ai';
+    case 'groq': return 'openai';
+    case 'deepseek': return 'openai';
+    case 'anthropic': return '@anthropic-ai/sdk';
+    default: return '(unknown)';
   }
 }
 
