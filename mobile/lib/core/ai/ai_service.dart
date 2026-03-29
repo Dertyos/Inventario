@@ -111,7 +111,20 @@ enum CommandAction {
   addStock,
   removeStock,
   inviteMember,
+  navigateProducts,
+  navigateSales,
+  navigateInventory,
+  navigateLowStock,
+  navigateCustomers,
+  navigateSuppliers,
+  navigateCredits,
+  navigateSettings,
+  navigateDashboard,
   unsupported,
+}
+
+extension CommandActionX on CommandAction {
+  bool get isNavigation => name.startsWith('navigate');
 }
 
 // ---------------------------------------------------------------------------
@@ -128,6 +141,8 @@ class ParsedCommand {
   final InventoryData? inventory;
   final MemberData? member;
   final String? unsupportedMessage;
+  final String? navigateRoute;
+  final String? navigateMessage;
   final String rawText;
   final double confidence;
 
@@ -141,6 +156,8 @@ class ParsedCommand {
     this.inventory,
     this.member,
     this.unsupportedMessage,
+    this.navigateRoute,
+    this.navigateMessage,
     required this.rawText,
     required this.confidence,
   });
@@ -173,6 +190,8 @@ class ParsedCommand {
           ? MemberData.fromJson(json['member'] as Map<String, dynamic>)
           : null,
       unsupportedMessage: json['unsupportedMessage'] as String?,
+      navigateRoute: json['navigateRoute'] as String?,
+      navigateMessage: json['navigateMessage'] as String?,
       rawText: json['rawText'] as String? ?? '',
       confidence: (json['confidence'] as num?)?.toDouble() ?? 0.0,
     );
@@ -198,6 +217,24 @@ class ParsedCommand {
         return CommandAction.removeStock;
       case 'invite_member':
         return CommandAction.inviteMember;
+      case 'navigate_products':
+        return CommandAction.navigateProducts;
+      case 'navigate_sales':
+        return CommandAction.navigateSales;
+      case 'navigate_inventory':
+        return CommandAction.navigateInventory;
+      case 'navigate_low_stock':
+        return CommandAction.navigateLowStock;
+      case 'navigate_customers':
+        return CommandAction.navigateCustomers;
+      case 'navigate_suppliers':
+        return CommandAction.navigateSuppliers;
+      case 'navigate_credits':
+        return CommandAction.navigateCredits;
+      case 'navigate_settings':
+        return CommandAction.navigateSettings;
+      case 'navigate_dashboard':
+        return CommandAction.navigateDashboard;
       case 'unsupported':
         return CommandAction.unsupported;
       default:

@@ -131,6 +131,31 @@ class _VoiceTransactionScreenState
     try {
       final result =
           await ref.read(aiServiceProvider).parseCommand(teamId, text);
+      // Handle navigation commands
+      if (result.action.isNavigation && result.navigateRoute != null) {
+        setState(() => _isProcessing = false);
+        if (!context.mounted) return;
+
+        final route = _resolveRoute(result.navigateRoute!);
+        final message = result.navigateMessage ?? 'Listo';
+
+        Navigator.pop(context); // close AI screen
+        if (_isTabRoute(route)) {
+          context.go(route); // bottom tab — replace current screen
+        } else {
+          context.push(route); // other screens — push on stack
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+
+      // Handle unsupported commands
       if (result.action == CommandAction.unsupported) {
         setState(() {
           _error = result.unsupportedMessage ??
@@ -176,6 +201,22 @@ class _VoiceTransactionScreenState
       SnackBar(content: Text(message)),
     );
   }
+
+  /// Routes inside ShellRoute (bottom tabs) use go(), others use push().
+  static const _goRoutes = {
+    '/products', '/sales', '/inventory', '/dashboard', '/settings',
+  };
+
+  String _resolveRoute(String backendRoute) {
+    switch (backendRoute) {
+      case '/inventory/low-stock':
+        return '/inventory';
+      default:
+        return backendRoute;
+    }
+  }
+
+  bool _isTabRoute(String route) => _goRoutes.contains(route);
 
   Future<void> _confirmAction() async {
     if (_parsed == null) return;
