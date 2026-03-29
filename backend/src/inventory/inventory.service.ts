@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import {
@@ -6,8 +6,10 @@ import {
   MovementType,
 } from './entities/inventory-movement.entity';
 import { Product } from '../products/entities/product.entity';
+import { ProductLot, LotStatus } from '../lots/entities/product-lot.entity';
 import { CreditAccount, InterestType } from '../credits/entities/credit-account.entity';
 import { CreditInstallment } from '../credits/entities/credit-installment.entity';
+import { TeamSettings } from '../teams/entities/team-settings.entity';
 import { CreateMovementDto } from './dto/create-movement.dto';
 
 @Injectable()
@@ -17,6 +19,8 @@ export class InventoryService {
     private readonly movementsRepository: Repository<InventoryMovement>,
     @InjectRepository(Product)
     private readonly productsRepository: Repository<Product>,
+    @InjectRepository(TeamSettings)
+    private readonly settingsRepository: Repository<TeamSettings>,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -25,16 +29,6 @@ export class InventoryService {
     createMovementDto: CreateMovementDto,
     userId: string,
   ): Promise<InventoryMovement> {
-    // Large adjustments require approval (threshold: > 100 units)
-    if (
-      createMovementDto.type === MovementType.ADJUSTMENT &&
-      Math.abs(createMovementDto.quantity) > 100
-    ) {
-      throw new BadRequestException(
-        'Ajustes mayores a 100 unidades requieren aprobación de un administrador',
-      );
-    }
-
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -46,7 +40,18 @@ export class InventoryService {
       });
 
       if (!product) {
-        throw new BadRequestException('Product not found in this team');
+        throw new BadRequestException('Producto no encontrado en este equipo');
+      }
+
+      // Check if lots are required for this product
+      const settings = await this.settingsRepository.findOne({ where: { teamId } });
+      const lotsEnabled = settings?.enableLots ?? false;
+      const requiresLot = lotsEnabled && product.trackLots;
+
+      if (requiresLot && !createMovementDto.lotId && createMovementDto.type === MovementType.IN) {
+        throw new BadRequestException(
+          'Este producto requiere seleccionar un lote para registrar entrada de stock',
+        );
       }
 
       const stockBefore = product.stock;
@@ -60,12 +65,9 @@ export class InventoryService {
           stockAfter = stockBefore - createMovementDto.quantity;
           if (stockAfter < 0) {
             throw new BadRequestException(
-              `Insufficient stock. Available: ${stockBefore}, requested: ${createMovementDto.quantity}`,
+              `Stock insuficiente. Disponible: ${stockBefore}, solicitado: ${createMovementDto.quantity}`,
             );
           }
-          break;
-        case MovementType.ADJUSTMENT:
-          stockAfter = createMovementDto.quantity;
           break;
         default:
           stockAfter = stockBefore;
@@ -73,6 +75,36 @@ export class InventoryService {
 
       product.stock = stockAfter;
       await queryRunner.manager.save(product);
+
+      // Update lot quantity if lot is specified
+      let lotId = createMovementDto.lotId || null;
+      if (lotId) {
+        const lot = await queryRunner.manager.findOne(ProductLot, {
+          where: { id: lotId, teamId, productId: product.id },
+        });
+        if (!lot) {
+          throw new BadRequestException('Lote no encontrado para este producto');
+        }
+
+        if (createMovementDto.type === MovementType.IN) {
+          lot.quantity += createMovementDto.quantity;
+          if (lot.status === LotStatus.DEPLETED) {
+            lot.status = LotStatus.ACTIVE;
+          }
+        } else if (createMovementDto.type === MovementType.OUT) {
+          const available = lot.quantity - lot.soldQuantity;
+          if (createMovementDto.quantity > available) {
+            throw new BadRequestException(
+              `Stock insuficiente en lote ${lot.lotNumber}. Disponible: ${available}`,
+            );
+          }
+          lot.soldQuantity += createMovementDto.quantity;
+          if (lot.soldQuantity >= lot.quantity) {
+            lot.status = LotStatus.DEPLETED;
+          }
+        }
+        await queryRunner.manager.save(lot);
+      }
 
       // Calculate costs
       const unitCost = createMovementDto.unitCost ?? null;
@@ -84,6 +116,7 @@ export class InventoryService {
         reason: createMovementDto.reason,
         productId: createMovementDto.productId,
         supplierId: createMovementDto.supplierId,
+        lotId,
         unitCost,
         totalCost,
         teamId,
@@ -139,7 +172,77 @@ export class InventoryService {
       }
 
       await queryRunner.commitTransaction();
-      return savedMovement;
+      return this.findOne(teamId, savedMovement.id);
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async deleteMovement(
+    teamId: string,
+    id: string,
+  ): Promise<void> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const movement = await queryRunner.manager.findOne(InventoryMovement, {
+        where: { id, teamId },
+      });
+
+      if (!movement) {
+        throw new NotFoundException('Movimiento no encontrado');
+      }
+
+      // Don't allow deleting system-generated movements (sales, purchases)
+      if (movement.type === MovementType.SALE || movement.type === MovementType.PURCHASE) {
+        throw new BadRequestException(
+          'No se puede eliminar un movimiento generado por una venta o compra',
+        );
+      }
+
+      // Revert product stock
+      const product = await queryRunner.manager.findOne(Product, {
+        where: { id: movement.productId, teamId },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (product) {
+        if (movement.type === MovementType.IN) {
+          product.stock = Math.max(0, product.stock - movement.quantity);
+        } else if (movement.type === MovementType.OUT) {
+          product.stock += movement.quantity;
+        }
+        await queryRunner.manager.save(product);
+      }
+
+      // Revert lot quantity if lot was involved
+      if (movement.lotId) {
+        const lot = await queryRunner.manager.findOne(ProductLot, {
+          where: { id: movement.lotId },
+        });
+        if (lot) {
+          if (movement.type === MovementType.IN) {
+            lot.quantity = Math.max(0, lot.quantity - movement.quantity);
+            if (lot.quantity <= lot.soldQuantity) {
+              lot.status = LotStatus.DEPLETED;
+            }
+          } else if (movement.type === MovementType.OUT) {
+            lot.soldQuantity = Math.max(0, lot.soldQuantity - movement.quantity);
+            if (lot.status === LotStatus.DEPLETED && lot.soldQuantity < lot.quantity) {
+              lot.status = LotStatus.ACTIVE;
+            }
+          }
+          await queryRunner.manager.save(lot);
+        }
+      }
+
+      await queryRunner.manager.remove(movement);
+      await queryRunner.commitTransaction();
     } catch (error) {
       await queryRunner.rollbackTransaction();
       throw error;
@@ -163,6 +266,7 @@ export class InventoryService {
       .leftJoinAndSelect('movement.product', 'product')
       .leftJoinAndSelect('movement.user', 'user')
       .leftJoinAndSelect('movement.supplier', 'supplier')
+      .leftJoinAndSelect('movement.lot', 'lot')
       .where('movement.teamId = :teamId', { teamId });
 
     if (options?.productId) {
@@ -197,10 +301,10 @@ export class InventoryService {
   async findOne(teamId: string, id: string): Promise<InventoryMovement> {
     const movement = await this.movementsRepository.findOne({
       where: { id, teamId },
-      relations: ['product', 'user', 'supplier'],
+      relations: ['product', 'user', 'supplier', 'lot'],
     });
     if (!movement) {
-      throw new BadRequestException(`Movement #${id} not found`);
+      throw new NotFoundException(`Movimiento no encontrado`);
     }
     return movement;
   }

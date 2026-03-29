@@ -11,8 +11,12 @@ import '../../../products/data/products_repository.dart';
 import '../../../products/presentation/screens/products_screen.dart';
 import '../../../suppliers/data/suppliers_repository.dart';
 import '../../../../shared/models/inventory_movement_model.dart';
+import '../../../../shared/models/product_lot_model.dart';
 import '../../../../core/providers/cache_for.dart';
+import '../../../lots/data/lots_repository.dart';
 import '../../data/inventory_repository.dart';
+
+final _cop = NumberFormat.currency(locale: 'es_CO', symbol: '\$', decimalDigits: 0);
 
 final movementsProvider = FutureProvider.autoDispose
     .family<List<InventoryMovementModel>, String>((ref, teamId) {
@@ -117,11 +121,47 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
     String type = 'in';
     final quantityController = TextEditingController();
     final unitCostController = TextEditingController();
+    final totalCostController = TextEditingController();
     final reasonController = TextEditingController();
     SupplierModel? selectedSupplier;
+    ProductLotModel? selectedLot;
+    List<ProductLotModel> availableLots = [];
     bool isCredit = false;
     final installmentsController = TextEditingController(text: '1');
     String creditFrequency = 'monthly';
+
+    // Sync unitCost and totalCost
+    bool _updatingCost = false;
+    void syncCosts(String source) {
+      if (_updatingCost) return;
+      _updatingCost = true;
+      final qty = int.tryParse(quantityController.text) ?? 0;
+      if (source == 'unit' && qty > 0) {
+        final unit = double.tryParse(unitCostController.text) ?? 0;
+        totalCostController.text = (unit * qty).toStringAsFixed(0);
+      } else if (source == 'total' && qty > 0) {
+        final total = double.tryParse(totalCostController.text) ?? 0;
+        unitCostController.text = (total / qty).toStringAsFixed(0);
+      }
+      _updatingCost = false;
+    }
+
+    // Load lots when product changes
+    Future<void> loadLots(String productId) async {
+      try {
+        final lots = await ref.read(lotsRepositoryProvider).getLots(
+          teamId, productId: productId, status: 'active',
+        );
+        availableLots = lots;
+        selectedLot = null;
+      } catch (_) {
+        availableLots = [];
+      }
+    }
+
+    if (selectedProductId != null) {
+      loadLots(selectedProductId!);
+    }
 
     showModalBottomSheet(
       context: context,
@@ -206,6 +246,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                                     subtitle: Text('Stock: ${p.stock}'),
                                     onTap: () {
                                       setSheetState(() => selectedProductId = p.id);
+                                      loadLots(p.id).then((_) => setSheetState(() {}));
                                       Navigator.pop(innerCtx);
                                     },
                                   );
@@ -239,7 +280,6 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                 segments: const [
                   ButtonSegment(value: 'in', label: Text('Entrada')),
                   ButtonSegment(value: 'out', label: Text('Salida')),
-                  ButtonSegment(value: 'adjustment', label: Text('Corrección')),
                 ],
                 selected: {type},
                 onSelectionChanged: (v) =>
@@ -334,6 +374,27 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                 ),
               ],
               const SizedBox(height: AppSpacing.md),
+              // Lot selector (if product has lots)
+              if (availableLots.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.md),
+                DropdownButtonFormField<String>(
+                  value: selectedLot?.id,
+                  decoration: const InputDecoration(
+                    labelText: 'Lote',
+                    prefixIcon: Icon(Icons.layers_outlined),
+                  ),
+                  items: availableLots.map((l) => DropdownMenuItem(
+                    value: l.id,
+                    child: Text('${l.lotNumber} (disp: ${l.availableQuantity})'),
+                  )).toList(),
+                  onChanged: (v) => setSheetState(() {
+                    selectedLot = v != null
+                        ? availableLots.firstWhere((l) => l.id == v)
+                        : null;
+                  }),
+                ),
+              ],
+              const SizedBox(height: AppSpacing.md),
               TextFormField(
                 controller: quantityController,
                 keyboardType: TextInputType.number,
@@ -342,16 +403,36 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                   labelText: 'Cantidad',
                   prefixIcon: Icon(Icons.numbers),
                 ),
+                onChanged: (_) => setSheetState(() => syncCosts('unit')),
               ),
               if (type == 'in') ...[
                 const SizedBox(height: AppSpacing.sm),
-                TextFormField(
-                  controller: unitCostController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Costo unitario (opcional)',
-                    prefixIcon: Icon(Icons.attach_money),
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: unitCostController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Costo unit.',
+                          prefixIcon: Icon(Icons.attach_money),
+                        ),
+                        onChanged: (_) => setSheetState(() => syncCosts('unit')),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: TextFormField(
+                        controller: totalCostController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Total',
+                          prefixIcon: Icon(Icons.summarize_outlined),
+                        ),
+                        onChanged: (_) => setSheetState(() => syncCosts('total')),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 SwitchListTile(
@@ -429,6 +510,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                         'reason': reasonController.text,
                       if (selectedSupplier != null)
                         'supplierId': selectedSupplier!.id,
+                      if (selectedLot != null)
+                        'lotId': selectedLot!.id,
                       if (isCredit && type == 'in') ...{
                         'isCredit': true,
                         'creditInstallments': int.tryParse(installmentsController.text) ?? 1,
@@ -576,7 +659,10 @@ class _MovementsTab extends ConsumerWidget {
               final m = items[index];
               return Card(
                 margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-                child: ListTile(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () => _showMovementDetail(context, ref, teamId, m),
+                  child: ListTile(
                   leading: Container(
                     width: 40,
                     height: 40,
@@ -622,11 +708,169 @@ class _MovementsTab extends ConsumerWidget {
                     ],
                   ),
                 ),
+                ),
               );
             },
           ),
         );
       },
+    );
+  }
+
+  void _showMovementDetail(
+    BuildContext context,
+    WidgetRef ref,
+    String teamId,
+    InventoryMovementModel m,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final dateFormat = DateFormat('dd MMM yyyy HH:mm', 'es');
+
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: m.isPositive
+                          ? Colors.green.withValues(alpha: 0.1)
+                          : Colors.red.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      m.isPositive ? Icons.arrow_downward : Icons.arrow_upward,
+                      color: m.isPositive ? Colors.green : Colors.red,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(m.productName ?? 'Producto',
+                            style: Theme.of(ctx).textTheme.titleMedium),
+                        Text(m.typeLabel,
+                            style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                )),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    '${m.isPositive ? '+' : '-'}${m.quantity}',
+                    style: Theme.of(ctx).textTheme.headlineSmall?.copyWith(
+                          color: m.isPositive ? Colors.green : Colors.red,
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              _DetailRow('Fecha', dateFormat.format(m.createdAt)),
+              _DetailRow('Stock antes', '${m.stockBefore}'),
+              _DetailRow('Stock después', '${m.stockAfter}'),
+              if (m.supplierName != null)
+                _DetailRow('Proveedor', m.supplierName!),
+              if (m.lotNumber != null)
+                _DetailRow('Lote', m.lotNumber!),
+              if (m.unitCost != null)
+                _DetailRow('Costo unitario', _cop.format(m.unitCost!)),
+              if (m.totalCost != null)
+                _DetailRow('Costo total', _cop.format(m.totalCost!)),
+              if (m.reason != null && m.reason!.isNotEmpty)
+                _DetailRow('Razón', m.reason!),
+              if (m.canDelete) ...[
+                const SizedBox(height: AppSpacing.lg),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      final confirm = await showDialog<bool>(
+                        context: ctx,
+                        builder: (d) => AlertDialog(
+                          title: const Text('Eliminar movimiento'),
+                          content: const Text(
+                            'Se revertirá el stock del producto. ¿Continuar?',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(d, false),
+                              child: const Text('Cancelar'),
+                            ),
+                            FilledButton(
+                              onPressed: () => Navigator.pop(d, true),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: colorScheme.error,
+                              ),
+                              child: const Text('Eliminar'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirm != true || !ctx.mounted) return;
+                      try {
+                        await ref
+                            .read(inventoryRepositoryProvider)
+                            .deleteMovement(teamId, m.id);
+                        ref.invalidate(movementsProvider(teamId));
+                        ref.invalidate(productsProvider(teamId));
+                        ref.invalidate(lowStockProvider(teamId));
+                        if (ctx.mounted) Navigator.pop(ctx);
+                      } catch (e) {
+                        if (ctx.mounted) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            SnackBar(content: Text('Error: $e')),
+                          );
+                        }
+                      }
+                    },
+                    icon: Icon(Icons.delete_outline, color: colorScheme.error),
+                    label: Text('Eliminar movimiento',
+                        style: TextStyle(color: colorScheme.error)),
+                  ),
+                ),
+              ],
+              const SizedBox(height: AppSpacing.sm),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _DetailRow(this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  )),
+          Text(value,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  )),
+        ],
+      ),
     );
   }
 }

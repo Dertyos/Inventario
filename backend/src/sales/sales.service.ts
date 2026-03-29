@@ -18,6 +18,8 @@ import { PaymentMethod } from './entities/sale.entity';
 import { CreditsService } from '../credits/credits.service';
 import { CreditAccount, CreditStatus } from '../credits/entities/credit-account.entity';
 import { CreditInstallment } from '../credits/entities/credit-installment.entity';
+import { ProductLot, LotStatus } from '../lots/entities/product-lot.entity';
+import { TeamSettings } from '../teams/entities/team-settings.entity';
 import { Customer } from '../customers/entities/customer.entity';
 
 @Injectable()
@@ -88,6 +90,29 @@ export class SalesService {
         const stockBefore = product.stock;
         product.stock -= item.quantity;
         await queryRunner.manager.save(product);
+
+        // FEFO lot deduction if product tracks lots
+        const settings = await queryRunner.manager.findOne(TeamSettings, { where: { teamId } });
+        if (settings?.enableLots && product.trackLots) {
+          const lots = await queryRunner.manager.find(ProductLot, {
+            where: { teamId, productId: item.productId, status: LotStatus.ACTIVE },
+            order: { expirationDate: 'ASC' },
+          });
+
+          let remaining = item.quantity;
+          for (const lot of lots) {
+            if (remaining <= 0) break;
+            const available = lot.quantity - lot.soldQuantity;
+            if (available <= 0) continue;
+            const toDeduct = Math.min(available, remaining);
+            lot.soldQuantity += toDeduct;
+            remaining -= toDeduct;
+            if (lot.soldQuantity >= lot.quantity) {
+              lot.status = LotStatus.DEPLETED;
+            }
+            await queryRunner.manager.save(lot);
+          }
+        }
 
         // Create inventory movement
         const movement = queryRunner.manager.create(InventoryMovement, {
