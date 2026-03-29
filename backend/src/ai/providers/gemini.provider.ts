@@ -21,7 +21,7 @@ export class GeminiProvider implements IAiProvider {
     tool: AiTool;
     maxTokens?: number;
   }): Promise<AiToolResponse> {
-    const modelName = config.model || 'gemini-2.0-flash';
+    const modelName = config.model || 'gemini-2.5-flash';
 
     const model = this.client.getGenerativeModel({
       model: modelName,
