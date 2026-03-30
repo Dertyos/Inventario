@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/config/app_config.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/providers/auth_provider.dart';
 
@@ -141,36 +142,39 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           )
                         : const Text('Iniciar sesion'),
                   ),
-                  const SizedBox(height: AppSpacing.md),
-                  Row(
-                    children: [
-                      const Expanded(child: Divider()),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.sm),
-                        child: Text(
-                          'o',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: colorScheme.onSurfaceVariant,
-                              ),
+                  // Google Sign-In — only shown when GOOGLE_SERVER_CLIENT_ID is configured
+                  if (AppConfig.googleServerClientId.isNotEmpty) ...[
+                    const SizedBox(height: AppSpacing.md),
+                    Row(
+                      children: [
+                        const Expanded(child: Divider()),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.sm),
+                          child: Text(
+                            'o',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                          ),
                         ),
-                      ),
-                      const Expanded(child: Divider()),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  OutlinedButton.icon(
-                    onPressed: auth.isLoading
-                        ? null
-                        : () => ref.read(authProvider.notifier).signInWithGoogle(),
-                    icon: const Icon(Icons.g_mobiledata, size: 24),
-                    label: const Text('Continuar con Google'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: colorScheme.onSurface,
-                      side: BorderSide(color: colorScheme.outline),
-                      backgroundColor: colorScheme.surface,
+                        const Expanded(child: Divider()),
+                      ],
                     ),
-                  ),
+                    const SizedBox(height: AppSpacing.md),
+                    OutlinedButton.icon(
+                      onPressed: auth.isLoading
+                          ? null
+                          : () => ref.read(authProvider.notifier).signInWithGoogle(),
+                      icon: const Icon(Icons.g_mobiledata, size: 24),
+                      label: const Text('Continuar con Google'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: colorScheme.onSurface,
+                        side: BorderSide(color: colorScheme.outline),
+                        backgroundColor: colorScheme.surface,
+                      ),
+                    ),
+                  ],
                   // Apple Sign-In — hidden until Apple Developer account is configured
                   // if (Platform.isIOS) ...[
                   //   const SizedBox(height: AppSpacing.sm),
