@@ -135,14 +135,19 @@ class _VoiceTransactionScreenState
         final route = _resolveRoute(result.navigateRoute!);
         final message = result.navigateMessage ?? 'Listo';
 
+        // Capture router and messenger BEFORE popping (context becomes invalid after pop)
+        final router = GoRouter.of(context);
+        final messenger = ScaffoldMessenger.of(context);
+
         Navigator.pop(context); // close AI screen
+
         if (_isTabRoute(route)) {
-          context.go(route); // bottom tab — replace current screen
+          router.go(route); // bottom tab — replace current screen
         } else {
-          context.push(route); // other screens — push on stack
+          router.push(route); // other screens — push on stack
         }
 
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(
             content: Text(message),
             behavior: SnackBarBehavior.floating,
