@@ -224,7 +224,6 @@ class AuthNotifier extends Notifier<AuthState> {
             ? AppConfig.googleServerClientId
             : null,
       );
-      await googleSignIn.signOut();
       final account = await googleSignIn.signIn();
       if (account == null) {
         // User cancelled
