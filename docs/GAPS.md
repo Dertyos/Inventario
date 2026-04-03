@@ -1,11 +1,46 @@
 # Gaps y Pendientes — Inventario
 
 Documento generado a partir de auditoría exhaustiva comparando documentación vs implementación.
-Última revisión: 2026-03-26
+Última revisión: 2026-04-03
 
 ---
 
-## Estado General: 98/100
+## Estado General: 98/100 (funcional) · Monetización: 0/100
+
+---
+
+## Pendientes de Monetización (CRÍTICOS para generar ingresos)
+
+### 1. Sistema de Billing / Suscripciones (CRÍTICO — no existe)
+- No hay módulo `billing/` en el backend
+- No hay entidades `Subscription` ni `UsageRecord`
+- No hay integración con Stripe ni ninguna pasarela de pagos
+- No hay guard de límites por plan (`PlanLimitGuard`)
+- No hay UI de planes ni upgrade flow en la app móvil
+- No hay banner de "límite alcanzado" cuando el usuario llega al tope del plan gratis
+- **Ver**: [MONETIZATION.md](MONETIZATION.md) para el plan completo
+- **Ver**: [ADR-007](adr/007-stripe-billing.md) para la decisión de Stripe
+
+### 2. Onboarding de Nuevos Usuarios (ALTO — no existe)
+- No hay pantallas de bienvenida/tutorial
+- No hay datos demo precargados al crear un equipo
+- Un usuario nuevo no sabe qué hacer al abrir la app por primera vez
+- Impacto: alta tasa de desinstalación en los primeros 30 segundos
+
+### 3. Landing Page Pública (ALTO — no existe)
+- No hay página web para vender la app ni mostrar precios
+- Sin landing page no hay dónde enviar tráfico de anuncios
+- **Ver**: [MONETIZATION.md](MONETIZATION.md) sección "Landing Page"
+
+### 4. Play Store / App Store Listing (ALTO — incompleto)
+- Falta: screenshots optimizados, video preview, descripción ASO
+- Falta: Privacy Policy (requerido por Google)
+- Falta: icono y feature graphic optimizados para conversión
+
+### 5. Analytics Dashboard en Mobile (MEDIO — endpoints existen, falta UI)
+- Los endpoints `GET /analytics/summary`, `/analytics/sales`, `/analytics/inventory` están implementados
+- La pantalla de reportes existe parcialmente (`sales_report_screen.dart`)
+- Falta: dashboard visual completo con todas las métricas
 
 ---
 
@@ -80,6 +115,9 @@ Documento generado a partir de auditoría exhaustiva comparando documentación v
 | AI/Voice | CHANGELOG | Claude SDK | speech_to_text | — | Completo |
 | CI/CD | CI-CD.md | GitHub Actions | Codemagic | — | Completo |
 | Infrastructure | INFRASTRUCTURE.md | Terraform ECS | — | — | Staging only |
+| **Billing/Stripe** | **MONETIZATION.md** | **No existe** | **No existe** | **—** | **Pendiente** |
+| **Onboarding** | **ROADMAP.md** | **—** | **No existe** | **—** | **Pendiente** |
+| **Landing Page** | **MONETIZATION.md** | **—** | **—** | **—** | **Pendiente** |
 
 ---
 
@@ -93,3 +131,18 @@ Antes de desplegar a producción, verificar:
 4. [ ] Verificar rate limiting en endpoints AI (5 req/min)
 5. [ ] Pruebas de carga en endpoints transaccionales (sales, inventory)
 6. [ ] Configurar Sentry DSN para error tracking
+7. [ ] Implementar módulo billing con Stripe (ver MONETIZATION.md)
+8. [ ] Crear cuenta de Stripe y configurar productos/precios
+9. [ ] Publicar Privacy Policy en URL pública
+10. [ ] Publicar app en Play Store (track producción)
+11. [ ] Crear landing page en inventario.app
+12. [ ] Configurar STRIPE_SECRET_KEY y STRIPE_WEBHOOK_SECRET en producción
+
+---
+
+## Documentación Relacionada
+
+- [MONETIZATION.md](MONETIZATION.md) — Estrategia de monetización, planes, precios, pasarela de pagos
+- [ROADMAP.md](ROADMAP.md) — Roadmap del producto con timeline y prioridades
+- [ADR-007](adr/007-stripe-billing.md) — Decisión de Stripe como pasarela
+- [AUDIT/ISSUES_SUMMARY.md](../AUDIT/ISSUES_SUMMARY.md) — Bugs críticos a resolver antes de lanzamiento

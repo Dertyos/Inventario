@@ -101,25 +101,48 @@ El sistema permite registrar ventas y compras mediante comandos de voz, usando I
 
 ## Módulos del Backend
 
-| Módulo | Descripción |
-|---|---|
-| Auth | JWT + Google + Apple Sign-In |
-| Teams | Multi-tenant, roles, permisos granulares |
-| Products | CRUD, categorías, stock |
-| Sales | Ventas transaccionales, créditos |
-| Purchases | Órdenes de compra |
-| Inventory | Movimientos de stock |
-| Customers | Clientes CRUD |
-| Suppliers | Proveedores CRUD |
-| Credits | Cuentas por cobrar, cuotas |
-| Lots | Lotes con FEFO |
-| Payments | Pagos asociados a ventas |
-| Reminders | Recordatorios de pago + cron |
-| Notifications | Centro de notificaciones |
-| Analytics | Métricas, reportes, gráficas |
-| Export | CSV de ventas, productos, inventario |
-| Audit | Log de cambios (quién, qué, cuándo) |
-| AI | Claude Haiku - copiloto con 9 acciones |
+| Módulo | Descripción | Estado |
+|---|---|---|
+| Auth | JWT + Google + Apple Sign-In | ✅ Completo |
+| Teams | Multi-tenant, roles, permisos granulares | ✅ Completo |
+| Products | CRUD, categorías, stock | ✅ Completo |
+| Sales | Ventas transaccionales, créditos | ✅ Completo |
+| Purchases | Órdenes de compra | ✅ Completo |
+| Inventory | Movimientos de stock | ✅ Completo |
+| Customers | Clientes CRUD | ✅ Completo |
+| Suppliers | Proveedores CRUD | ✅ Completo |
+| Credits | Cuentas por cobrar, cuotas | ✅ Completo |
+| Lots | Lotes con FEFO | ✅ Completo |
+| Payments | Pagos asociados a ventas | ✅ Completo |
+| Reminders | Recordatorios de pago + cron | ✅ Completo |
+| Notifications | Centro de notificaciones | ✅ Completo |
+| Analytics | Métricas, reportes, gráficas | ✅ Completo |
+| Export | CSV de ventas, productos, inventario | ✅ Completo |
+| Audit | Log de cambios (quién, qué, cuándo) | ✅ Completo |
+| AI | Claude Haiku - copiloto con 9 acciones | ✅ Completo |
+| **Billing** | **Stripe: suscripciones, planes, límites por plan** | **⏳ Pendiente** |
+
+### Módulo Billing (pendiente — ver [MONETIZATION.md](MONETIZATION.md))
+
+```
+backend/src/billing/
+├── billing.module.ts
+├── billing.controller.ts          # Endpoints: checkout, portal, usage
+├── billing.service.ts             # Lógica de Stripe Billing
+├── stripe-webhook.controller.ts   # Webhooks de Stripe
+├── guards/plan-limit.guard.ts     # Valida uso vs límites del plan
+├── decorators/require-plan.decorator.ts  # @RequirePlan('emprendedor')
+├── entities/
+│   ├── subscription.entity.ts     # Suscripción del equipo
+│   └── usage.entity.ts            # Tracking de uso mensual
+├── dto/
+│   ├── create-checkout.dto.ts
+│   └── update-subscription.dto.ts
+└── billing.constants.ts           # Planes y límites
+```
+
+**Flujo**: Usuario → selecciona plan → Stripe Checkout → paga → webhook actualiza DB → features desbloqueados.
+**Decisión**: [ADR-007](adr/007-stripe-billing.md)
 
 ## Cache (Redis)
 
@@ -156,6 +179,19 @@ El sistema combina roles fijos con permisos granulares configurables:
 - Los permisos del owner son inmutables (siempre tiene todos)
 
 Categorías: ventas (3), inventario (3), clientes (3), reportes (2), admin (4).
+
+## Modelo de Negocio
+
+La app sigue un modelo **Freemium con suscripción mensual** via Stripe:
+
+| Plan | Precio/mes | Límites clave |
+|------|-----------|---------------|
+| Gratis | $0 | 1 usuario, 50 productos, 30 ventas/mes |
+| Emprendedor | $49.900 COP | 3 usuarios, 500 productos, IA básica |
+| Negocio | $99.900 COP | 10 usuarios, ilimitado, permisos |
+| Empresa | $199.900 COP | Ilimitado, DIAN, soporte prioritario |
+
+Ver [MONETIZATION.md](MONETIZATION.md) para detalles completos.
 
 ## Decisiones de Escalamiento
 

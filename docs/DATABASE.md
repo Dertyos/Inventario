@@ -409,6 +409,52 @@ Distribuidora farmacéutica (plan pro):
 
 ---
 
+## Fase 7 — Billing y Suscripciones ⏳ (pendiente)
+> Monetización del producto. Ver [MONETIZATION.md](MONETIZATION.md) y [ADR-007](adr/007-stripe-billing.md).
+
+**Tablas nuevas:**
+- `subscriptions` — suscripción del equipo vinculada a Stripe
+- `usage_records` — tracking de uso mensual por equipo
+
+```
+┌──────────────────────────────┐      ┌──────────────────────────────┐
+│       subscriptions          │      │       usage_records          │
+├──────────────────────────────┤      ├──────────────────────────────┤
+│ id                 UUID PK   │      │ id                 UUID PK   │
+│ teamId             FK → teams│      │ teamId             FK → teams│
+│ stripeCustomerId   VARCHAR   │      │ periodStart        DATE      │
+│ stripeSubscriptionId VARCHAR │      │ salesCount         INT (0)   │
+│ plan               ENUM     │      │ productsCount      INT (0)   │
+│   free|emprendedor|negocio|  │      │ aiCommandsCount    INT (0)   │
+│   empresa                    │      │ creditsCount       INT (0)   │
+│ status             ENUM     │      │ createdAt                    │
+│   active|past_due|canceled|  │      │ updatedAt                    │
+│   trialing                   │      └──────────────────────────────┘
+│ currentPeriodStart TIMESTAMP │
+│ currentPeriodEnd   TIMESTAMP │        UQ(teamId, periodStart)
+│ cancelAtPeriodEnd  BOOL     │
+│ createdAt                    │
+│ updatedAt                    │
+└──────────────────────────────┘
+
+  UQ(teamId) — un equipo = una suscripción
+```
+
+**Endpoints:**
+- `POST /billing/checkout` — crear sesión de Stripe Checkout
+- `POST /billing/portal` — abrir Customer Portal de Stripe
+- `GET /billing/subscription` — estado de la suscripción del equipo
+- `GET /billing/usage` — uso actual vs límites del plan
+- `POST /billing/webhooks/stripe` — webhook de Stripe (sin auth JWT, verificación por firma)
+
+**Lógica:**
+- Al registrar un equipo, se crea automáticamente una `subscription` con plan `free`
+- El `PlanLimitGuard` consulta `subscriptions` + `usage_records` en cada request de creación
+- Los webhooks de Stripe actualizan `status`, `plan` y períodos automáticamente
+- Los `usage_records` se reinician al inicio de cada período de facturación
+
+---
+
 ## Convenciones Técnicas
 
 | Convención | Detalle |

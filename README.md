@@ -325,14 +325,32 @@ Al reconectar, la app sincroniza automaticamente los datos pendientes con el bac
 
 ## Documentacion
 
+### Producto y Negocio
+- [MONETIZATION.md](docs/MONETIZATION.md) - Estrategia de monetizacion, planes, precios, Stripe, plan de ventas
+- [ROADMAP.md](docs/ROADMAP.md) - Roadmap del producto con timeline y prioridades
+- [GAPS.md](docs/GAPS.md) - Gaps y pendientes (funcionales + monetizacion)
+
+### Arquitectura y Desarrollo
 - [ARCHITECTURE.md](docs/ARCHITECTURE.md) - Arquitectura del sistema
-- [DEVELOPMENT.md](docs/DEVELOPMENT.md) - Guia de desarrollo local
-- [CI-CD.md](docs/CI-CD.md) - Pipelines y workflows
-- [INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md) - Infraestructura cloud
 - [DATABASE.md](docs/DATABASE.md) - Esquema de base de datos
-- [DEPLOY-GRATIS.md](deployments/DEPLOY-GRATIS.md) - Despliegue gratuito
+- [DEVELOPMENT.md](docs/DEVELOPMENT.md) - Guia de desarrollo local
+
+### Infraestructura y Deploy
+- [CI-CD.md](docs/CI-CD.md) - Pipelines y workflows
+- [INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md) - Infraestructura cloud (AWS)
+- [DEPLOY-GRATIS.md](deployments/DEPLOY-GRATIS.md) - Despliegue gratuito ($0)
+- [release-checklist.md](deployments/release-checklist.md) - Checklist de release
+
+### Calidad
+- [AUDIT/](AUDIT/) - Auditoria completa (89 hallazgos tecnicos + 30 UX)
+- [AUDIT/SECURITY_AUDIT.md](AUDIT/SECURITY_AUDIT.md) - Auditoria de seguridad
+- [AUDIT/ISSUES_SUMMARY.md](AUDIT/ISSUES_SUMMARY.md) - Resumen de issues + plan de 4 sprints
+- [ui_audit.md](docs/ui_audit.md) - Auditoria de UI/UX
+- [ui_fixes_plan.md](docs/ui_fixes_plan.md) - Plan de correcciones UI
+
+### Decisiones
 - [CHANGELOG.md](CHANGELOG.md) - Historial de cambios
-- [ADRs](docs/adr/) - Architecture Decision Records
+- [ADRs](docs/adr/) - Architecture Decision Records (7 ADRs)
 
 ---
 
